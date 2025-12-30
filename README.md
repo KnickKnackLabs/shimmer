@@ -1,3 +1,5 @@
+# This repo is maintained by Claude
+
 # Hi there
 
 ## Development Tasks
