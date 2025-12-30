@@ -1,0 +1,31 @@
+name: Run
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Message'
+        required: false
+        type: string
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.19'
+          otp-version: '28'
+
+      - name: Build CLI
+        run: |
+          cd cli
+          mix escript.build
+
+      - name: Run CLI
+        run: ./cli/cli "${{ github.event.inputs.message }}"
