@@ -26,3 +26,11 @@ Add new capability requests below:
 - Request: `bsdiff`/`bspatch` for semantic binary diffing
 - Would help identify actual code changes vs rebuild artifacts in committed binaries
 - Alternative: `diffoscope` for comprehensive binary comparison
+
+---
+
+## Future Ideas
+
+### Timeout Self-Explanation
+- When agent times out, give it a brief chance to explain what it was doing
+- Could help debug stuck operations and improve future prompts

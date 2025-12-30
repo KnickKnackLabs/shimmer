@@ -10,9 +10,11 @@ defmodule Cli do
 
     if message != "" do
       escaped_message = String.replace(message, "'", "'\\''")
-      cmd = "timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format text --dangerously-skip-permissions"
-      {output, status} = System.shell(cmd, close_stdin: true)
-      IO.write(output)
+      # Pipe empty stdin to close it, use stream-json with --verbose for streaming
+      cmd = "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --dangerously-skip-permissions"
+
+      port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
+      status = stream_output(port)
 
       if status == 124 do
         IO.puts("\n---")
@@ -22,6 +24,32 @@ defmodule Cli do
       System.halt(status)
     else
       IO.puts("No message provided, skipping Claude")
+    end
+  end
+
+  defp stream_output(port) do
+    receive do
+      {^port, {:data, data}} ->
+        data
+        |> String.split("\n", trim: true)
+        |> Enum.each(&process_line/1)
+        stream_output(port)
+
+      {^port, {:exit_status, status}} ->
+        status
+    end
+  end
+
+  defp process_line(line) do
+    case Jason.decode(line) do
+      {:ok, %{"type" => "content_block_delta", "delta" => %{"text" => text}}} ->
+        IO.write(text)
+
+      {:ok, %{"type" => "result", "result" => result}} ->
+        IO.write(result)
+
+      _ ->
+        :ok  # Ignore other message types
     end
   end
 end
