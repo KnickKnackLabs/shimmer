@@ -5,7 +5,7 @@ Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 ## Up Next
 
 - [ ] Add commit signing (GPG or SSH) to verify commit authenticity
-- [ ] Capture uncommitted changes as artifacts when agent times out
+- [x] Capture uncommitted changes as artifacts when agent times out
 - [ ] Set up Credo for Elixir linting (add to PR checks)
 - [ ] Create agent memory file - a place to leave notes for future runs
 - [ ] Add a second agent (probe-2) with different focus

@@ -22,6 +22,7 @@ defmodule Cli do
       if status == 124 do
         IO.puts("\n---")
         IO.puts("ERROR: Claude timed out after #{@timeout_seconds} seconds")
+        capture_uncommitted_changes()
       end
 
       System.halt(status)
@@ -106,4 +107,54 @@ defmodule Cli do
   end
 
   defp print_tool_input(_), do: :ok
+
+  @doc """
+  Captures any uncommitted changes and outputs them to the log.
+  This helps preserve work when the agent times out.
+  """
+  def capture_uncommitted_changes do
+    IO.puts("\n--- UNCOMMITTED CHANGES ---")
+
+    # Check for unstaged changes
+    {diff_output, _} = System.cmd("git", ["diff"], stderr_to_stdout: true)
+
+    # Check for staged changes
+    {staged_output, _} = System.cmd("git", ["diff", "--cached"], stderr_to_stdout: true)
+
+    # Check for untracked files
+    {untracked_output, _} =
+      System.cmd("git", ["ls-files", "--others", "--exclude-standard"], stderr_to_stdout: true)
+
+    has_changes = diff_output != "" or staged_output != "" or untracked_output != ""
+
+    if has_changes do
+      if staged_output != "" do
+        IO.puts("\n[Staged changes:]")
+        IO.puts(staged_output)
+      end
+
+      if diff_output != "" do
+        IO.puts("\n[Unstaged changes:]")
+        IO.puts(diff_output)
+      end
+
+      if untracked_output != "" do
+        IO.puts("\n[Untracked files:]")
+        IO.puts(untracked_output)
+      end
+
+      # Also create a patch file that could be applied later
+      {patch, _} = System.cmd("git", ["diff", "HEAD"], stderr_to_stdout: true)
+
+      if patch != "" do
+        patch_file = "/tmp/uncommitted-changes-#{System.os_time(:second)}.patch"
+        File.write!(patch_file, patch)
+        IO.puts("\n[Patch saved to: #{patch_file}]")
+      end
+    else
+      IO.puts("No uncommitted changes found.")
+    end
+
+    IO.puts("--- END UNCOMMITTED CHANGES ---\n")
+  end
 end

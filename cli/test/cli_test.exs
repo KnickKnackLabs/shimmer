@@ -14,6 +14,21 @@ defmodule CliTest do
     end
   end
 
+  describe "capture_uncommitted_changes/0" do
+    test "function exists and is exported" do
+      assert function_exported?(Cli, :capture_uncommitted_changes, 0)
+    end
+
+    test "runs without error in a git repository" do
+      # This test runs in the actual repo, so it should work
+      # We're just verifying it doesn't crash - output goes to stdout
+      import ExUnit.CaptureIO
+      output = capture_io(fn -> Cli.capture_uncommitted_changes() end)
+      assert output =~ "--- UNCOMMITTED CHANGES ---"
+      assert output =~ "--- END UNCOMMITTED CHANGES ---"
+    end
+  end
+
   describe "Jason dependency" do
     test "JSON parsing works for stream events" do
       # Test that our JSON parsing will work with expected format
