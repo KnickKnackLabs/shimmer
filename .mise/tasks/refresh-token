@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Refresh the Claude OAuth token in GitHub secrets"
+
+set -e
+
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+
+echo "Getting new OAuth token from Claude..."
+TOKEN=$(claude setup-token --print 2>/dev/null || claude setup-token)
+
+if [ -z "$TOKEN" ]; then
+  echo "Failed to get token"
+  exit 1
+fi
+
+echo "Updating CLAUDE_CODE_OAUTH_TOKEN secret on $REPO..."
+gh secret set CLAUDE_CODE_OAUTH_TOKEN --body "$TOKEN"
+
+echo "Done! Token updated."
