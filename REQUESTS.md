@@ -21,3 +21,8 @@
 
 ## New Requests
 Add new capability requests below:
+
+### 5. Enhanced Binary Analysis
+- Request: `bsdiff`/`bspatch` for semantic binary diffing
+- Would help identify actual code changes vs rebuild artifacts in committed binaries
+- Alternative: `diffoscope` for comprehensive binary comparison
