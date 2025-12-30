@@ -30,4 +30,91 @@ defmodule CliTest do
       assert {:error, _} = result
     end
   end
+
+  describe "format_tool_input/1" do
+    test "formats bash command input" do
+      input = %{"command" => "ls -la"}
+      assert Cli.format_tool_input(input) == "  $ ls -la"
+    end
+
+    test "formats file path input for Read tool" do
+      input = %{"file_path" => "/path/to/file.ex"}
+      assert Cli.format_tool_input(input) == "  -> /path/to/file.ex"
+    end
+
+    test "formats pattern input for Glob tool" do
+      input = %{"pattern" => "**/*.ex"}
+      assert Cli.format_tool_input(input) == "  pattern: **/*.ex"
+    end
+
+    test "formats Edit tool input with old_string and new_string" do
+      input = %{
+        "file_path" => "/path/to/file.ex",
+        "old_string" => "old code here",
+        "new_string" => "new code here"
+      }
+
+      result = Cli.format_tool_input(input)
+      assert result =~ "  /path/to/file.ex"
+      assert result =~ "  - old code here..."
+      assert result =~ "  + new code here..."
+    end
+
+    test "truncates long old_string and new_string in Edit tool" do
+      long_string = String.duplicate("x", 100)
+
+      input = %{
+        "file_path" => "/path/to/file.ex",
+        "old_string" => long_string,
+        "new_string" => long_string
+      }
+
+      result = Cli.format_tool_input(input)
+      # Should truncate to 60 chars plus "..."
+      assert result =~ String.duplicate("x", 60) <> "..."
+    end
+
+    test "replaces newlines in Edit tool strings" do
+      input = %{
+        "file_path" => "/path/to/file.ex",
+        "old_string" => "line1\nline2",
+        "new_string" => "line3\nline4"
+      }
+
+      result = Cli.format_tool_input(input)
+      assert result =~ "line1\\nline2"
+      assert result =~ "line3\\nline4"
+    end
+
+    test "formats WebFetch tool input with prompt" do
+      input = %{
+        "prompt" => "Extract the main content",
+        "description" => "Fetching docs"
+      }
+
+      result = Cli.format_tool_input(input)
+      assert result =~ "  Fetching docs"
+      assert result =~ "  prompt: Extract the main content..."
+    end
+
+    test "formats prompt input without description" do
+      input = %{"prompt" => "Some prompt text"}
+      result = Cli.format_tool_input(input)
+      assert result =~ "  \n  prompt: Some prompt text..."
+    end
+
+    test "truncates long prompts to 100 chars" do
+      long_prompt = String.duplicate("a", 150)
+      input = %{"prompt" => long_prompt}
+
+      result = Cli.format_tool_input(input)
+      assert result =~ String.duplicate("a", 100) <> "..."
+      refute result =~ String.duplicate("a", 101)
+    end
+
+    test "returns nil for unrecognized input format" do
+      assert Cli.format_tool_input(%{"unknown" => "value"}) == nil
+      assert Cli.format_tool_input(%{}) == nil
+    end
+  end
 end

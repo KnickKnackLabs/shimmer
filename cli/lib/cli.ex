@@ -81,29 +81,40 @@ defmodule Cli do
     end
   end
 
-  defp print_tool_input(%{"command" => cmd}) do
-    IO.puts("  $ #{cmd}")
+  defp print_tool_input(input) do
+    case format_tool_input(input) do
+      nil -> :ok
+      output -> IO.puts(output)
+    end
   end
 
-  defp print_tool_input(%{"file_path" => path}) do
-    IO.puts("  -> #{path}")
+  @doc """
+  Formats tool input map into a human-readable string for display.
+  Returns nil for unrecognized input formats.
+  """
+  def format_tool_input(%{"command" => cmd}) do
+    "  $ #{cmd}"
   end
 
-  defp print_tool_input(%{"pattern" => pattern}) do
-    IO.puts("  pattern: #{pattern}")
+  def format_tool_input(%{"file_path" => path, "old_string" => old, "new_string" => new}) do
+    old_preview = old |> String.slice(0, 60) |> String.replace("\n", "\\n")
+    new_preview = new |> String.slice(0, 60) |> String.replace("\n", "\\n")
+    "  #{path}\n  - #{old_preview}...\n  + #{new_preview}..."
   end
 
-  defp print_tool_input(%{"prompt" => prompt} = input) do
+  def format_tool_input(%{"file_path" => path}) do
+    "  -> #{path}"
+  end
+
+  def format_tool_input(%{"pattern" => pattern}) do
+    "  pattern: #{pattern}"
+  end
+
+  def format_tool_input(%{"prompt" => prompt} = input) do
     desc = Map.get(input, "description", "")
-    IO.puts("  #{desc}")
-    IO.puts("  prompt: #{String.slice(prompt, 0, 100)}...")
+    prompt_preview = String.slice(prompt, 0, 100)
+    "  #{desc}\n  prompt: #{prompt_preview}..."
   end
 
-  defp print_tool_input(%{"old_string" => old, "new_string" => new, "file_path" => path}) do
-    IO.puts("  #{path}")
-    IO.puts("  - #{String.slice(old, 0, 60) |> String.replace("\n", "\\n")}...")
-    IO.puts("  + #{String.slice(new, 0, 60) |> String.replace("\n", "\\n")}...")
-  end
-
-  defp print_tool_input(_), do: :ok
+  def format_tool_input(_), do: nil
 end
