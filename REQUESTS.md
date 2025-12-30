@@ -32,6 +32,13 @@ Add new capability requests below:
 - Workflow has `pull-requests: write` permission
 - Use `gh pr create` to create PRs from branches
 
+### 7. GitHub Actions Workflows Permission
+- Issue: Agents cannot push changes to `.github/workflows/` files
+- Error: "refusing to allow a GitHub App to create or update workflow without `workflows` permission"
+- Affects: Adding probe-2 agent, Credo workflow step, any workflow modifications
+- Resolution: A human with repo admin access must make workflow file changes
+- Open issues: #8, #9, #11
+
 ---
 
 ## Future Ideas
