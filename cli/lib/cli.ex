@@ -1,5 +1,6 @@
 defmodule Cli do
-  @timeout_seconds 240  # 4 minutes, leaves 1 minute buffer before GitHub's 5-minute timeout
+  # 4 minutes, leaves 1 minute buffer before GitHub's 5-minute timeout
+  @timeout_seconds 240
 
   def main(args) do
     message = Enum.join(args, " ")
@@ -10,8 +11,10 @@ defmodule Cli do
 
     if message != "" do
       escaped_message = String.replace(message, "'", "'\\''")
+
       # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
-      cmd = "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+      cmd =
+        "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
       status = stream_output(port, %{tool_input: ""})
@@ -34,6 +37,7 @@ defmodule Cli do
           data
           |> String.split("\n", trim: true)
           |> Enum.reduce(state, &process_line/2)
+
         stream_output(port, new_state)
 
       {^port, {:exit_status, status}} ->
@@ -49,7 +53,11 @@ defmodule Cli do
         state
 
       # Handle tool use start - show which tool is being called
-      {:ok, %{"type" => "stream_event", "event" => %{"content_block" => %{"type" => "tool_use", "name" => name}}}} ->
+      {:ok,
+       %{
+         "type" => "stream_event",
+         "event" => %{"content_block" => %{"type" => "tool_use", "name" => name}}
+       }} ->
         IO.puts("\n[TOOL] #{name}")
         %{state | tool_input: ""}
 
@@ -65,6 +73,7 @@ defmodule Cli do
             _ -> :ok
           end
         end
+
         %{state | tool_input: ""}
 
       _ ->
