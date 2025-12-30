@@ -11,6 +11,11 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run ship <message>` - Commit and push in one step
 - `mise run commit <message>` - Commit changes
 - `mise run push` - Push to remote
+- `mise run status` - Check latest workflow run status
+- `mise run logs [lines]` - View logs from latest run
+- `mise run watch` - Watch a run until completion
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on PR reviews and other workflows.
 
 ---
 

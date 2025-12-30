@@ -13,11 +13,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +62,7 @@ jobs:
         id: message
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Your name is probe-1. This is your codebase. You are responsible for maintaining it, improving it, and evolving it over time. Each run, pick something to work on: fix something broken, improve code quality, add a small feature, write a test, improve documentation, refactor for clarity, or explore and understand how things work. Be curious. Take initiative. Make it better. If you need tools or capabilities you don't have, note them in REQUESTS.md. If you wish to change your name, note that there too and we will make it happen. Keep changes focused and incremental. WORKFLOW: You are on branch '${{ steps.branch.outputs.name }}'. Commit your changes to this branch, push it, then create a pull request to main using 'gh pr create'. Your changes will be reviewed before merging." >> $GITHUB_OUTPUT
+            echo "msg=Your name is probe-1. You have 9 minutes. Check BACKLOG.md for tasks - pick one, do it well, check it off. If nothing appeals, explore and improve something. Keep changes focused. Need tools you don't have? Open an issue with 'gh issue create'. WORKFLOW: You are on branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main." >> $GITHUB_OUTPUT
           else
             echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
           fi

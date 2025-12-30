@@ -1,6 +1,6 @@
 defmodule Cli do
-  # 4 minutes, leaves 1 minute buffer before GitHub's 5-minute timeout
-  @timeout_seconds 240
+  # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
+  @timeout_seconds 540
 
   def main(args) do
     message = Enum.join(args, " ")
@@ -14,7 +14,7 @@ defmodule Cli do
 
       # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
       cmd =
-        "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+        "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
       status = stream_output(port, %{tool_input: ""})
