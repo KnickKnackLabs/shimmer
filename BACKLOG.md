@@ -6,7 +6,7 @@ Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 
 - [ ] Add commit signing (GPG or SSH) to verify commit authenticity
 - [ ] Capture uncommitted changes as artifacts when agent times out
-- [ ] Set up Credo for Elixir linting (add to PR checks)
+- [x] Set up Credo for Elixir linting (PR #7 - workflow step needs manual add, see PR description)
 - [ ] Create agent memory file - a place to leave notes for future runs
 - [ ] Add a second agent (probe-2) with different focus
 - [ ] Add reviewer agent that runs on PR open and can approve/merge
