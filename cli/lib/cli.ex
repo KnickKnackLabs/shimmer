@@ -1,9 +1,12 @@
 defmodule Cli do
   # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
   @timeout_seconds 540
+  # Warning thresholds in seconds remaining
+  @warning_thresholds [120, 60, 30]
 
   def main(args) do
     message = Enum.join(args, " ")
+    start_time = System.monotonic_time(:second)
     IO.puts("Running at: #{DateTime.utc_now()}")
     IO.puts("Message: #{message}")
     IO.puts("Timeout: #{@timeout_seconds}s")
@@ -17,7 +20,13 @@ defmodule Cli do
         "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
-      status = stream_output(port, %{tool_input: ""})
+
+      status =
+        stream_output(port, %{
+          tool_input: "",
+          start_time: start_time,
+          warnings_shown: MapSet.new()
+        })
 
       if status == 124 do
         IO.puts("\n---")
@@ -33,6 +42,8 @@ defmodule Cli do
   defp stream_output(port, state) do
     receive do
       {^port, {:data, data}} ->
+        state = check_time_warnings(state)
+
         new_state =
           data
           |> String.split("\n", trim: true)
@@ -42,7 +53,29 @@ defmodule Cli do
 
       {^port, {:exit_status, status}} ->
         status
+    after
+      5000 ->
+        # Check warnings every 5 seconds even if no data
+        stream_output(port, check_time_warnings(state))
     end
+  end
+
+  defp check_time_warnings(state) do
+    elapsed = System.monotonic_time(:second) - state.start_time
+    remaining = @timeout_seconds - elapsed
+
+    new_warnings =
+      @warning_thresholds
+      |> Enum.filter(fn threshold ->
+        remaining <= threshold and not MapSet.member?(state.warnings_shown, threshold)
+      end)
+
+    Enum.each(new_warnings, fn threshold ->
+      IO.puts("\n⏰ [WARNING] #{threshold} seconds remaining before timeout!")
+    end)
+
+    new_shown = Enum.reduce(new_warnings, state.warnings_shown, &MapSet.put(&2, &1))
+    %{state | warnings_shown: new_shown}
   end
 
   defp process_line(line, state) do
