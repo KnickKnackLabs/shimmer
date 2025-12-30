@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Show work in progress (open PRs and issues)"
+
+set -e
+
+echo "=== Open PRs ==="
+gh pr list --limit 20
+
+echo ""
+echo "=== Open Issues ==="
+gh issue list --limit 20
