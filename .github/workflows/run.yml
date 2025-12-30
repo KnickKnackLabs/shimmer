@@ -53,7 +53,7 @@ jobs:
         id: message
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Start by announcing yourself, then: Check that the repo is in a healthy state. If there are any cleanup tasks needed (stale files, inconsistencies, etc), fix them. Also: if there are tools, capabilities, or resources you wish you had access to, leave a note in REQUESTS.md - we will try to provide them. Keep your response brief." >> $GITHUB_OUTPUT
+            echo "msg=Check that the repo is in a healthy state. If there are any cleanup tasks needed (stale files, inconsistencies, etc), fix them. Also: if there are tools, capabilities, or resources you wish you had access to, leave a note in REQUESTS.md - we will try to provide them. Keep your response brief." >> $GITHUB_OUTPUT
           else
             echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
           fi
