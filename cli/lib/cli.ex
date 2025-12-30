@@ -11,7 +11,8 @@ defmodule Cli do
     if message != "" do
       escaped_message = String.replace(message, "'", "'\\''")
       # Pipe empty stdin to close it, use stream-json with --verbose for streaming
-      cmd = "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --dangerously-skip-permissions"
+      # Use stdbuf to disable output buffering
+      cmd = "echo | stdbuf -oL timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --dangerously-skip-permissions"
 
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
       status = stream_output(port)
@@ -44,6 +45,7 @@ defmodule Cli do
     case Jason.decode(line) do
       {:ok, %{"type" => "content_block_delta", "delta" => %{"text" => text}}} ->
         IO.write(text)
+        :io.put_chars(:standard_io, [])  # flush
 
       {:ok, %{"type" => "result", "result" => result}} ->
         IO.write(result)
