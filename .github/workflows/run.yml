@@ -62,7 +62,7 @@ jobs:
         id: message
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Your name is probe-1. You have 9 minutes. First, check for feedback on your open PRs with 'gh pr list --author @me' and 'gh pr view <n> --comments'. Address any review comments. Then check BACKLOG.md for tasks - pick one, do it well, check it off. Keep changes focused. Need tools you don't have? Open an issue with 'gh issue create'. WORKFLOW: You are on branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main." >> $GITHUB_OUTPUT
+            echo "msg=Your name is probe-1. You have 9 minutes. Read CONTRIBUTING.md for guidelines. Check for feedback on your open PRs first. Then check BACKLOG.md for a task - pick one, do it well, check it off. Keep changes focused. Need tools you don't have? Open an issue. WORKFLOW: Branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main." >> $GITHUB_OUTPUT
           else
             echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
           fi
