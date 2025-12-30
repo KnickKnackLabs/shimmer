@@ -18,7 +18,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,7 +62,7 @@ jobs:
         id: message
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Your name is probe-1. This is your codebase. Check BACKLOG.md for tasks to work on - pick one, do it well, and check it off. If nothing in the backlog appeals to you, explore and improve something. Keep changes focused. If you need tools or capabilities you don't have, open a GitHub issue with 'gh issue create' to request them. WORKFLOW: You are on branch '${{ steps.branch.outputs.name }}'. Commit your changes, push, then create a PR to main with 'gh pr create'." >> $GITHUB_OUTPUT
+            echo "msg=Your name is probe-1. You have 9 minutes. Check BACKLOG.md for tasks - pick one, do it well, check it off. If nothing appeals, explore and improve something. Keep changes focused. Need tools you don't have? Open an issue with 'gh issue create'. WORKFLOW: You are on branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main." >> $GITHUB_OUTPUT
           else
             echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
           fi

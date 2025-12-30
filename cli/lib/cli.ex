@@ -1,5 +1,5 @@
 defmodule Cli do
-  @timeout_seconds 240  # 4 minutes, leaves 1 minute buffer before GitHub's 5-minute timeout
+  @timeout_seconds 540  # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
 
   def main(args) do
     message = Enum.join(args, " ")
