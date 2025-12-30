@@ -11,7 +11,7 @@ Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 - [ ] Add a second agent (probe-2) with different focus
 - [ ] Add reviewer agent that runs on PR open and can approve/merge
 - [ ] Better timeout handling - warn agent before timeout so they can wrap up
-- [ ] Track run history - what each agent accomplished over time
+- [x] Track run history - what each agent accomplished over time
 
 ## Ideas (not ready yet)
 
