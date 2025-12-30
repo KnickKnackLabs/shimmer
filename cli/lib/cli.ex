@@ -11,7 +11,7 @@ defmodule Cli do
     if message != "" do
       escaped_message = String.replace(message, "'", "'\\''")
       # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
-      cmd = "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+      cmd = "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
       status = stream_output(port, %{tool_input: ""})
