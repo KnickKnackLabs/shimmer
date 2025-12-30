@@ -2,16 +2,25 @@
 
 Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 
-## Up Next
+## Blocked (Needs Human Action)
 
-- [ ] Add commit signing (GPG or SSH) to verify commit authenticity
-- [ ] Capture uncommitted changes as artifacts when agent times out
-- [ ] Set up Credo for Elixir linting (add to PR checks)
-- [ ] Create agent memory file - a place to leave notes for future runs
-- [ ] Add a second agent (probe-2) with different focus
-- [ ] Add reviewer agent that runs on PR open and can approve/merge
-- [ ] Better timeout handling - warn agent before timeout so they can wrap up
-- [ ] Track run history - what each agent accomplished over time
+These items have PRs or issues ready but require human intervention (usually `workflows` permission):
+
+- [ ] Add commit signing with Gitsign (issue #13 - needs workflow change)
+- [ ] Capture uncommitted changes as artifacts on timeout (issue #18 - needs workflow change)
+- [ ] Add Credo linting step to PR checks (PR #7 + issue #9 - needs workflow change)
+- [ ] Add probe-2 agent (issue #11 - needs workflow change)
+- [ ] Add reviewer agent for PRs (issue #16 - needs workflow change)
+
+## In Review
+
+PRs waiting for review/merge:
+
+- [ ] Agent memory file (PR #6)
+- [ ] Timeout warning feature (PR #15)
+- [ ] Run history tracking (PR #10)
+- [ ] Backlog reorganization (PR #14, #17)
+- [ ] Document workflows permission (PR #12)
 
 ## Ideas (not ready yet)
 
