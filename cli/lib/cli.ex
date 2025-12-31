@@ -68,27 +68,39 @@ defmodule Cli do
   end
 
   defp run_claude(message, env_extras, system_prompt) do
-    escaped_message = String.replace(message, "'", "'\\''")
-
-    env_prefix =
-      case env_extras do
-        [] -> ""
-        extras -> Enum.join(extras, " ") <> " "
-      end
-
-    system_prompt_flag =
+    # Build claude arguments - message and system prompt passed as positional params to avoid escaping
+    system_prompt_args =
       case system_prompt do
         nil -> ""
-        prompt ->
-          escaped_prompt = String.replace(prompt, "'", "'\\''")
-          " --append-system-prompt '#{escaped_prompt}'"
+        _prompt -> " --append-system-prompt \"$2\""
       end
 
-    # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
-    cmd =
-      "echo | #{env_prefix}timeout #{@timeout_seconds} claude -p '#{escaped_message}'#{system_prompt_flag} --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+    # Shell script that pipes empty stdin and runs claude with timeout
+    shell_script =
+      "echo | timeout #{@timeout_seconds} claude -p \"$1\"#{system_prompt_args} " <>
+        "--model claude-opus-4-5-20251101 --output-format stream-json " <>
+        "--verbose --include-partial-messages --dangerously-skip-permissions"
 
-    port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
+    # Build args list: -c script, --, message, [system_prompt]
+    args =
+      case system_prompt do
+        nil -> ["-c", shell_script, "--", message]
+        prompt -> ["-c", shell_script, "--", message, prompt]
+      end
+
+    # Convert env extras like "KEY=value" to {~c"KEY", ~c"value"} tuples
+    env =
+      Enum.map(env_extras, fn extra ->
+        [key, value] = String.split(extra, "=", parts: 2)
+        {String.to_charlist(key), String.to_charlist(value)}
+      end)
+
+    port =
+      Port.open(
+        {:spawn_executable, "/bin/sh"},
+        [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
+      )
+
     status = stream_output(port, %{tool_input: "", buffer: ""})
 
     if status == 124 do
@@ -103,8 +115,14 @@ defmodule Cli do
     log_file = "/tmp/claude-context-#{:os.system_time(:second)}.log"
 
     # Start the logger in the background, using mise exec to ensure correct PATH
-    logger_cmd = "mise exec -- claude-code-logger start --verbose --log-body > #{log_file} 2>&1"
-    logger_port = Port.open({:spawn, logger_cmd}, [:binary])
+    logger_script =
+      "mise exec -- claude-code-logger start --verbose --log-body > #{log_file} 2>&1"
+
+    logger_port =
+      Port.open(
+        {:spawn_executable, "/bin/sh"},
+        [:binary, {:args, ["-c", logger_script]}]
+      )
 
     # Give the logger time to start
     Process.sleep(1500)
@@ -116,7 +134,11 @@ defmodule Cli do
         IO.puts("---")
 
         # Run Claude through the proxy
-        run_claude(message, ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"], system_prompt)
+        run_claude(
+          message,
+          ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
+          system_prompt
+        )
 
         # Note: System.halt in run_claude will terminate before we get here
         Port.close(logger_port)
