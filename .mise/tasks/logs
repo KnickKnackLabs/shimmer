@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #MISE description="View logs from the latest workflow run"
-#MISE usage="logs [lines]"
+#MISE usage="logs <workflow> [lines]"
 
 set -e
 
-LINES="${1:-100}"
-RUN_ID=$(gh run list --workflow=run.yml --limit 1 --json databaseId -q '.[0].databaseId')
+WORKFLOW="${1:-probe-1.yml}"
+LINES="${2:-100}"
+RUN_ID=$(gh run list --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
 JOB_ID=$(gh run view "$RUN_ID" --json jobs -q '.jobs[0].databaseId')
 
 gh run view --job="$JOB_ID" --log 2>&1 | tail -"$LINES"
