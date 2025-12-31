@@ -29,6 +29,13 @@ jobs:
           git config user.name "critic"
           git config user.email "critic@shimmer.local"
 
+      - name: Create working branch
+        id: branch
+        run: |
+          BRANCH_NAME="critic/run-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
       - name: Set up mise
         uses: jdx/mise-action@v2
         with:
