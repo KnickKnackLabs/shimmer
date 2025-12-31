@@ -1,12 +1,33 @@
 #!/usr/bin/env bash
-#MISE description="Trigger the GitHub Actions workflow manually"
-#MISE usage="trigger [message]"
+#MISE description="Trigger an agent workflow manually"
+#MISE usage="trigger <agent> [message]"
 
 set -e
 
-MESSAGE="${1:-}"
+AGENT="${1:-probe-1}"
+MESSAGE="${2:-}"
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
-gh workflow run run.yml -f message="$MESSAGE"
-echo "Triggered workflow on $REPO"
+# Map agent names to workflow files
+case "$AGENT" in
+  probe-1)
+    WORKFLOW="run.yml"
+    ;;
+  critic)
+    WORKFLOW="critic.yml"
+    ;;
+  *)
+    echo "Unknown agent: $AGENT"
+    echo "Available agents: probe-1, critic"
+    exit 1
+    ;;
+esac
+
+if [ -n "$MESSAGE" ]; then
+  gh workflow run "$WORKFLOW" -f message="$MESSAGE"
+else
+  gh workflow run "$WORKFLOW"
+fi
+
+echo "Triggered $AGENT on $REPO"
 echo "View at: https://github.com/$REPO/actions"
