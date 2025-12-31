@@ -3,3 +3,4 @@ node = "22"                              # LTS
 elixir = "1.19"                          # Latest stable
 erlang = "28"                            # Required for Elixir 1.19
 "npm:@anthropic-ai/claude-code" = "latest"  # Claude Code CLI
+"npm:claude-code-logger" = "latest"      # For inspecting Claude Code context

@@ -14,6 +14,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run status` - Check latest workflow run status
 - `mise run logs [lines]` - View logs from latest run
 - `mise run watch` - Watch a run until completion
+- `mise run inspect-context <message>` - Inspect the context being sent to Claude
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on PR reviews and other workflows.
 
