@@ -22,6 +22,7 @@ defmodule Cli do
       if status == 124 do
         IO.puts("\n---")
         IO.puts("ERROR: Claude timed out after #{@timeout_seconds} seconds")
+        capture_uncommitted_changes()
       end
 
       System.halt(status)
@@ -117,4 +118,102 @@ defmodule Cli do
   end
 
   def format_tool_input(_), do: nil
+
+  # Size limit for full diff output (~100KB)
+  @max_diff_size 100_000
+
+  @doc """
+  Captures uncommitted changes and outputs them to the log.
+  Always shows a summary (files + sizes), and prints full diff only if under size limit.
+  """
+  def capture_uncommitted_changes do
+    IO.puts("\n--- UNCOMMITTED CHANGES ---")
+
+    # Get staged changes
+    {staged_diff, _} = System.cmd("git", ["diff", "--cached"], stderr_to_stdout: true)
+
+    # Get unstaged changes
+    {unstaged_diff, _} = System.cmd("git", ["diff"], stderr_to_stdout: true)
+
+    # Get untracked files
+    {untracked, _} =
+      System.cmd("git", ["ls-files", "--others", "--exclude-standard"], stderr_to_stdout: true)
+
+    has_changes = staged_diff != "" or unstaged_diff != "" or untracked != ""
+
+    if has_changes do
+      # Always show summary
+      print_changes_summary(staged_diff, unstaged_diff, untracked)
+
+      # Calculate total size
+      total_size = byte_size(staged_diff) + byte_size(unstaged_diff)
+
+      # Print full diff only if under size limit
+      if total_size <= @max_diff_size do
+        IO.puts("\n[Full diff:]")
+
+        if staged_diff != "" do
+          IO.puts("[Staged changes:]")
+          IO.puts(staged_diff)
+        end
+
+        if unstaged_diff != "" do
+          IO.puts("[Unstaged changes:]")
+          IO.puts(unstaged_diff)
+        end
+      else
+        size_kb = Float.round(total_size / 1000, 1)
+        IO.puts("\n[Full diff too large (#{size_kb} KB), see summary above]")
+      end
+    else
+      IO.puts("No uncommitted changes found.")
+    end
+
+    IO.puts("--- END UNCOMMITTED CHANGES ---\n")
+  end
+
+  defp print_changes_summary(staged_diff, unstaged_diff, untracked) do
+    IO.puts("\n[Summary:]")
+
+    if staged_diff != "" do
+      stats = diff_stats(staged_diff)
+      IO.puts("Staged: #{stats.files} file(s), +#{stats.additions}/-#{stats.deletions} lines")
+    end
+
+    if unstaged_diff != "" do
+      stats = diff_stats(unstaged_diff)
+      IO.puts("Unstaged: #{stats.files} file(s), +#{stats.additions}/-#{stats.deletions} lines")
+    end
+
+    if untracked != "" do
+      files = untracked |> String.split("\n", trim: true)
+      IO.puts("Untracked: #{length(files)} file(s)")
+      Enum.each(files, fn f -> IO.puts("  #{f}") end)
+    end
+  end
+
+  defp diff_stats(diff) do
+    lines = String.split(diff, "\n")
+
+    files =
+      lines
+      |> Enum.filter(&String.starts_with?(&1, "diff --git"))
+      |> length()
+
+    additions =
+      lines
+      |> Enum.filter(fn l ->
+        String.starts_with?(l, "+") and not String.starts_with?(l, "+++")
+      end)
+      |> length()
+
+    deletions =
+      lines
+      |> Enum.filter(fn l ->
+        String.starts_with?(l, "-") and not String.starts_with?(l, "---")
+      end)
+      |> length()
+
+    %{files: files, additions: additions, deletions: deletions}
+  end
 end

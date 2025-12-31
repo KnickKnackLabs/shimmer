@@ -117,4 +117,18 @@ defmodule CliTest do
       assert Cli.format_tool_input(%{}) == nil
     end
   end
+
+  describe "capture_uncommitted_changes/0" do
+    test "function exists and is exported" do
+      assert function_exported?(Cli, :capture_uncommitted_changes, 0)
+    end
+
+    test "runs without error and outputs markers" do
+      import ExUnit.CaptureIO
+
+      output = capture_io(fn -> Cli.capture_uncommitted_changes() end)
+      assert output =~ "--- UNCOMMITTED CHANGES ---"
+      assert output =~ "--- END UNCOMMITTED CHANGES ---"
+    end
+  end
 end
