@@ -1,9 +1,12 @@
 defmodule Cli do
   # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
   @timeout_seconds 540
+  @model "claude-opus-4-5-20251101"
 
   def main(args) do
     message = Enum.join(args, " ")
+    start_time = System.monotonic_time(:millisecond)
+
     IO.puts("Running at: #{DateTime.utc_now()}")
     IO.puts("Message: #{message}")
     IO.puts("Timeout: #{@timeout_seconds}s")
@@ -14,15 +17,19 @@ defmodule Cli do
 
       # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
       cmd =
-        "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+        "echo | timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model #{@model} --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
+      initial_state = %{tool_input: "", tool_calls: %{}}
       port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
-      status = stream_output(port, %{tool_input: ""})
+      {status, final_state} = stream_output(port, initial_state)
 
       if status == 124 do
         IO.puts("\n---")
         IO.puts("ERROR: Claude timed out after #{@timeout_seconds} seconds")
       end
+
+      duration_ms = System.monotonic_time(:millisecond) - start_time
+      print_metrics(duration_ms, final_state.tool_calls, @model, status)
 
       System.halt(status)
     else
@@ -41,7 +48,7 @@ defmodule Cli do
         stream_output(port, new_state)
 
       {^port, {:exit_status, status}} ->
-        status
+        {status, state}
     end
   end
 
@@ -59,7 +66,8 @@ defmodule Cli do
          "event" => %{"content_block" => %{"type" => "tool_use", "name" => name}}
        }} ->
         IO.puts("\n[TOOL] #{name}")
-        %{state | tool_input: ""}
+        tool_calls = Map.update(state.tool_calls, name, 1, &(&1 + 1))
+        %{state | tool_input: "", tool_calls: tool_calls}
 
       # Handle tool input streaming - accumulate the JSON
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"partial_json" => json}}}} ->
@@ -117,4 +125,40 @@ defmodule Cli do
   end
 
   def format_tool_input(_), do: nil
+
+  defp print_metrics(duration_ms, tool_calls, model, status) do
+    IO.puts("\n---")
+    IO.puts("Run Metrics:")
+
+    # Duration
+    duration_s = duration_ms / 1000
+    minutes = trunc(duration_s / 60)
+    seconds = Float.round(duration_s - minutes * 60, 1)
+    IO.puts("  Duration: #{minutes}m #{seconds}s")
+
+    # Model
+    IO.puts("  Model: #{model}")
+
+    # Exit status
+    status_desc =
+      case status do
+        0 -> "success"
+        124 -> "timeout"
+        _ -> "error (#{status})"
+      end
+
+    IO.puts("  Exit: #{status_desc}")
+
+    # Tool calls
+    total_calls = tool_calls |> Map.values() |> Enum.sum()
+    IO.puts("  Tool calls: #{total_calls}")
+
+    if total_calls > 0 do
+      tool_calls
+      |> Enum.sort_by(fn {_name, count} -> -count end)
+      |> Enum.each(fn {name, count} ->
+        IO.puts("    #{name}: #{count}")
+      end)
+    end
+  end
 end

@@ -11,7 +11,7 @@ Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 - [ ] Add reviewer agent that runs on PR open and can approve/merge
 - [ ] Better timeout handling - warn agent before timeout so they can wrap up
 - [x] Wait for CI checks after PR creation
-- [ ] Add run metrics to CLI
+- [x] Add run metrics to CLI
   - Track and log stats to stdout at end of each run
   - Metrics: duration, tool calls (count by type), model used, exit status
   - Implement in Elixir CLI (already parsing stream output)
