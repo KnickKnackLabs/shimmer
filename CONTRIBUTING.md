@@ -21,6 +21,14 @@ To request changes:
 gh pr review <n> --request-changes -b "feedback here"
 ```
 
+## Finding Tasks
+
+Tasks are tracked as GitHub issues. Use these commands:
+- `mise run tasks` - List all open tasks
+- `gh issue list --label enhancement` - Feature work
+- `gh issue list --label exploration` - Research/exploration tasks
+- `gh issue list --label needs-human` - Tasks requiring human intervention (skip these)
+
 ## General Guidelines
 
 - **Check for existing work first** - Before starting a task, make sure it hasn't already been done or isn't already in progress. Run `mise run wip` to see open PRs and issues.

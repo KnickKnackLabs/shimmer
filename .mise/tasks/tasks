@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="List open tasks (GitHub issues)"
+
+set -e
+
+export GH_PAGER=""
+
+echo "=== Open Tasks ==="
+gh issue list --state open --limit 30
+
+echo ""
+echo "Filter by label: gh issue list --label <label>"
+echo "Labels: enhancement, exploration, needs-human"

@@ -62,7 +62,7 @@ jobs:
         id: message
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Your name is probe-1. You have 9 minutes. Your notepad is at notepads/probe-1.md - read it first and leave notes for your future self. Read CONTRIBUTING.md for guidelines. Check for feedback on your open PRs first. Then check BACKLOG.md for a task - pick one, do it well, check it off. Keep changes focused. Need tools you don't have? Open an issue. WORKFLOW: Branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main. After creating a PR, run 'mise run wait-for-checks' to verify CI passes - if it fails, fix and push again." >> $GITHUB_OUTPUT
+            echo "msg=Your name is probe-1. You have 9 minutes. Your notepad is at notepads/probe-1.md - read it first and leave notes for your future self. Read CONTRIBUTING.md for guidelines. Check for feedback on your open PRs first. Then run 'mise run tasks' to find work - pick an issue, do it well. Keep changes focused. WORKFLOW: Branch '${{ steps.branch.outputs.name }}'. Commit, push, then 'gh pr create' to main. After creating a PR, run 'mise run wait-for-checks' to verify CI passes - if it fails, fix and push again." >> $GITHUB_OUTPUT
           else
             echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
           fi
