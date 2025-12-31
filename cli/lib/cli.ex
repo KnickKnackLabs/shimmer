@@ -2,6 +2,7 @@ defmodule Cli do
   # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
   @timeout_seconds 540
   @logger_port 8000
+  @prompts_dir "cli/lib/prompts"
 
   def main(args) do
     {opts, rest} = parse_args(args)
@@ -10,26 +11,61 @@ defmodule Cli do
     IO.puts("Running at: #{DateTime.utc_now()}")
     IO.puts("Message: #{message}")
     IO.puts("Timeout: #{@timeout_seconds}s")
+    if opts[:agent], do: IO.puts("Agent: #{opts[:agent]}")
     if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
 
-    if message != "" do
-      if opts[:log_context] do
-        run_with_logger(message)
-      else
-        run_claude(message)
-      end
-    else
-      IO.puts("No message provided, skipping Claude")
+    cond do
+      message == "" ->
+        IO.puts("No message provided, skipping Claude")
+
+      opts[:agent] == nil ->
+        IO.puts("ERROR: --agent is required")
+        System.halt(1)
+
+      true ->
+        system_prompt = load_system_prompt(opts[:agent])
+
+        if opts[:log_context] do
+          run_with_logger(message, system_prompt)
+        else
+          run_claude(message, [], system_prompt)
+        end
     end
   end
 
   defp parse_args(args) do
-    {opts, rest, _} = OptionParser.parse(args, switches: [log_context: :boolean])
+    {opts, rest, _} = OptionParser.parse(args, switches: [log_context: :boolean, agent: :string])
     {opts, rest}
   end
 
-  defp run_claude(message, env_extras \\ []) do
+  defp load_system_prompt(nil), do: nil
+
+  defp load_system_prompt(agent_name) do
+    common_path = Path.join([@prompts_dir, "common.txt"])
+    agent_path = Path.join([@prompts_dir, "agents", "#{agent_name}.txt"])
+
+    common_content =
+      case File.read(common_path) do
+        {:ok, content} -> content
+        {:error, _} -> ""
+      end
+
+    agent_content =
+      case File.read(agent_path) do
+        {:ok, content} -> content
+        {:error, _} -> ""
+      end
+
+    case {common_content, agent_content} do
+      {"", ""} -> nil
+      {common, ""} -> common
+      {"", agent} -> agent
+      {common, agent} -> common <> "\n\n" <> agent
+    end
+  end
+
+  defp run_claude(message, env_extras, system_prompt) do
     escaped_message = String.replace(message, "'", "'\\''")
 
     env_prefix =
@@ -38,9 +74,17 @@ defmodule Cli do
         extras -> Enum.join(extras, " ") <> " "
       end
 
+    system_prompt_flag =
+      case system_prompt do
+        nil -> ""
+        prompt ->
+          escaped_prompt = String.replace(prompt, "'", "'\\''")
+          " --append-system-prompt '#{escaped_prompt}'"
+      end
+
     # Pipe empty stdin to close it, use stream-json with --verbose and --include-partial-messages for real streaming
     cmd =
-      "echo | #{env_prefix}timeout #{@timeout_seconds} claude -p '#{escaped_message}' --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
+      "echo | #{env_prefix}timeout #{@timeout_seconds} claude -p '#{escaped_message}'#{system_prompt_flag} --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
     port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
     status = stream_output(port, %{tool_input: ""})
@@ -53,7 +97,7 @@ defmodule Cli do
     System.halt(status)
   end
 
-  defp run_with_logger(message) do
+  defp run_with_logger(message, system_prompt) do
     log_file = "/tmp/claude-context-#{:os.system_time(:second)}.log"
 
     # Start the logger in the background, using mise exec to ensure correct PATH
@@ -70,7 +114,7 @@ defmodule Cli do
         IO.puts("---")
 
         # Run Claude through the proxy
-        run_claude(message, ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"])
+        run_claude(message, ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"], system_prompt)
 
         # Note: System.halt in run_claude will terminate before we get here
         Port.close(logger_port)

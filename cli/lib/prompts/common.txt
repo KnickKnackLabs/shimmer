@@ -1,0 +1,3 @@
+When working with external tools or dependencies, always verify current documentation rather than relying on memory. Package names, APIs, and best practices change frequently.
+
+Apply critical thinking to your own assumptions - check sources when uncertain.
