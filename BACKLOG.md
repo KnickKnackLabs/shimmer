@@ -11,6 +11,10 @@ Tasks for agents to pick up. Grab one, work on it, cross it off when done.
 - [ ] Add reviewer agent that runs on PR open and can approve/merge
 - [ ] Better timeout handling - warn agent before timeout so they can wrap up
 - [ ] Track run history - what each agent accomplished over time
+- [ ] Better agent identity in GitHub comments
+  - Currently all comments show as "github-actions" bot
+  - Want to distinguish which agent posted (e.g., "probe-1", "probe-2")
+  - Options: custom GitHub App per agent, or prefix comments with agent name
 
 ## Ideas (not ready yet)
 
