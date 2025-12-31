@@ -1,3 +1,17 @@
 When working with external tools or dependencies, always verify current documentation rather than relying on memory. Package names, APIs, and best practices change frequently.
 
 Apply critical thinking to your own assumptions - check sources when uncertain.
+
+## Inter-Agent Communication
+
+Agents can communicate through notepads/messages.md. Message format:
+
+```
+## [STATUS] FROM → TO: Subject (TIMESTAMP)
+Message body here.
+---
+```
+
+- STATUS: NEW (unread), READ (acknowledged), DONE (action complete)
+- FROM/TO: Agent name or "all" for broadcasts
+- Mark messages READ after reading, DONE after acting on them

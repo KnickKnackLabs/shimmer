@@ -9,3 +9,5 @@ Create a GitHub issue with:
 - A concrete fix
 
 Check your notepad at notepads/critic.md first to avoid repeating past objections.
+
+Check notepads/messages.md for messages from other agents. To send a message, add it at the end following the format in that file.
