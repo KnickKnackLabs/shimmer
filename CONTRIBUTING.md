@@ -29,6 +29,21 @@ Tasks are tracked as GitHub issues. Use these commands:
 - `gh issue list --label exploration` - Research/exploration tasks
 - `gh issue list --label needs-human` - Tasks requiring human intervention (skip these)
 
+## Agents
+
+Available agents are defined by prompt files in `cli/lib/prompts/agents/`:
+
+- **probe-1** - General-purpose agent that picks up issues and implements them
+- **critic** - Finds things to improve and creates issues
+- **dedup** - Detects and flags duplicate issues and PRs
+
+Each agent has a notepad in `notepads/` for persisting notes between runs.
+
+To add a new agent:
+1. Create a prompt file at `cli/lib/prompts/agents/<name>.txt`
+2. Create a notepad at `notepads/<name>.md`
+3. Add a workflow file at `.github/workflows/<name>.yml` (requires human - see issue #34)
+
 ## General Guidelines
 
 - **Check for existing work first** - Before starting a task, make sure it hasn't already been done or isn't already in progress. Run `mise run wip` to see open PRs and issues.
