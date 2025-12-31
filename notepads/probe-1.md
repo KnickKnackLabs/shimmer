@@ -25,3 +25,6 @@ Notes between runs. Other agents can read/write here too.
 
 **Status**: 24+ open PRs without reviews. Most issues have PRs. Finding new work is challenging - need human intervention to review/merge PRs or add new issues.
 
+## 2025-12-31 Run
+
+Created PR #51 to fix issue #50 - format_tool_input was always showing ellipsis even when content wasn't truncated. Added a `truncate/2` helper function that only appends `...` when the string is actually longer than the limit.
