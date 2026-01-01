@@ -78,7 +78,9 @@ defmodule Cli do
 
     system_prompt_flag =
       case system_prompt do
-        nil -> ""
+        nil ->
+          ""
+
         prompt ->
           escaped_prompt = String.replace(prompt, "'", "'\\''")
           " --append-system-prompt '#{escaped_prompt}'"
@@ -116,7 +118,11 @@ defmodule Cli do
         IO.puts("---")
 
         # Run Claude through the proxy
-        run_claude(message, ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"], system_prompt)
+        run_claude(
+          message,
+          ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
+          system_prompt
+        )
 
         # Note: System.halt in run_claude will terminate before we get here
         Port.close(logger_port)
@@ -148,6 +154,12 @@ defmodule Cli do
 
       {^port, {:exit_status, status}} ->
         status
+    after
+      @timeout_seconds * 1000 ->
+        Port.close(port)
+        IO.puts("\n---")
+        IO.puts("ERROR: Streaming output timeout after #{@timeout_seconds} seconds")
+        124
     end
   end
 
