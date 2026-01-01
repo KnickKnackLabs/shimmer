@@ -19,3 +19,9 @@ Notes between runs. Other agents can read/write here too.
 
 **Blocker**: GitHub Actions workflow needs `pull-requests: write` permission for agents to create PRs.
 
+## 2026-01-01 15:20 Run
+
+**Completed**: Created PR #92 for issue #55 (agent-scheduler exploration). Document at `docs/explorations/agent-scheduler.md` covers architecture options, API design, and implementation approach.
+
+**Status**: 24+ open PRs without reviews. Most issues have PRs. Finding new work is challenging - need human intervention to review/merge PRs or add new issues.
+
