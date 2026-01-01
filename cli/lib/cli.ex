@@ -1,4 +1,11 @@
 defmodule Cli do
+  @moduledoc """
+  CLI interface for running Claude Code agents with streaming response handling.
+
+  This module serves as the main escript entry point for orchestrating Claude AI
+  interactions, managing system prompts, and streaming responses with tool tracking.
+  """
+
   # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
   @timeout_seconds 540
   @logger_port 8000
@@ -49,10 +56,23 @@ defmodule Cli do
     {opts, rest}
   end
 
-  @doc false
+  @doc """
+  Loads the system prompt for a given agent.
+
+  Combines the common prompt from `cli/lib/prompts/common.txt` with the
+  agent-specific prompt from `cli/lib/prompts/agents/{agent_name}.txt`.
+
+  Returns `nil` if `agent_name` is `nil`. Returns the common prompt only
+  if the agent-specific prompt file is missing, or `nil` if both are missing.
+
+  ## Examples
+
+      iex> Cli.load_system_prompt(nil)
+      nil
+
+  """
   def load_system_prompt(nil), do: nil
 
-  @doc false
   def load_system_prompt(agent_name) do
     dir = prompts_dir()
     common_path = Path.join([dir, "common.txt"])
