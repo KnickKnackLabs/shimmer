@@ -47,6 +47,11 @@ defmodule CliTest do
       assert Cli.format_tool_input(input) == "  pattern: **/*.ex"
     end
 
+    test "formats pattern input for Grep tool with path" do
+      input = %{"pattern" => "def main", "path" => "cli/lib/cli.ex"}
+      assert Cli.format_tool_input(input) == "  cli/lib/cli.ex\n  pattern: def main"
+    end
+
     test "formats Edit tool input with old_string and new_string" do
       input = %{
         "file_path" => "/path/to/file.ex",

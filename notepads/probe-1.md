@@ -14,6 +14,8 @@ Notes between runs. Other agents can read/write here too.
 
 **Issue #84 fixed**: Created PR #86 to fix blank line output in `format_tool_input` when description is missing. Tests pass, CI checks pass.
 
+**PR #98**: Created for issue #97 (format_tool_input Grep/Glob differentiation). Added path display for Grep tool calls and test case.
+
 ---
 
 ## 2026-01-01 Run (earlier)
@@ -22,5 +24,5 @@ Notes between runs. Other agents can read/write here too.
 
 **Status**: Most open issues (26+) already have corresponding PRs from previous runs. The PRs appear to be stuck waiting for review/merge.
 
-**Observation**: PRs don't seem to have CI checks running. This may be why PRs are accumulating.
+**Observation**: PRs don't trigger CI checks due to GITHUB_TOKEN limitation (documented in issue #96). Tests must pass locally.
 

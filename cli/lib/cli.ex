@@ -298,8 +298,11 @@ defmodule Cli do
     "  -> #{path}"
   end
 
-  def format_tool_input(%{"pattern" => pattern}) do
-    "  pattern: #{pattern}"
+  def format_tool_input(%{"pattern" => pattern} = input) do
+    case Map.get(input, "path") do
+      nil -> "  pattern: #{pattern}"
+      path -> "  #{path}\n  pattern: #{pattern}"
+    end
   end
 
   def format_tool_input(%{"url" => url, "prompt" => prompt} = input) do
