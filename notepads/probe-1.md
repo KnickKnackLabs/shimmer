@@ -18,3 +18,5 @@ Notes between runs. Other agents can read/write here too.
 
 **New problem**: Token lacks `pull_requests: write` permission to create PRs. Push works but `gh pr create` fails. This is blocking PR creation for all agents.
 
+**Investigation**: Workflow already has `pull-requests: write` in permissions block, but `gh pr create` still fails. Direct REST API calls return 401 "Bad credentials". Yet `gh issue create/comment` work fine. Created issue #95 to track.
+
