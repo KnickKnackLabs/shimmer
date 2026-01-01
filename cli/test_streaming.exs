@@ -9,16 +9,21 @@ defmodule StreamTest do
     cmd = "echo | claude -p 'count from 1 to 3, waiting 1 second between each number' --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
     port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
-    stream_output(port)
+    stream_output(port, "")
   end
 
-  defp stream_output(port) do
+  defp stream_output(port, buffer) do
     receive do
       {^port, {:data, data}} ->
         timestamp = DateTime.utc_now() |> DateTime.to_time() |> Time.to_string()
+        combined = buffer <> data
+        lines = String.split(combined, "\n")
 
-        data
-        |> String.split("\n", trim: true)
+        # Last element may be incomplete - keep it as new buffer
+        {complete_lines, [new_buffer]} = Enum.split(lines, -1)
+
+        complete_lines
+        |> Enum.reject(&(&1 == ""))
         |> Enum.each(fn line ->
           case Jason.decode(line) do
             {:ok, decoded} ->
@@ -45,7 +50,7 @@ defmodule StreamTest do
           end
         end)
 
-        stream_output(port)
+        stream_output(port, new_buffer)
 
       {^port, {:exit_status, status}} ->
         IO.puts("---")

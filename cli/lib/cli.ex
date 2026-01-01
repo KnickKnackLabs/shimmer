@@ -89,7 +89,7 @@ defmodule Cli do
       "echo | #{env_prefix}timeout #{@timeout_seconds} claude -p '#{escaped_message}'#{system_prompt_flag} --model claude-opus-4-5-20251101 --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions"
 
     port = Port.open({:spawn, cmd}, [:binary, :exit_status, :stderr_to_stdout])
-    status = stream_output(port, %{tool_input: ""})
+    status = stream_output(port, %{tool_input: "", buffer: ""})
 
     if status == 124 do
       IO.puts("\n---")
@@ -136,13 +136,19 @@ defmodule Cli do
     end
   end
 
-  defp stream_output(port, state) do
+  defp stream_output(port, %{buffer: buffer} = state) do
     receive do
       {^port, {:data, data}} ->
+        combined = buffer <> data
+        lines = String.split(combined, "\n")
+
+        # Last element may be incomplete - keep it as new buffer
+        {complete_lines, [new_buffer]} = Enum.split(lines, -1)
+
         new_state =
-          data
-          |> String.split("\n", trim: true)
-          |> Enum.reduce(state, &process_line/2)
+          complete_lines
+          |> Enum.reject(&(&1 == ""))
+          |> Enum.reduce(%{state | buffer: new_buffer}, &process_line/2)
 
         stream_output(port, new_state)
 
