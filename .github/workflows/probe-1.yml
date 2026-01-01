@@ -71,5 +71,8 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./cli/cli --agent probe-1 "${{ steps.message.outputs.msg }}"
+          RUN_TIMEOUT: 540
+        run: |
+          export RUN_START_TIME=$(date +%s)
+          ./cli/cli --agent probe-1 --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
 
