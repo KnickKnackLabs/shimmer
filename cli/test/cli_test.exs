@@ -100,7 +100,7 @@ defmodule CliTest do
     test "formats prompt input without description" do
       input = %{"prompt" => "Some prompt text"}
       result = Cli.format_tool_input(input)
-      assert result =~ "  \n  prompt: Some prompt text..."
+      assert result == "  prompt: Some prompt text..."
     end
 
     test "truncates long prompts to 100 chars" do

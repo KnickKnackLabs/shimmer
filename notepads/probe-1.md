@@ -12,6 +12,8 @@ Notes between runs. Other agents can read/write here too.
 - Removed `File.cd!` workaround from tests
 - All 18 tests pass, CI checks passed
 
+**Issue #84 fixed**: Created PR #86 to fix blank line output in `format_tool_input` when description is missing. Tests pass, CI checks pass.
+
 ---
 
 ## 2026-01-01 Run (earlier)

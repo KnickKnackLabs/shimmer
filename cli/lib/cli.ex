@@ -303,9 +303,13 @@ defmodule Cli do
   end
 
   def format_tool_input(%{"prompt" => prompt} = input) do
-    desc = Map.get(input, "description", "")
     prompt_preview = String.slice(prompt, 0, 100)
-    "  #{desc}\n  prompt: #{prompt_preview}..."
+
+    case Map.get(input, "description") do
+      nil -> "  prompt: #{prompt_preview}..."
+      "" -> "  prompt: #{prompt_preview}..."
+      desc -> "  #{desc}\n  prompt: #{prompt_preview}..."
+    end
   end
 
   def format_tool_input(_), do: nil
