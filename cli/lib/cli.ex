@@ -101,7 +101,7 @@ defmodule Cli do
         [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
       )
 
-    status = stream_output(port, %{tool_input: "", buffer: ""})
+    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil})
 
     if status == 124 do
       IO.puts("\n---")
@@ -175,6 +175,7 @@ defmodule Cli do
         stream_output(port, new_state)
 
       {^port, {:exit_status, status}} ->
+        print_usage_summary(state)
         status
     end
   end
@@ -210,8 +211,54 @@ defmodule Cli do
 
         %{state | tool_input: ""}
 
+      # Capture final result with usage data
+      {:ok, %{"type" => "result"} = result} ->
+        %{state | usage: extract_usage(result)}
+
       _ ->
         state
+    end
+  end
+
+  defp extract_usage(result) do
+    %{
+      cost_usd: Map.get(result, "total_cost_usd"),
+      duration_ms: Map.get(result, "duration_ms"),
+      num_turns: Map.get(result, "num_turns"),
+      usage: Map.get(result, "usage"),
+      model_usage: Map.get(result, "modelUsage")
+    }
+  end
+
+  defp print_usage_summary(%{usage: nil}), do: :ok
+
+  defp print_usage_summary(%{usage: usage}) do
+    IO.puts("\n---")
+    IO.puts("Run Metrics:")
+
+    if usage.duration_ms do
+      duration_s = Float.round(usage.duration_ms / 1000, 1)
+      IO.puts("  Duration: #{duration_s}s")
+    end
+
+    if usage.num_turns, do: IO.puts("  Turns: #{usage.num_turns}")
+
+    if usage.cost_usd do
+      cost = Float.round(usage.cost_usd, 4)
+      IO.puts("  Cost: $#{cost}")
+    end
+
+    if usage.usage do
+      input = Map.get(usage.usage, "input_tokens", 0)
+      output = Map.get(usage.usage, "output_tokens", 0)
+      cache_read = Map.get(usage.usage, "cache_read_input_tokens", 0)
+      cache_create = Map.get(usage.usage, "cache_creation_input_tokens", 0)
+
+      IO.puts("  Tokens: #{input} in, #{output} out")
+
+      if cache_read > 0 or cache_create > 0 do
+        IO.puts("  Cache: #{cache_read} read, #{cache_create} created")
+      end
     end
   end
 
