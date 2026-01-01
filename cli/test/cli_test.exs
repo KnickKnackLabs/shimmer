@@ -148,16 +148,6 @@ defmodule CliTest do
   end
 
   describe "load_system_prompt/1" do
-    # Tests run from cli/ directory, so we need to cd to repo root
-    # where the prompts_dir path (cli/lib/prompts) is valid
-    setup do
-      original_dir = File.cwd!()
-      repo_root = Path.join(__DIR__, "../..") |> Path.expand()
-      File.cd!(repo_root)
-      on_exit(fn -> File.cd!(original_dir) end)
-      :ok
-    end
-
     test "returns nil for nil agent" do
       assert Cli.load_system_prompt(nil) == nil
     end

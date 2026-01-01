@@ -2,7 +2,17 @@ defmodule Cli do
   # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
   @timeout_seconds 540
   @logger_port 8000
-  @prompts_dir "cli/lib/prompts"
+
+  defp prompts_dir do
+    case :code.priv_dir(:cli) do
+      {:error, _} ->
+        # Fallback for development when priv_dir is not available
+        Path.join([__DIR__, "..", "..", "priv", "prompts"]) |> Path.expand()
+
+      dir ->
+        Path.join(to_string(dir), "prompts")
+    end
+  end
 
   def main(args) do
     {opts, rest} = parse_args(args)
@@ -44,8 +54,9 @@ defmodule Cli do
 
   @doc false
   def load_system_prompt(agent_name) do
-    common_path = Path.join([@prompts_dir, "common.txt"])
-    agent_path = Path.join([@prompts_dir, "agents", "#{agent_name}.txt"])
+    dir = prompts_dir()
+    common_path = Path.join([dir, "common.txt"])
+    agent_path = Path.join([dir, "agents", "#{agent_name}.txt"])
 
     common_content =
       case File.read(common_path) do
