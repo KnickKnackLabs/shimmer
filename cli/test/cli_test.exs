@@ -158,6 +158,121 @@ defmodule CliTest do
     end
   end
 
+  describe "process_line/2" do
+    import ExUnit.CaptureIO
+
+    test "outputs text delta and returns unchanged state" do
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
+      state = %{tool_input: ""}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      assert output == "Hello"
+      assert_received {:result, ^state}
+    end
+
+    test "resets tool_input on tool_use start and prints tool name" do
+      line =
+        ~s({"type":"stream_event","event":{"content_block":{"type":"tool_use","name":"Bash"}}})
+
+      state = %{tool_input: "leftover"}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      assert output =~ "[TOOL] Bash"
+      assert_received {:result, %{tool_input: ""}}
+    end
+
+    test "accumulates partial_json to tool_input" do
+      line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{\\"cmd\\":"}}})
+      state = %{tool_input: ""}
+
+      result = Cli.process_line(line, state)
+      assert result.tool_input == "{\"cmd\":"
+    end
+
+    test "appends partial_json to existing tool_input" do
+      line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"\\"ls\\"}"}}})
+      state = %{tool_input: "{\"cmd\":"}
+
+      result = Cli.process_line(line, state)
+      assert result.tool_input == "{\"cmd\":\"ls\"}"
+    end
+
+    test "clears tool_input on content_block_stop and prints formatted output" do
+      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
+      state = %{tool_input: ~s({"command":"ls -la"})}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      assert output =~ "$ ls -la"
+      assert_received {:result, %{tool_input: ""}}
+    end
+
+    test "handles content_block_stop with empty tool_input" do
+      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
+      state = %{tool_input: ""}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      # No output when tool_input is empty
+      assert output == ""
+      assert_received {:result, %{tool_input: ""}}
+    end
+
+    test "handles content_block_stop with malformed JSON in tool_input" do
+      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
+      state = %{tool_input: "not valid json"}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      # No output when JSON is invalid
+      assert output == ""
+      assert_received {:result, %{tool_input: ""}}
+    end
+
+    test "returns state unchanged for unknown event types" do
+      line = ~s({"type":"unknown"})
+      state = %{tool_input: "preserved"}
+
+      assert Cli.process_line(line, state) == state
+    end
+
+    test "returns state unchanged for invalid JSON" do
+      line = "not valid json at all"
+      state = %{tool_input: "preserved"}
+
+      assert Cli.process_line(line, state) == state
+    end
+
+    test "returns state unchanged for empty line" do
+      line = ""
+      state = %{tool_input: "preserved"}
+
+      assert Cli.process_line(line, state) == state
+    end
+  end
+
   describe "extract_usage/1" do
     test "extracts usage data from result event" do
       result = %{

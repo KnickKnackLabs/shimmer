@@ -217,7 +217,8 @@ defmodule Cli do
     end
   end
 
-  defp process_line(line, state) do
+  @doc false
+  def process_line(line, state) do
     case Jason.decode(line) do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
