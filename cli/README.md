@@ -7,20 +7,20 @@ Elixir CLI that invokes Claude Code with agent-specific system prompts.
 This CLI is a streaming JSON client for Claude Code. It:
 
 - Loads agent-specific system prompts from `priv/prompts/`
-- Executes Claude via Port with timeout handling (540s default)
+- Executes Claude via Port with configurable timeout
 - Streams output in real-time, showing tool invocations with formatted inputs
 - Supports optional context logging via a proxy
 
 ## Usage
 
-The CLI is built as an escript and invoked via GitHub Actions workflows. It requires the `--agent` flag:
+The CLI is built as an escript and invoked via GitHub Actions workflows. It requires `--agent` and `--timeout`:
 
 ```bash
-# Run with an agent
-mix escript.build && ./cli --agent probe-1 "Explore the codebase"
+# Run with an agent (timeout in seconds)
+mix escript.build && ./cli --agent probe-1 --timeout 540 "Explore the codebase"
 
 # Enable context logging (starts claude-code-logger proxy)
-./cli --agent critic --log-context "Find something to critique"
+./cli --agent critic --timeout 540 --log-context "Find something to critique"
 ```
 
 ## Agent Prompt System
@@ -43,11 +43,14 @@ When an agent runs, both files are concatenated to form the system prompt.
 | Option | Description |
 |--------|-------------|
 | `--agent <name>` | Required. Specifies which agent prompt to load |
+| `--timeout <seconds>` | Required. Timeout in seconds for the Claude command |
 | `--log-context` | Enables context logging via claude-code-logger proxy |
 
 ## Timeout
 
-The CLI uses a 540-second (9 minute) timeout by default, leaving a 1-minute buffer before GitHub Actions' 10-minute job timeout.
+The timeout is configured via the `--timeout` flag. Workflows should set this value (e.g., 540 seconds for a 9-minute timeout, leaving 1-minute buffer before GitHub's 10-minute job limit).
+
+The `mise run time` task can be used by agents to check remaining time during a run. It requires `RUN_TIMEOUT` and `RUN_START_TIME` environment variables to be set by the workflow.
 
 ## Dependencies
 

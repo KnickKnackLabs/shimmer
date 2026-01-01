@@ -3,8 +3,11 @@
 
 set -e
 
-# Default timeout is 10 minutes (600 seconds)
-RUN_TIMEOUT=${RUN_TIMEOUT:-600}
+# RUN_TIMEOUT must be set by the workflow
+if [ -z "$RUN_TIMEOUT" ]; then
+  echo "Not running in CI (RUN_TIMEOUT not set)"
+  exit 0
+fi
 
 # If RUN_START_TIME not set, try to get it from GitHub API
 if [ -z "$RUN_START_TIME" ]; then

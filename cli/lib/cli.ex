@@ -6,8 +6,6 @@ defmodule Cli do
   interactions, managing system prompts, and streaming responses with tool tracking.
   """
 
-  # 9 minutes, leaves 1 minute buffer before GitHub's 10-minute timeout
-  @timeout_seconds 540
   @logger_port 8000
 
   defp prompts_dir do
@@ -24,10 +22,11 @@ defmodule Cli do
   def main(args) do
     {opts, rest} = parse_args(args)
     message = Enum.join(rest, " ")
+    timeout = opts[:timeout]
 
     IO.puts("Running at: #{DateTime.utc_now()}")
     IO.puts("Message: #{message}")
-    IO.puts("Timeout: #{@timeout_seconds}s")
+    if timeout, do: IO.puts("Timeout: #{timeout}s")
     if opts[:agent], do: IO.puts("Agent: #{opts[:agent]}")
     if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
@@ -40,19 +39,25 @@ defmodule Cli do
         IO.puts("ERROR: --agent is required")
         System.halt(1)
 
+      timeout == nil ->
+        IO.puts("ERROR: --timeout is required")
+        System.halt(1)
+
       true ->
         system_prompt = load_system_prompt(opts[:agent])
 
         if opts[:log_context] do
-          run_with_logger(message, system_prompt)
+          run_with_logger(message, system_prompt, timeout)
         else
-          run_claude(message, [], system_prompt)
+          run_claude(message, [], system_prompt, timeout)
         end
     end
   end
 
   defp parse_args(args) do
-    {opts, rest, _} = OptionParser.parse(args, switches: [log_context: :boolean, agent: :string])
+    {opts, rest, _} =
+      OptionParser.parse(args, switches: [log_context: :boolean, agent: :string, timeout: :integer])
+
     {opts, rest}
   end
 
@@ -98,7 +103,7 @@ defmodule Cli do
     end
   end
 
-  defp run_claude(message, env_extras, system_prompt) do
+  defp run_claude(message, env_extras, system_prompt, timeout) do
     # Build claude arguments - message and system prompt passed as positional params to avoid escaping
     system_prompt_args =
       case system_prompt do
@@ -108,7 +113,7 @@ defmodule Cli do
 
     # Shell script that pipes empty stdin and runs claude with timeout
     shell_script =
-      "echo | timeout #{@timeout_seconds} claude -p \"$1\"#{system_prompt_args} " <>
+      "echo | timeout #{timeout} claude -p \"$1\"#{system_prompt_args} " <>
         "--model claude-opus-4-5-20251101 --output-format stream-json " <>
         "--verbose --include-partial-messages --dangerously-skip-permissions"
 
@@ -136,13 +141,13 @@ defmodule Cli do
 
     if status == 124 do
       IO.puts("\n---")
-      IO.puts("ERROR: Claude timed out after #{@timeout_seconds} seconds")
+      IO.puts("ERROR: Claude timed out after #{timeout} seconds")
     end
 
     System.halt(status)
   end
 
-  defp run_with_logger(message, system_prompt) do
+  defp run_with_logger(message, system_prompt, timeout) do
     log_file = "/tmp/claude-context-#{:os.system_time(:second)}.log"
 
     # Start the logger in the background, using mise exec to ensure correct PATH
@@ -168,7 +173,8 @@ defmodule Cli do
         run_claude(
           message,
           ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
-          system_prompt
+          system_prompt,
+          timeout
         )
 
         # Note: System.halt in run_claude will terminate before we get here
