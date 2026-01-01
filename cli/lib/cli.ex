@@ -56,7 +56,9 @@ defmodule Cli do
 
   defp parse_args(args) do
     {opts, rest, _} =
-      OptionParser.parse(args, switches: [log_context: :boolean, agent: :string, timeout: :integer])
+      OptionParser.parse(args,
+        switches: [log_context: :boolean, agent: :string, timeout: :integer]
+      )
 
     {opts, rest}
   end
@@ -85,8 +87,12 @@ defmodule Cli do
 
     common_content =
       case File.read(common_path) do
-        {:ok, content} -> content
-        {:error, :enoent} -> ""
+        {:ok, content} ->
+          content
+
+        {:error, :enoent} ->
+          ""
+
         {:error, reason} ->
           IO.puts("WARNING: Failed to read #{common_path}: #{reason}")
           ""
@@ -94,8 +100,12 @@ defmodule Cli do
 
     agent_content =
       case File.read(agent_path) do
-        {:ok, content} -> content
-        {:error, :enoent} -> ""
+        {:ok, content} ->
+          content
+
+        {:error, :enoent} ->
+          ""
+
         {:error, reason} ->
           IO.puts("WARNING: Failed to read #{agent_path}: #{reason}")
           ""
