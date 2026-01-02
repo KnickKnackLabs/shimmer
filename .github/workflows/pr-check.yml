@@ -67,3 +67,8 @@ jobs:
         run: |
           cd cli
           mix format --check-formatted
+
+      - name: Run Credo linter
+        run: |
+          cd cli
+          mix credo
