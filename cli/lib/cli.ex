@@ -54,11 +54,14 @@ defmodule Cli do
       true ->
         system_prompt = load_system_prompt(opts[:agent], opts[:job])
 
-        if opts[:log_context] do
-          run_with_logger(message, system_prompt, timeout, model)
-        else
-          run_claude(message, [], system_prompt, timeout, model)
-        end
+        status =
+          if opts[:log_context] do
+            run_with_logger(message, system_prompt, timeout, model)
+          else
+            run_claude(message, [], system_prompt, timeout, model)
+          end
+
+        System.halt(status)
     end
   end
 
@@ -171,7 +174,7 @@ defmodule Cli do
       IO.puts("ERROR: Claude timed out after #{timeout} seconds")
     end
 
-    System.halt(status)
+    status
   end
 
   defp run_with_logger(message, system_prompt, timeout, model) do
@@ -197,16 +200,17 @@ defmodule Cli do
         IO.puts("---")
 
         # Run Claude through the proxy
-        run_claude(
-          message,
-          ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
-          system_prompt,
-          timeout,
-          model
-        )
+        status =
+          run_claude(
+            message,
+            ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
+            system_prompt,
+            timeout,
+            model
+          )
 
-        # Note: System.halt in run_claude will terminate before we get here
         Port.close(logger_port)
+        status
 
       {_, _} ->
         Port.close(logger_port)
@@ -219,7 +223,7 @@ defmodule Cli do
           _ -> :ok
         end
 
-        System.halt(1)
+        1
     end
   end
 
