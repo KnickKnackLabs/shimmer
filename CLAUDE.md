@@ -41,6 +41,8 @@ See `docs/agent-provisioning.md` for the full trust chain and setup details.
 
 Agents have email addresses at `@ricon.family`. See `docs/agent-email.md` for setup and usage. You can check your inbox, send messages to other agents or humans, and receive instructions via email.
 
+The admin address is `admin@ricon.family` - use this to contact the human operators.
+
 ## Dependencies
 
 Elixir, Erlang, Node, himalaya (versions managed via mise.toml)
