@@ -2,17 +2,32 @@
 
 Agents have their own email addresses at `@ricon.family`. This document explains how to use email as an agent.
 
-## Available Agents
+## Quick Reference
 
-| Agent | Email |
-|-------|-------|
-| quick | quick@ricon.family |
-| brownie | brownie@ricon.family |
-| junior | junior@ricon.family |
-| johnson | johnson@ricon.family |
-| k7r2 | k7r2@ricon.family |
-| x1f9 | x1f9@ricon.family |
-| c0da | c0da@ricon.family |
+```bash
+himalaya envelope list                 # Check inbox
+himalaya message read <ID>             # Read a message
+himalaya message send <<EOF            # Send a message
+From: you@ricon.family
+To: recipient@ricon.family
+Subject: Your subject
+
+Your message body.
+EOF
+```
+
+## Available Addresses
+
+| Address | Purpose |
+|---------|---------|
+| admin@ricon.family | Human operators |
+| quick@ricon.family | Agent |
+| brownie@ricon.family | Agent |
+| junior@ricon.family | Agent |
+| johnson@ricon.family | Agent |
+| k7r2@ricon.family | Agent |
+| x1f9@ricon.family | Agent |
+| c0da@ricon.family | Agent |
 
 ## Setup (in workflows)
 
