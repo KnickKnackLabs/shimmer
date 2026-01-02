@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#MISE description="Interactive guide to onboard a new agent (GitHub account, GPG, PAT)"
+#MISE usage="onboard-agent <agent-name>"
+
+set -e
+
+AGENT="${1:?Usage: mise run onboard-agent <agent-name>}"
+AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+EMAIL="${AGENT}@ricon.family"
+GITHUB_USERNAME="${AGENT}-ricon"
+VAULT="Agents"
+
+echo "=== Onboarding $AGENT ==="
+echo ""
+
+# Check prerequisites
+if ! command -v op &> /dev/null; then
+  echo "ERROR: 1Password CLI (op) not found."
+  exit 1
+fi
+
+if ! op account get &> /dev/null; then
+  echo "ERROR: Not signed in to 1Password. Run: op signin"
+  exit 1
+fi
+
+# Get credentials from 1Password
+echo "Fetching credentials from 1Password..."
+GITHUB_PASSWORD=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields password 2>/dev/null || echo "")
+GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
+GITHUB_COUNTRY=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields country 2>/dev/null || echo "")
+GPG_PUBLIC_KEY=$(op item get "${AGENT} - GPG" --vault "$VAULT" --fields "Public Key" 2>/dev/null || echo "")
+EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault "$VAULT" --fields password 2>/dev/null || echo "")
+
+if [ -z "$GITHUB_PASSWORD" ]; then
+  echo "ERROR: Could not find ${AGENT} - GitHub in 1Password"
+  echo "Run: mise run store-agent-credentials $AGENT"
+  exit 1
+fi
+
+# Step 1: Create GitHub account
+echo ""
+echo "========================================"
+echo "STEP 1: Create GitHub Account"
+echo "========================================"
+echo ""
+echo "Go to: https://github.com/signup"
+echo ""
+echo "Use these credentials:"
+echo "  Email:    $GITHUB_EMAIL"
+echo "  Password: $GITHUB_PASSWORD"
+echo "  Username: $GITHUB_USERNAME"
+echo "  Country:  $GITHUB_COUNTRY"
+echo ""
+read -p "Press Enter when you've submitted the signup form..."
+
+# Check email for verification code
+echo ""
+echo "Checking email for verification code..."
+EMAIL_PASSWORD="$EMAIL_PASSWORD" ./scripts/setup-email.sh "$AGENT" > /dev/null 2>&1
+sleep 2
+
+CODE_EMAIL=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 || echo "")
+if [ -n "$CODE_EMAIL" ]; then
+  EMAIL_ID=$(echo "$CODE_EMAIL" | awk '{print $2}')
+  echo ""
+  himalaya message read "$EMAIL_ID" 2>/dev/null | grep -A1 "entering the code below" | tail -1 || himalaya message read "$EMAIL_ID" 2>/dev/null | grep -E "^[0-9]{8}$" || echo "Check email manually for code"
+  echo ""
+fi
+
+read -p "Enter the verification code (or press Enter if already verified): "
+
+# Step 2: Invite to org and grant repo access
+echo ""
+echo "========================================"
+echo "STEP 2: Organization Setup"
+echo "========================================"
+echo ""
+echo "Inviting $GITHUB_USERNAME to ricon-family org..."
+
+MEMBERSHIP=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" 2>&1 || true)
+
+if echo "$MEMBERSHIP" | grep -q '"state":"active"'; then
+  echo "$GITHUB_USERNAME is already an active member"
+else
+  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1 || true
+  echo "Invitation sent!"
+fi
+
+echo "Granting write access to shimmer repo..."
+gh api --method PUT "repos/ricon-family/shimmer/collaborators/$GITHUB_USERNAME" -f permission=write > /dev/null 2>&1 || true
+echo "Done!"
+
+# Check for org invite email
+echo ""
+echo "Checking email for org invitation..."
+sleep 2
+INVITE_EMAIL=$(himalaya envelope list 2>/dev/null | grep -i "invited you to join" | head -1 || echo "")
+if [ -n "$INVITE_EMAIL" ]; then
+  echo ""
+  echo "Accept the invitation at:"
+  echo "  https://github.com/orgs/ricon-family/invitation?via_email=1"
+  echo ""
+  read -p "Press Enter when you've accepted the invitation..."
+else
+  echo "No invitation email found (might already be a member)"
+fi
+
+# Step 3: Upload GPG key
+echo ""
+echo "========================================"
+echo "STEP 3: Upload GPG Key"
+echo "========================================"
+echo ""
+echo "Go to: https://github.com/settings/keys"
+echo "Click: New GPG key"
+echo "Title: $EMAIL"
+echo ""
+echo "Paste this public key:"
+echo "----------------------------------------"
+echo "$GPG_PUBLIC_KEY"
+echo "----------------------------------------"
+echo ""
+read -p "Press Enter when you've added the GPG key..."
+
+# Step 4: Create PAT
+echo ""
+echo "========================================"
+echo "STEP 4: Create Personal Access Token"
+echo "========================================"
+echo ""
+echo "Go to: https://github.com/settings/tokens?type=beta"
+echo "Click: Generate new token"
+echo ""
+echo "Settings:"
+echo "  Token name:         shimmer-agent"
+echo "  Expiration:         90 days"
+echo "  Resource owner:     ricon-family"
+echo "  Repository access:  Only select repositories -> ricon-family/shimmer"
+echo "  Permissions:"
+echo "    - Contents: Read and write"
+echo "    - Workflows: Read and write"
+echo ""
+read -p "Press Enter when you've generated the token..."
+
+# Step 5: Approve PAT
+echo ""
+echo "========================================"
+echo "STEP 5: Approve PAT (as org admin)"
+echo "========================================"
+echo ""
+echo "Go to: https://github.com/organizations/ricon-family/settings/personal-access-token-requests"
+echo ""
+echo "Find and approve the request from $GITHUB_USERNAME"
+echo ""
+read -p "Press Enter when you've approved the PAT..."
+
+# Step 6: Store PAT
+echo ""
+echo "========================================"
+echo "STEP 6: Store PAT"
+echo "========================================"
+echo ""
+echo "Run these commands with your PAT:"
+echo ""
+echo "  op item edit \"$AGENT - GitHub\" --vault Agents \"PAT[password]=<your-token>\""
+echo "  gh secret set ${AGENT_UPPER}_GITHUB_PAT"
+echo ""
+read -p "Press Enter when you've stored the PAT..."
+
+# Done!
+echo ""
+echo "========================================"
+echo "DONE! $AGENT is fully onboarded."
+echo "========================================"
+echo ""
+echo "Test with: gh workflow run test-agent-identity.yml --repo ricon-family/shimmer"
