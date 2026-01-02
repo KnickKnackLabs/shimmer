@@ -6,13 +6,13 @@
 
 This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise tasks` to see available tasks:
 
-- `mise run trigger [message]` - Trigger the GitHub Actions workflow
-- `mise run status` - Check latest workflow run status
-- `mise run logs [lines]` - View logs from latest run
+- `mise run trigger <agent> [message]` - Trigger an agent workflow manually
+- `mise run status` - Check the status of the latest workflow run
+- `mise run logs [workflow] [lines]` - View logs from the latest workflow run
 - `mise run watch` - Watch a run until completion
 - `mise run time` - Show elapsed and remaining time for current run
 - `mise run ship <message>` - Commit and push in one step
-- `mise run commit <message>` - Commit changes
+- `mise run commit <message>` - Stage all changes and commit with a message
 - `mise run push` - Push to remote
 - `mise run tasks` - List open tasks (GitHub issues)
 - `mise run wip` - Show work in progress (open PRs and issues)
