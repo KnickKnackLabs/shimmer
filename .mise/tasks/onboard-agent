@@ -167,17 +167,34 @@ echo "STEP 6: Approve PAT"
 echo "------------------------------------------------------------"
 echo "[YOU] As YOUR ADMIN account, go to:"
 echo "      https://github.com/organizations/ricon-family/settings/personal-access-token-requests"
-echo "      Approve the request from $GITHUB_USERNAME"
+echo ""
+echo "      Before approving the request from $GITHUB_USERNAME, verify:"
+echo "      [ ] Repository access: Only ricon-family/shimmer"
+echo "      [ ] Expiration: ~90 days from now"
+echo "      [ ] Contents: Read and write"
+echo "      [ ] Workflows: Read and write"
+echo "      [ ] No other permissions granted"
 
 wait_for_enter
 
 # STEP 7: Store PAT
 echo "STEP 7: Store PAT"
 echo "------------------------------------------------------------"
-echo "[YOU] Run these commands with the token you just created:"
 echo ""
-echo "      op item edit \"$AGENT - GitHub\" --vault Agents \"PAT[password]=<token>\""
-echo "      gh secret set ${AGENT_UPPER}_GITHUB_PAT"
+read -r -p "Paste the PAT token: " PAT_TOKEN
+echo ""
+
+if [ -n "$PAT_TOKEN" ]; then
+  echo "[auto] Storing in 1Password..."
+  op item edit "$AGENT - GitHub" --vault Agents "PAT[password]=$PAT_TOKEN" > /dev/null 2>&1 || true
+
+  echo "[auto] Storing as GitHub secret ${AGENT_UPPER}_GITHUB_PAT..."
+  echo "$PAT_TOKEN" | gh secret set "${AGENT_UPPER}_GITHUB_PAT"
+
+  echo "[auto] Done!"
+else
+  echo "[WARN] No token provided, skipping storage"
+fi
 
 wait_for_enter
 
