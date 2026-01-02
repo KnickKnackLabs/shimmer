@@ -43,7 +43,8 @@ defmodule Cli do
 
     cond do
       message == "" ->
-        IO.puts("No message provided, skipping Claude")
+        IO.puts("ERROR: No message provided")
+        System.halt(1)
 
       agent == nil or agent == "" ->
         IO.puts("ERROR: --agent is required and cannot be empty")
