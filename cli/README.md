@@ -17,32 +17,35 @@ The CLI is built as an escript and invoked via GitHub Actions workflows. It requ
 
 ```bash
 # Run with an agent (timeout in seconds)
-mix escript.build && ./cli --agent probe-1 --timeout 540 "Explore the codebase"
+mix escript.build && ./cli --agent quick --job probe --timeout 540 "Explore the codebase"
 
 # Enable context logging (starts claude-code-logger proxy)
-./cli --agent critic --timeout 540 --log-context "Find something to critique"
+./cli --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
 ```
 
 ## Agent Prompt System
 
-System prompts are composed from two files:
+System prompts are composed from three optional files:
 
 1. `priv/prompts/common.txt` - Shared instructions for all agents
-2. `priv/prompts/agents/<name>.txt` - Agent-specific personality and instructions
+2. `priv/prompts/agents/<name>.txt` - Agent-specific identity
+3. `priv/prompts/jobs/<job>.txt` - Job-specific instructions (via `--job` flag)
 
-When an agent runs, both files are concatenated to form the system prompt.
+When an agent runs, available files are concatenated to form the system prompt.
 
 ### Adding a new agent
 
-1. Create `priv/prompts/agents/<name>.txt` with agent-specific instructions
-2. Create a workflow in `.github/workflows/<name>.yml`
-3. Run with `--agent <name>`
+1. Create `priv/prompts/agents/<name>.txt` with agent identity
+2. Optionally create or reuse a job in `priv/prompts/jobs/`
+3. Create a workflow in `.github/workflows/<name>.yml`
+4. Run with `--agent <name> --job <job>`
 
 ## Configuration
 
 | Option | Description |
 |--------|-------------|
 | `--agent <name>` | Required. Specifies which agent prompt to load |
+| `--job <job>` | Optional. Specifies job-specific instructions |
 | `--timeout <seconds>` | Required. Timeout in seconds for the Claude command |
 | `--log-context` | Enables context logging via claude-code-logger proxy |
 
