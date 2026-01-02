@@ -261,11 +261,11 @@ defmodule Cli do
             model
           )
 
-        Port.close(logger_port)
+        stop_logger(logger_port)
         status
 
       :error ->
-        Port.close(logger_port)
+        stop_logger(logger_port)
         IO.puts("ERROR: Failed to start claude-code-logger")
         IO.puts("Check if it's installed: mise exec -- claude-code-logger --version")
 
@@ -276,6 +276,20 @@ defmodule Cli do
         end
 
         1
+    end
+  end
+
+  # Stop the logger process by killing the OS process, then closing the port
+  # Port.close alone doesn't terminate the child process
+  defp stop_logger(logger_port) do
+    case Port.info(logger_port, :os_pid) do
+      {:os_pid, os_pid} ->
+        System.cmd("kill", ["#{os_pid}"])
+        Port.close(logger_port)
+
+      nil ->
+        # Port already closed
+        :ok
     end
   end
 
