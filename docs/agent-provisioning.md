@@ -63,10 +63,16 @@ This creates:
 
 1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
 2. Create token with:
-   - Repository access: `ricon-family/shimmer`
-   - Permissions: `Contents: Read and write`, `Workflows: Read and write`
-3. Store as secret:
+   - **Token name**: `shimmer-agent`
+   - **Resource owner**: `ricon-family`
+   - **Repository access**: Only select repositories → `ricon-family/shimmer`
+   - **Permissions**: `Contents: Read and write`, `Workflows: Read and write`
+3. **IMPORTANT**: Org admin must approve the PAT request at:
+   https://github.com/organizations/ricon-family/settings/personal-access-token-requests
+   (This cannot be done via CLI - web UI only)
+4. Store as secret:
    ```bash
+   op item edit "<agent> - GitHub" --vault Agents "PAT[password]=<token>"
    gh secret set <AGENT>_GITHUB_PAT
    ```
 
