@@ -341,7 +341,7 @@ defmodule Cli do
     if usage.num_turns, do: IO.puts("  Turns: #{usage.num_turns}")
 
     if usage.cost_usd do
-      cost = Float.round(usage.cost_usd / 1, 4)
+      cost = Float.round(usage.cost_usd, 4)
       IO.puts("  Cost: $#{cost}")
     end
 
