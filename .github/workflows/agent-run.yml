@@ -1,0 +1,97 @@
+name: Agent Run
+
+on:
+  workflow_call:
+    inputs:
+      agent-name:
+        description: 'Agent name (e.g., quick, brownie)'
+        required: true
+        type: string
+      job-type:
+        description: 'Job type (e.g., probe, critic)'
+        required: true
+        type: string
+      message:
+        description: 'Optional message to pass to the agent'
+        required: false
+        type: string
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+      AGENT_GITHUB_PAT:
+        required: true
+      AGENT_GPG_PRIVATE_KEY:
+        required: true
+      AGENT_EMAIL_PASSWORD:
+        required: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.AGENT_GITHUB_PAT }}
+
+      - name: Setup GPG
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.AGENT_GPG_PRIVATE_KEY }}
+        run: ./scripts/setup-gpg.sh ${{ inputs.agent-name }}
+
+      - name: Setup email
+        env:
+          EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
+        run: ./scripts/setup-email.sh ${{ inputs.agent-name }}
+
+      - name: Configure git
+        run: |
+          git config user.name "${{ inputs.agent-name }}"
+          git config user.email "${{ inputs.agent-name }}@ricon.family"
+
+      - name: Create working branch
+        id: branch
+        run: |
+          BRANCH_NAME="${{ inputs.agent-name }}/run-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Elixir build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cli/_build
+            cli/deps
+          key: ${{ runner.os }}-elixir-${{ hashFiles('cli/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-elixir-
+
+      - name: Build CLI
+        run: |
+          cd cli
+          mix local.hex --force
+          mix deps.get
+          mix escript.build
+
+      - name: Determine message
+        id: message
+        run: |
+          if [ -z "${{ inputs.message }}" ]; then
+            echo "msg=Branch: ${{ steps.branch.outputs.name }}" >> $GITHUB_OUTPUT
+          else
+            echo "msg=${{ inputs.message }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run CLI
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_PAT }}
+          RUN_TIMEOUT: 540
+        run: |
+          export RUN_START_TIME=$(date +%s)
+          ./cli/cli --agent ${{ inputs.agent-name }} --job ${{ inputs.job-type }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
