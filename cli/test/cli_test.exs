@@ -359,6 +359,10 @@ defmodule CliTest do
       assert Cli.load_system_prompt(nil) == nil
     end
 
+    test "returns nil for empty string agent" do
+      assert Cli.load_system_prompt("") == nil
+    end
+
     test "loads brownie agent prompt with common prompt" do
       result = Cli.load_system_prompt("brownie")
 

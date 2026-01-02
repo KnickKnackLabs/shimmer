@@ -39,20 +39,26 @@ defmodule Cli do
     if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
 
+    agent = opts[:agent]
+
     cond do
       message == "" ->
         IO.puts("No message provided, skipping Claude")
 
-      opts[:agent] == nil ->
-        IO.puts("ERROR: --agent is required")
+      agent == nil or agent == "" ->
+        IO.puts("ERROR: --agent is required and cannot be empty")
         System.halt(1)
 
       timeout == nil ->
         IO.puts("ERROR: --timeout is required")
         System.halt(1)
 
+      timeout <= 0 ->
+        IO.puts("ERROR: --timeout must be greater than 0")
+        System.halt(1)
+
       true ->
-        system_prompt = load_system_prompt(opts[:agent], opts[:job])
+        system_prompt = load_system_prompt(agent, opts[:job])
 
         status =
           if opts[:log_context] do
@@ -98,6 +104,7 @@ defmodule Cli do
 
   """
   def load_system_prompt(nil, _job), do: nil
+  def load_system_prompt("", _job), do: nil
 
   def load_system_prompt(agent_name, job_name) do
     dir = prompts_dir()
