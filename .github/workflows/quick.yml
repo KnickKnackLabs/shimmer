@@ -12,71 +12,13 @@ on:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.QUICK_GITHUB_PAT }}
-
-      - name: Setup GPG
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.QUICK_GPG_PRIVATE_KEY }}
-        run: ./scripts/setup-gpg.sh quick
-
-      - name: Setup email
-        env:
-          EMAIL_PASSWORD: ${{ secrets.QUICK_EMAIL_PASSWORD }}
-        run: ./scripts/setup-email.sh quick
-
-      - name: Configure git
-        run: |
-          git config user.name "quick"
-          git config user.email "quick@ricon.family"
-
-      - name: Create working branch
-        id: branch
-        run: |
-          BRANCH_NAME="quick/run-$(date +%Y%m%d-%H%M%S)"
-          git checkout -b "$BRANCH_NAME"
-          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
-      - name: Set up mise
-        uses: jdx/mise-action@v2
-        with:
-          install: true
-
-      - name: Cache Elixir build
-        uses: actions/cache@v4
-        with:
-          path: |
-            cli/_build
-            cli/deps
-          key: ${{ runner.os }}-elixir-${{ hashFiles('cli/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-elixir-
-
-      - name: Build CLI
-        run: |
-          cd cli
-          mix local.hex --force
-          mix deps.get
-          mix escript.build
-
-      - name: Determine message
-        id: message
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ] || [ -z "${{ github.event.inputs.message }}" ]; then
-            echo "msg=Branch: ${{ steps.branch.outputs.name }}" >> $GITHUB_OUTPUT
-          else
-            echo "msg=${{ github.event.inputs.message }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run CLI
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GH_TOKEN: ${{ secrets.QUICK_GITHUB_PAT }}
-          RUN_TIMEOUT: 540
-        run: |
-          export RUN_START_TIME=$(date +%s)
-          ./cli/cli --agent quick --job probe --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
+    uses: ./.github/workflows/agent-run.yml
+    with:
+      agent-name: quick
+      job-type: probe
+      message: ${{ github.event.inputs.message }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      AGENT_GITHUB_PAT: ${{ secrets.QUICK_GITHUB_PAT }}
+      AGENT_GPG_PRIVATE_KEY: ${{ secrets.QUICK_GPG_PRIVATE_KEY }}
+      AGENT_EMAIL_PASSWORD: ${{ secrets.QUICK_EMAIL_PASSWORD }}
