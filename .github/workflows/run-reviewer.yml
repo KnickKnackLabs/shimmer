@@ -1,0 +1,72 @@
+name: Run Reviewer
+
+on:
+  workflow_run:
+    workflows: ["quick", "brownie", "junior"]
+    types:
+      - completed
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BROWNIE_GITHUB_PAT }}
+
+      - name: Setup GPG
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.BROWNIE_GPG_PRIVATE_KEY }}
+        run: ./scripts/setup-gpg.sh brownie
+
+      - name: Setup email
+        env:
+          EMAIL_PASSWORD: ${{ secrets.BROWNIE_EMAIL_PASSWORD }}
+        run: ./scripts/setup-email.sh brownie
+
+      - name: Configure git
+        run: |
+          git config user.name "brownie"
+          git config user.email "brownie@ricon.family"
+
+      - name: Create working branch
+        id: branch
+        run: |
+          BRANCH_NAME="brownie/run-review-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Cache Elixir build
+        uses: actions/cache@v4
+        with:
+          path: |
+            cli/_build
+            cli/deps
+          key: ${{ runner.os }}-elixir-${{ hashFiles('cli/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-elixir-
+
+      - name: Build CLI
+        run: |
+          cd cli
+          mix local.hex --force
+          mix deps.get
+          mix escript.build
+
+      - name: Run CLI
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.BROWNIE_GITHUB_PAT }}
+          RUN_TIMEOUT: 300
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_AGENT: ${{ github.event.workflow_run.name }}
+          RUN_JOB: ${{ github.event.workflow_run.event }}
+        run: |
+          export RUN_START_TIME=$(date +%s)
+          ./cli/cli --agent brownie --job run-review --timeout $RUN_TIMEOUT "Review run $RUN_ID"
