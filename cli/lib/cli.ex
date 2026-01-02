@@ -7,6 +7,7 @@ defmodule Cli do
   """
 
   @logger_port 8000
+  @default_model "claude-opus-4-5-20251101"
 
   defp prompts_dir do
     # Try multiple paths - cwd might be repo root or cli directory
@@ -27,11 +28,14 @@ defmodule Cli do
     message = Enum.join(rest, " ")
     timeout = opts[:timeout]
 
+    model = opts[:model] || @default_model
+
     IO.puts("Running at: #{DateTime.utc_now()}")
     IO.puts("Message: #{message}")
     if timeout, do: IO.puts("Timeout: #{timeout}s")
     if opts[:agent], do: IO.puts("Agent: #{opts[:agent]}")
     if opts[:job], do: IO.puts("Job: #{opts[:job]}")
+    IO.puts("Model: #{model}")
     if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
 
@@ -51,9 +55,9 @@ defmodule Cli do
         system_prompt = load_system_prompt(opts[:agent], opts[:job])
 
         if opts[:log_context] do
-          run_with_logger(message, system_prompt, timeout)
+          run_with_logger(message, system_prompt, timeout, model)
         else
-          run_claude(message, [], system_prompt, timeout)
+          run_claude(message, [], system_prompt, timeout, model)
         end
     end
   end
@@ -61,7 +65,13 @@ defmodule Cli do
   defp parse_args(args) do
     {opts, rest, _} =
       OptionParser.parse(args,
-        switches: [log_context: :boolean, agent: :string, job: :string, timeout: :integer]
+        switches: [
+          log_context: :boolean,
+          agent: :string,
+          job: :string,
+          timeout: :integer,
+          model: :string
+        ]
       )
 
     {opts, rest}
@@ -120,7 +130,7 @@ defmodule Cli do
     end
   end
 
-  defp run_claude(message, env_extras, system_prompt, timeout) do
+  defp run_claude(message, env_extras, system_prompt, timeout, model) do
     # Build claude arguments - message and system prompt passed as positional params to avoid escaping
     system_prompt_args =
       case system_prompt do
@@ -131,7 +141,7 @@ defmodule Cli do
     # Shell script that pipes empty stdin and runs claude with timeout
     shell_script =
       "echo | timeout #{timeout} claude -p \"$1\"#{system_prompt_args} " <>
-        "--model claude-opus-4-5-20251101 --output-format stream-json " <>
+        "--model #{model} --output-format stream-json " <>
         "--verbose --include-partial-messages --dangerously-skip-permissions"
 
     # Build args list: -c script, --, message, [system_prompt]
@@ -164,7 +174,7 @@ defmodule Cli do
     System.halt(status)
   end
 
-  defp run_with_logger(message, system_prompt, timeout) do
+  defp run_with_logger(message, system_prompt, timeout, model) do
     log_file = "/tmp/claude-context-#{:os.system_time(:second)}.log"
 
     # Start the logger in the background, using mise exec to ensure correct PATH
@@ -191,7 +201,8 @@ defmodule Cli do
           message,
           ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
           system_prompt,
-          timeout
+          timeout,
+          model
         )
 
         # Note: System.halt in run_claude will terminate before we get here
