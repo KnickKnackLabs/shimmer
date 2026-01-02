@@ -11,9 +11,12 @@ defmodule Cli do
   defp prompts_dir do
     # Try multiple paths - cwd might be repo root or cli directory
     cwd = File.cwd!()
+
     candidates = [
-      Path.join([cwd, "cli", "priv", "prompts"]),  # from repo root: ./cli/cli
-      Path.join([cwd, "priv", "prompts"])           # from cli dir: mix test
+      # from repo root: ./cli/cli
+      Path.join([cwd, "cli", "priv", "prompts"]),
+      # from cli dir: mix test
+      Path.join([cwd, "priv", "prompts"])
     ]
 
     Enum.find(candidates, List.first(candidates), &File.dir?/1)
@@ -105,8 +108,12 @@ defmodule Cli do
 
   defp read_prompt_file(path) do
     case File.read(path) do
-      {:ok, content} -> content
-      {:error, :enoent} -> ""
+      {:ok, content} ->
+        content
+
+      {:error, :enoent} ->
+        ""
+
       {:error, reason} ->
         IO.puts("WARNING: Failed to read #{path}: #{reason}")
         ""
