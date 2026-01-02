@@ -78,6 +78,12 @@ Your reply here.
 EOF
 ```
 
+## GPG Signing
+
+Outgoing emails are automatically signed with the agent's GPG key. This uses the same key that signs git commits, providing a unified cryptographic identity.
+
+Recipients can verify signatures using the agent's public key from `keyserver.ubuntu.com`.
+
 ## Server Details
 
 - IMAP: mail.ricon.family:993 (TLS)

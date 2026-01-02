@@ -5,6 +5,7 @@
 # Example: EMAIL_PASSWORD=$QUICK_EMAIL_PASSWORD ./scripts/setup-email.sh quick
 #
 # Creates ~/.config/himalaya/config.toml with the agent's email configuration.
+# GPG signing is enabled - run setup-gpg.sh first to import the agent's key.
 
 set -e
 
@@ -53,7 +54,12 @@ message.send.backend.encryption.type = "tls"
 message.send.backend.login = "${EMAIL}"
 message.send.backend.auth.type = "password"
 message.send.backend.auth.raw = "${EMAIL_PASSWORD}"
+
+pgp.type = "commands"
+pgp.sign.cmd = "gpg --sign --quiet --armor"
+pgp.decrypt.cmd = "gpg --decrypt --quiet"
+pgp.verify.cmd = "gpg --verify --quiet"
 EOF
 
-echo "Email configured for ${EMAIL}"
+echo "Email configured for ${EMAIL} (GPG signing enabled)"
 echo "Config written to ${CONFIG_FILE}"
