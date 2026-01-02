@@ -11,8 +11,9 @@ defmodule Cli do
   defp prompts_dir do
     case :code.priv_dir(:cli) do
       {:error, _} ->
-        # Fallback for development when priv_dir is not available
-        Path.join([__DIR__, "..", "..", "priv", "prompts"]) |> Path.expand()
+        # Fallback for escript - use path relative to current working directory
+        # Assumes running from repo root as ./cli/cli
+        Path.join([File.cwd!(), "cli", "priv", "prompts"])
 
       dir ->
         Path.join(to_string(dir), "prompts")
@@ -292,7 +293,7 @@ defmodule Cli do
     if usage.num_turns, do: IO.puts("  Turns: #{usage.num_turns}")
 
     if usage.cost_usd do
-      cost = Float.round(usage.cost_usd, 4)
+      cost = Float.round(usage.cost_usd / 1, 4)
       IO.puts("  Cost: $#{cost}")
     end
 

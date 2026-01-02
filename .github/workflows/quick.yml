@@ -74,7 +74,7 @@ jobs:
 
       - name: Run CLI
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ secrets.QUICK_GITHUB_PAT }}
           RUN_TIMEOUT: 540
         run: |
