@@ -177,12 +177,9 @@ defmodule Cli do
         [:binary, {:args, ["-c", logger_script]}]
       )
 
-    # Give the logger time to start
-    Process.sleep(1500)
-
-    # Verify the logger started by checking if the port is listening
-    case System.cmd("nc", ["-z", "localhost", "#{@logger_port}"], stderr_to_stdout: true) do
-      {_, 0} ->
+    # Wait for logger to start with retry loop
+    case wait_for_port(@logger_port, 10, 200) do
+      :ok ->
         IO.puts("Logger started, output will be saved to: #{log_file}")
         IO.puts("---")
 
@@ -197,7 +194,7 @@ defmodule Cli do
         # Note: System.halt in run_claude will terminate before we get here
         Port.close(logger_port)
 
-      {_, _} ->
+      :error ->
         Port.close(logger_port)
         IO.puts("ERROR: Failed to start claude-code-logger")
         IO.puts("Check if it's installed: mise exec -- claude-code-logger --version")
@@ -209,6 +206,22 @@ defmodule Cli do
         end
 
         System.halt(1)
+    end
+  end
+
+  # Wait for a port to become available using Elixir's built-in :gen_tcp
+  # More reliable than external tools like netcat
+  defp wait_for_port(_port, 0, _interval), do: :error
+
+  defp wait_for_port(port, retries, interval) do
+    case :gen_tcp.connect(~c"localhost", port, [], 100) do
+      {:ok, socket} ->
+        :gen_tcp.close(socket)
+        :ok
+
+      {:error, _} ->
+        Process.sleep(interval)
+        wait_for_port(port, retries - 1, interval)
     end
   end
 
