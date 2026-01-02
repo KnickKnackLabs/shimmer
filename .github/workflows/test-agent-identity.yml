@@ -2,14 +2,6 @@ name: Test Agent Identity
 
 on:
   workflow_dispatch:
-    inputs:
-      agent:
-        description: 'Agent name to test'
-        required: true
-        default: 'quick'
-        type: choice
-        options:
-          - quick
 
 jobs:
   test-signed-commit:
@@ -17,33 +9,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets[format('{0}_GITHUB_PAT', inputs.agent == 'quick' && 'QUICK' || upper(inputs.agent))] }}
+          token: ${{ secrets.QUICK_GITHUB_PAT }}
 
       - name: Setup GPG
         env:
-          GPG_PRIVATE_KEY: ${{ secrets[format('{0}_GPG_PRIVATE_KEY', inputs.agent == 'quick' && 'QUICK' || upper(inputs.agent))] }}
+          GPG_PRIVATE_KEY: ${{ secrets.QUICK_GPG_PRIVATE_KEY }}
         run: |
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
 
           # Get key ID
-          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "${{ inputs.agent }}@ricon.family" | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "quick@ricon.family" | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
 
           # Configure git
-          git config --global user.name "${{ inputs.agent }}"
-          git config --global user.email "${{ inputs.agent }}@ricon.family"
+          git config --global user.name "quick"
+          git config --global user.email "quick@ricon.family"
           git config --global user.signingkey "$KEY_ID"
           git config --global commit.gpgsign true
 
       - name: Make test commit
         run: |
           # Add a timestamp to a test file
-          echo "Test commit by ${{ inputs.agent }} at $(date -u)" >> .agent-test-log
+          echo "Test commit by quick at $(date -u)" >> .agent-test-log
           git add .agent-test-log
-          git commit -m "Test signed commit by ${{ inputs.agent }}
+          git commit -m "Test signed commit by quick
 
           🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-          Co-Authored-By: ${{ inputs.agent }} <${{ inputs.agent }}@ricon.family>"
+          Co-Authored-By: quick <quick@ricon.family>"
 
       - name: Verify signature
         run: |
