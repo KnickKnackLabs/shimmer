@@ -25,6 +25,12 @@ defmodule Cli do
 
   def main(args) do
     {opts, rest} = parse_args(args)
+
+    if opts[:help] do
+      print_help()
+      System.halt(0)
+    end
+
     message = Enum.join(rest, " ")
     timeout = opts[:timeout]
 
@@ -80,11 +86,35 @@ defmodule Cli do
           agent: :string,
           job: :string,
           timeout: :integer,
-          model: :string
-        ]
+          model: :string,
+          help: :boolean
+        ],
+        aliases: [h: :help]
       )
 
     {opts, rest}
+  end
+
+  defp print_help do
+    IO.puts("""
+    Usage: cli --agent <name> --timeout <seconds> [options] <message>
+
+    Run Claude Code with a specific agent persona and streaming output.
+
+    Required:
+      --agent <name>       Agent persona (e.g., quick, junior, brownie)
+      --timeout <seconds>  Maximum runtime in seconds
+
+    Options:
+      --job <name>         Job-specific prompt (e.g., tasks, run-review)
+      --model <model>      Claude model to use (default: claude-opus-4-5-20251101)
+      --log-context        Enable context logging via proxy
+      -h, --help           Show this help message
+
+    Examples:
+      cli --agent quick --timeout 300 "Fix the bug in cli.ex"
+      cli --agent brownie --timeout 600 --job tasks "Review the codebase"
+    """)
   end
 
   @doc """
