@@ -2,40 +2,56 @@ name: Test Agent Identity
 
 on:
   workflow_dispatch:
+    inputs:
+      agent:
+        description: 'Agent name to test'
+        required: true
+        type: choice
+        options:
+          - quick
+          - brownie
+          - junior
+          - johnson
+          - k7r2
+          - x1f9
+          - c0da
 
 jobs:
   test-signed-commit:
     runs-on: ubuntu-latest
+    env:
+      AGENT: ${{ inputs.agent }}
     steps:
+      - name: Uppercase agent name
+        id: upper
+        run: echo "agent=$(echo '${{ inputs.agent }}' | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
+
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.QUICK_GITHUB_PAT }}
+          token: ${{ secrets[format('{0}_GITHUB_PAT', steps.upper.outputs.agent)] }}
 
       - name: Setup GPG
         env:
-          GPG_PRIVATE_KEY: ${{ secrets.QUICK_GPG_PRIVATE_KEY }}
+          GPG_PRIVATE_KEY: ${{ secrets[format('{0}_GPG_PRIVATE_KEY', steps.upper.outputs.agent)] }}
         run: |
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
 
-          # Get key ID
-          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "quick@ricon.family" | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "${AGENT}@ricon.family" | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
 
-          # Configure git
-          git config --global user.name "quick"
-          git config --global user.email "quick@ricon.family"
+          git config --global user.name "$AGENT"
+          git config --global user.email "${AGENT}@ricon.family"
           git config --global user.signingkey "$KEY_ID"
           git config --global commit.gpgsign true
 
       - name: Make test commit
         run: |
-          # Add a timestamp to a test file
-          echo "Test commit by quick at $(date -u)" >> .agent-test-log
+          echo "Test commit by $AGENT at $(date -u)" >> .agent-test-log
           git add .agent-test-log
-          git commit -m "Test signed commit by quick
+          git commit -m "Test signed commit by $AGENT
 
           🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-          Co-Authored-By: quick <quick@ricon.family>"
+          Co-Authored-By: $AGENT <${AGENT}@ricon.family>"
 
       - name: Verify signature
         run: |

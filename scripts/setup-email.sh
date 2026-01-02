@@ -9,7 +9,19 @@
 set -e
 
 AGENT_NAME="${1:?Usage: setup-email.sh <agent-name>}"
-EMAIL_PASSWORD="${EMAIL_PASSWORD:?EMAIL_PASSWORD environment variable required}"
+
+# Get password from environment or 1Password
+if [ -z "$EMAIL_PASSWORD" ]; then
+  if command -v op &> /dev/null && op account get &> /dev/null; then
+    EMAIL_PASSWORD=$(op item get "${AGENT_NAME} - Email" --vault Agents --fields password --reveal 2>/dev/null)
+  fi
+fi
+
+if [ -z "$EMAIL_PASSWORD" ]; then
+  echo "ERROR: EMAIL_PASSWORD not set and could not fetch from 1Password"
+  echo "Usage: EMAIL_PASSWORD=xxx ./scripts/setup-email.sh <agent-name>"
+  exit 1
+fi
 
 DOMAIN="ricon.family"
 MAIL_SERVER="mail.ricon.family"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-#MISE description="Generate onboarding instructions for a new agent"
+#MISE description="Interactive onboarding for a new agent"
 #MISE usage="onboard-agent <agent-name>"
+#MISE raw=true
 
 set -e
 
@@ -9,6 +10,12 @@ AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 EMAIL="${AGENT}@ricon.family"
 GITHUB_USERNAME="${AGENT}-ricon"
 VAULT="Agents"
+
+wait_for_enter() {
+  echo ""
+  read -r -p "Press Enter when done... "
+  echo ""
+}
 
 # Check prerequisites
 if ! command -v op &> /dev/null; then
@@ -26,7 +33,6 @@ echo "Fetching credentials from 1Password..."
 GITHUB_PASSWORD=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
 GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
 GITHUB_COUNTRY=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields country 2>/dev/null || echo "")
-EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
 
 if [ -z "$GITHUB_PASSWORD" ]; then
   echo "ERROR: Could not find ${AGENT} - GitHub in 1Password"
@@ -38,14 +44,170 @@ echo ""
 echo "============================================================"
 echo "  ONBOARDING: $AGENT"
 echo "============================================================"
-echo ""
-echo "STEP 1: Create GitHub Account"
+
+# Check if GitHub account already exists
+GITHUB_USER_EXISTS=$(gh api "users/$GITHUB_USERNAME" 2>/dev/null && echo "yes" || echo "no")
+
+if [ "$GITHUB_USER_EXISTS" = "yes" ]; then
+  echo ""
+  echo "STEP 1: Create GitHub Account"
+  echo "------------------------------------------------------------"
+  echo "[auto] $GITHUB_USERNAME already exists, skipping account creation"
+  echo ""
+  echo "STEP 2: Email Verification"
+  echo "------------------------------------------------------------"
+  echo "[auto] Skipping (account already exists)"
+else
+  # STEP 1: Create GitHub Account
+  echo ""
+  echo "STEP 1: Create GitHub Account"
+  echo "------------------------------------------------------------"
+  echo "[YOU] Go to: https://github.com/signup"
+  echo ""
+  echo "      Email:    $GITHUB_EMAIL"
+  echo "      Password: $GITHUB_PASSWORD"
+  echo "      Username: $GITHUB_USERNAME"
+  echo "      Country:  $GITHUB_COUNTRY"
+
+  wait_for_enter
+
+  # STEP 2: Email Verification
+  echo "STEP 2: Email Verification"
+  echo "------------------------------------------------------------"
+  echo "[auto] Checking for GitHub verification email..."
+
+  ./scripts/setup-email.sh "$AGENT" > /dev/null 2>&1
+
+  # Poll for GitHub verification email (up to 60 seconds)
+  VERIFICATION_CODE=""
+  for i in {1..12}; do
+    # Get the most recent email from GitHub
+    LATEST_ID=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 | awk -F'|' '{print $2}' | tr -d ' ' || true)
+    if [ -n "$LATEST_ID" ]; then
+      # Read the email and extract the verification code (typically 6-8 digits)
+      EMAIL_BODY=$(himalaya message read "$LATEST_ID" 2>/dev/null || true)
+      VERIFICATION_CODE=$(echo "$EMAIL_BODY" | grep -oE '[0-9]{6,8}' | head -1 || true)
+      if [ -n "$VERIFICATION_CODE" ]; then
+        break
+      fi
+    fi
+    echo "       Checking... ($i/12)"
+    sleep 5
+  done
+
+  if [ -n "$VERIFICATION_CODE" ]; then
+    echo ""
+    echo "[YOU] Enter this code on the GitHub signup page: $VERIFICATION_CODE"
+    echo ""
+    echo "      If prompted to log in:"
+    echo "        Email:    $GITHUB_EMAIL"
+    echo "        Password: $GITHUB_PASSWORD"
+  else
+    echo ""
+    echo "[auto] Could not find verification code automatically."
+    echo "[YOU] Check manually: himalaya envelope list && himalaya message read <ID>"
+  fi
+
+  wait_for_enter
+fi
+
+# STEP 3: Organization Setup
+echo "STEP 3: Organization Setup"
 echo "------------------------------------------------------------"
-echo "Go to: https://github.com/signup"
+
+MEMBERSHIP=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" 2>&1 || true)
+
+if echo "$MEMBERSHIP" | grep -q '"state":"active"'; then
+  echo "[auto] $GITHUB_USERNAME is already an active org member"
+else
+  echo "[auto] Inviting $GITHUB_USERNAME to ricon-family org..."
+  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1 || true
+fi
+
+echo "[auto] Granting write access to shimmer repo..."
+gh api --method PUT "repos/ricon-family/shimmer/collaborators/$GITHUB_USERNAME" -f permission=write > /dev/null 2>&1 || true
+
 echo ""
-echo "  Email:    $GITHUB_EMAIL"
-echo "  Password: $GITHUB_PASSWORD"
-echo "  Username: $GITHUB_USERNAME"
-echo "  Country:  $GITHUB_COUNTRY"
+echo "[YOU] Accept the org invitation as $GITHUB_USERNAME:"
+echo "      https://github.com/orgs/ricon-family/invitation"
+
+wait_for_enter
+
+# STEP 4: Upload GPG Key
+echo "STEP 4: Upload GPG Key"
+echo "------------------------------------------------------------"
+echo "[YOU] As $GITHUB_USERNAME, go to: https://github.com/settings/keys"
+echo "      Click: New GPG key"
+echo "      Title: $EMAIL"
+echo "      Key:"
 echo ""
-echo "When done, run: mise run onboard-agent-step2 $AGENT"
+op item get "${AGENT} - GPG" --vault "$VAULT" --fields "Public Key" 2>/dev/null
+echo ""
+
+wait_for_enter
+
+# STEP 5: Create Personal Access Token
+echo "STEP 5: Create Personal Access Token"
+echo "------------------------------------------------------------"
+echo "[YOU] As $GITHUB_USERNAME, go to: https://github.com/settings/tokens?type=beta"
+echo "      Click: Generate new token"
+echo ""
+echo "      Token name:         shimmer-agent"
+echo "      Expiration:         90 days"
+echo "      Resource owner:     ricon-family"
+echo "      Repository access:  Only select repositories -> ricon-family/shimmer"
+echo "      Permissions:"
+echo "        - Contents: Read and write"
+echo "        - Workflows: Read and write"
+
+wait_for_enter
+
+# STEP 6: Approve PAT
+echo "STEP 6: Approve PAT"
+echo "------------------------------------------------------------"
+echo "[YOU] As YOUR ADMIN account, go to:"
+echo "      https://github.com/organizations/ricon-family/settings/personal-access-token-requests"
+echo "      Approve the request from $GITHUB_USERNAME"
+
+wait_for_enter
+
+# STEP 7: Store PAT
+echo "STEP 7: Store PAT"
+echo "------------------------------------------------------------"
+echo "[YOU] Run these commands with the token you just created:"
+echo ""
+echo "      op item edit \"$AGENT - GitHub\" --vault Agents \"PAT[password]=<token>\""
+echo "      gh secret set ${AGENT_UPPER}_GITHUB_PAT"
+
+wait_for_enter
+
+# STEP 8: Verify
+echo "STEP 8: Verify Setup"
+echo "------------------------------------------------------------"
+echo "[auto] Triggering test workflow..."
+
+gh workflow run test-agent-identity.yml -f agent="$AGENT" 2>/dev/null || true
+sleep 2
+
+# Get the run URL
+RUN_URL=$(gh run list --workflow=test-agent-identity.yml --limit=1 --json url --jq '.[0].url' 2>/dev/null || true)
+
+if [ -n "$RUN_URL" ]; then
+  echo ""
+  echo "[YOU] Review the workflow run:"
+  echo "      $RUN_URL"
+  echo ""
+  echo "      Wait for it to complete, then check:"
+  echo "      - Commit was created and signed"
+  echo "      - Signature shows 'Good signature from $EMAIL'"
+else
+  echo ""
+  echo "[auto] Could not get run URL. Check manually:"
+  echo "      https://github.com/ricon-family/shimmer/actions/workflows/test-agent-identity.yml"
+fi
+
+wait_for_enter
+
+echo "============================================================"
+echo "  DONE! $AGENT is fully onboarded."
+echo "============================================================"

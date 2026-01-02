@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Provision a new agent identity (GPG key, sign with org, store secrets)"
+#MISE description="Provision a new agent (GPG key, GitHub secrets, 1Password)"
 #MISE usage="provision-agent <agent-name> [--force]"
 
 set -e
@@ -8,27 +8,36 @@ AGENT="${1:?Usage: mise run provision-agent <agent-name> [--force]}"
 FORCE="${2:-}"
 EMAIL="${AGENT}@ricon.family"
 UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+VAULT="Agents"
 
 echo "=== Provisioning agent: $AGENT ==="
 echo ""
 
-# Check if org key exists
+# Check prerequisites
 if ! gpg --list-keys admin@ricon.family >/dev/null 2>&1; then
   echo "ERROR: Org key (admin@ricon.family) not found in keyring."
-  echo "Import it first or run this on a machine with the org key."
   exit 1
 fi
 
-# Check if agent key already exists
+if ! command -v op &> /dev/null; then
+  echo "ERROR: 1Password CLI (op) not found."
+  exit 1
+fi
+
+if ! op account get &> /dev/null; then
+  echo "ERROR: Not signed in to 1Password. Run: op signin"
+  exit 1
+fi
+
+# === GPG Key ===
+echo "--- GPG Key ---"
 if gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
-  echo "GPG key for $EMAIL already exists."
+  echo "[auto] Key for $EMAIL already exists"
   if [ "$FORCE" != "--force" ]; then
-    echo "Use --force to sign and update secrets anyway."
-    exit 0
+    echo "       Use --force to regenerate"
   fi
-  echo "Continuing with --force..."
 else
-  echo "Generating GPG key for $EMAIL..."
+  echo "[auto] Generating GPG key for $EMAIL..."
   gpg --batch --gen-key << KEYSPEC
 Key-Type: RSA
 Key-Length: 4096
@@ -38,33 +47,82 @@ Expire-Date: 0
 %no-protection
 %commit
 KEYSPEC
-  echo "Key generated."
 fi
 
 # Sign with org key
-echo ""
-echo "Signing $EMAIL with org key..."
 FINGERPRINT=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep -A1 "^pub" | tail -1 | tr -d ' ')
+echo "[auto] Signing with org key..."
 gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1 || true
-echo "Key signed."
 
-# Verify signature
+# === GitHub Secrets ===
 echo ""
-echo "Verifying signatures on $EMAIL:"
-gpg --list-sigs "$EMAIL" | grep -E "(sig|uid)"
-
-# Store secrets
-echo ""
-echo "Storing secrets..."
+echo "--- GitHub Secrets ---"
+echo "[auto] Storing ${UPPER}_GPG_PRIVATE_KEY..."
 gpg --armor --export-secret-keys "$EMAIL" | gh secret set "${UPPER}_GPG_PRIVATE_KEY"
+echo "[auto] Storing ${UPPER}_GPG_PUBLIC_KEY..."
 gpg --armor --export "$EMAIL" | gh secret set "${UPPER}_GPG_PUBLIC_KEY"
-echo "Secrets stored: ${UPPER}_GPG_PRIVATE_KEY, ${UPPER}_GPG_PUBLIC_KEY"
+
+# === 1Password ===
+echo ""
+echo "--- 1Password ---"
+
+KEY_ID=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep "^pub" | awk '{print $2}' | cut -d'/' -f2)
+PRIVATE_KEY=$(gpg --armor --export-secret-keys "$EMAIL" 2>/dev/null)
+PUBLIC_KEY=$(gpg --armor --export "$EMAIL" 2>/dev/null)
+
+item_exists() {
+  op item get "$1" --vault "$VAULT" &> /dev/null
+}
+
+# Email item
+if item_exists "${AGENT} - Email"; then
+  echo "[auto] ${AGENT} - Email already exists"
+else
+  echo "[auto] Creating ${AGENT} - Email..."
+  op item create \
+    --category login \
+    --title "${AGENT} - Email" \
+    --vault "$VAULT" \
+    --url "https://mail.ricon.family" \
+    username="$AGENT" \
+    "email[text]=$EMAIL" \
+    --generate-password=20,letters,digits > /dev/null
+fi
+
+# GPG item
+if item_exists "${AGENT} - GPG"; then
+  echo "[auto] ${AGENT} - GPG already exists"
+else
+  echo "[auto] Creating ${AGENT} - GPG..."
+  op item create \
+    --category "Secure Note" \
+    --title "${AGENT} - GPG" \
+    --vault "$VAULT" \
+    "Key ID[text]=$KEY_ID" \
+    "Fingerprint[text]=$FINGERPRINT" \
+    "Email[text]=$EMAIL" \
+    "Private Key[text]=$PRIVATE_KEY" \
+    "Public Key[text]=$PUBLIC_KEY" \
+    "GitHub Title[text]=$EMAIL" > /dev/null
+fi
+
+# GitHub item
+if item_exists "${AGENT} - GitHub"; then
+  echo "[auto] ${AGENT} - GitHub already exists"
+else
+  echo "[auto] Creating ${AGENT} - GitHub..."
+  op item create \
+    --category login \
+    --title "${AGENT} - GitHub" \
+    --vault "$VAULT" \
+    --url "https://github.com" \
+    username="${AGENT}-ricon" \
+    "email[text]=$EMAIL" \
+    "country[text]=United States of America" \
+    --generate-password=20,letters,digits > /dev/null
+fi
 
 echo ""
 echo "=== $AGENT provisioned ==="
 echo ""
-echo "Next steps:"
-echo "  1. Create GitHub account for $AGENT using $EMAIL"
-echo "  2. Upload GPG public key to GitHub account"
-echo "  3. Generate PAT and run: gh secret set ${UPPER}_GITHUB_PAT"
-echo "  4. Verify email password secret exists: ${UPPER}_EMAIL_PASSWORD"
+echo "Next: mise run onboard-agent $AGENT"
