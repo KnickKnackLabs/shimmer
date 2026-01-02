@@ -1,6 +1,53 @@
 defmodule CliTest do
   use ExUnit.Case
   doctest Cli
+  import ExUnit.CaptureIO
+
+  describe "invalid argument handling" do
+    test "warns about unknown arguments" do
+      # Use invalid args that will also fail validation (no --agent)
+      # This ensures main exits early without trying to run Claude
+      output =
+        capture_io(fn ->
+          try do
+            Cli.main(["--agnet", "quick", "--timeout", "60"])
+          catch
+            :exit, _ -> :ok
+          end
+        end)
+
+      assert output =~ "WARNING: Unknown arguments ignored: --agnet"
+    end
+
+    test "warns about multiple unknown arguments" do
+      output =
+        capture_io(fn ->
+          try do
+            Cli.main(["--agnet", "quick", "--tiemout", "60"])
+          catch
+            :exit, _ -> :ok
+          end
+        end)
+
+      assert output =~ "WARNING: Unknown arguments ignored:"
+      assert output =~ "--agnet"
+      assert output =~ "--tiemout"
+    end
+
+    test "no warning for valid arguments" do
+      # Omit message so main exits early with "No message provided"
+      output =
+        capture_io(fn ->
+          try do
+            Cli.main(["--agent", "quick", "--timeout", "60"])
+          catch
+            :exit, _ -> :ok
+          end
+        end)
+
+      refute output =~ "WARNING: Unknown arguments ignored"
+    end
+  end
 
   describe "Cli module" do
     test "exports main/1 function" do
@@ -159,8 +206,6 @@ defmodule CliTest do
   end
 
   describe "process_line/2" do
-    import ExUnit.CaptureIO
-
     test "outputs text delta and returns unchanged state" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
       state = %{tool_input: ""}
@@ -303,8 +348,6 @@ defmodule CliTest do
   end
 
   describe "flush_partial_buffer/1" do
-    import ExUnit.CaptureIO
-
     test "extracts and outputs text from partial JSON with text field" do
       # Simulates a partial streaming event with incomplete text
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)

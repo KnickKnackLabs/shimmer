@@ -79,9 +79,9 @@ defmodule Cli do
   end
 
   defp parse_args(args) do
-    {opts, rest, _} =
+    {opts, rest, invalid} =
       OptionParser.parse(args,
-        switches: [
+        strict: [
           log_context: :boolean,
           agent: :string,
           job: :string,
@@ -91,6 +91,11 @@ defmodule Cli do
         ],
         aliases: [h: :help]
       )
+
+    if invalid != [] do
+      invalid_names = Enum.map(invalid, fn {name, _} -> name end) |> Enum.join(", ")
+      IO.puts("WARNING: Unknown arguments ignored: #{invalid_names}")
+    end
 
     {opts, rest}
   end
