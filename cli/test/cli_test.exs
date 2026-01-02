@@ -307,15 +307,15 @@ defmodule CliTest do
       assert Cli.load_system_prompt(nil) == nil
     end
 
-    test "loads probe-1 agent prompt with common prompt" do
-      result = Cli.load_system_prompt("probe-1")
+    test "loads brownie agent prompt with common prompt" do
+      result = Cli.load_system_prompt("brownie")
 
       # Should contain common prompt
       assert result =~ "verify current documentation"
       assert result =~ "critical thinking"
 
       # Should contain agent-specific prompt
-      assert result =~ "You are probe-1"
+      assert result =~ "You are brownie"
     end
 
     test "loads agent prompt with job" do
@@ -355,15 +355,15 @@ defmodule CliTest do
     end
 
     test "concatenates common and agent prompts" do
-      result = Cli.load_system_prompt("probe-1")
+      result = Cli.load_system_prompt("brownie")
 
       # Both prompts should be present (separated by newlines)
       assert result =~ "uncertain."
-      assert result =~ "You are probe-1"
+      assert result =~ "You are brownie"
 
       # Common should come before agent
       common_pos = :binary.match(result, "uncertain.") |> elem(0)
-      agent_pos = :binary.match(result, "You are probe-1") |> elem(0)
+      agent_pos = :binary.match(result, "You are brownie") |> elem(0)
       assert common_pos < agent_pos
     end
 
