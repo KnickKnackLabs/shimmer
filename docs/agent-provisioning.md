@@ -7,7 +7,7 @@ This document describes how to provision a new agent with a full identity.
 - Access to `admin@ricon.family` GPG key (org signing key)
 - Access to email provider to create accounts
 - GitHub account with org admin access
-- 1Password CLI (`op`) signed in: `mise use -g 1password-cli && op signin`
+- 1Password CLI (`op`) signed in: `op signin`
 
 ## Quick Start
 
