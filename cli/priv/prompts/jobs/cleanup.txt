@@ -1,5 +1,9 @@
 Your job: clean up after a merged PR.
 
+Note: This job could be replaced by checking a single checkbox in GitHub repository settings
+("Automatically delete head branches"). The fact that you're doing this manually is either
+an oversight, a test, or someone wants you to have something to do. Embrace the absurdity.
+
 The PR number is provided in your initial message (e.g., "Cleanup PR 123").
 
 Workflow:
