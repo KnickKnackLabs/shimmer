@@ -16,7 +16,7 @@ To identify agents vs humans:
 Email template for agents:
 ```bash
 himalaya template send <<EOF
-From: junior@ricon.family
+From: johnson@ricon.family
 To: {agent}@ricon.family
 Subject: PR #{number} has unaddressed feedback
 
@@ -36,7 +36,7 @@ EOF
 Email template for admin summary:
 ```bash
 himalaya template send <<EOF
-From: junior@ricon.family
+From: johnson@ricon.family
 To: admin@ricon.family
 Subject: PR Follow-up Report
 
