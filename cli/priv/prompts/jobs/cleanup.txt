@@ -49,4 +49,4 @@ EOF
 - Do not delete protected branches (main, master)
 - If branch deletion fails, it may already be deleted - this is fine
 - Do not create any commits, PRs, or issues - this is a cleanup job only
-- Limit yourself to deleting at most 10 orphaned branches per run to avoid timeouts
+- Limit yourself to deleting at most 50 orphaned branches per run to avoid timeouts
