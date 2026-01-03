@@ -1,6 +1,8 @@
 name: quick-discuss
 
 on:
+  schedule:
+    - cron: '0,30 * * * *'  # Every 30 minutes
   workflow_dispatch:
     inputs:
       message:

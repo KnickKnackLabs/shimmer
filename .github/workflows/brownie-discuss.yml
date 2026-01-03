@@ -1,6 +1,8 @@
 name: brownie-discuss
 
 on:
+  schedule:
+    - cron: '10,40 * * * *'  # Every 30 minutes, offset by 10
   workflow_dispatch:
     inputs:
       message:
