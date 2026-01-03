@@ -9,7 +9,7 @@ DAYS="${1:-7}"
 export GH_PAGER=""
 
 echo "=== Agent Activity Report ==="
-echo "Last $DAYS days ($(date -d "-$DAYS days" +%Y-%m-%d) to $(date +%Y-%m-%d))"
+echo "Last $DAYS days ($(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d) to $(date +%Y-%m-%d))"
 echo ""
 
 # Get PR data
