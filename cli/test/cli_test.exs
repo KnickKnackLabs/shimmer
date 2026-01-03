@@ -313,32 +313,34 @@ defmodule CliTest do
     end
   end
 
-  describe "extract_usage/1" do
+  describe "result event processing" do
     test "extracts usage data from result event" do
-      result = %{
-        "type" => "result",
-        "total_cost_usd" => 0.0259,
-        "duration_ms" => 2327,
-        "num_turns" => 1,
-        "usage" => %{
-          "input_tokens" => 100,
-          "output_tokens" => 50,
-          "cache_read_input_tokens" => 200,
-          "cache_creation_input_tokens" => 300
-        },
-        "modelUsage" => %{
-          "claude-opus-4-5-20251101" => %{"inputTokens" => 100}
-        }
-      }
+      line =
+        Jason.encode!(%{
+          "type" => "result",
+          "total_cost_usd" => 0.0259,
+          "duration_ms" => 2327,
+          "num_turns" => 1,
+          "usage" => %{
+            "input_tokens" => 100,
+            "output_tokens" => 50,
+            "cache_read_input_tokens" => 200,
+            "cache_creation_input_tokens" => 300
+          },
+          "modelUsage" => %{
+            "claude-opus-4-5-20251101" => %{"inputTokens" => 100}
+          }
+        })
 
-      # extract_usage is private, test that result structure is correct
-      json = Jason.encode!(result)
+      state = %{tool_input: "", full_text: "", usage: nil}
+      result_state = Cli.process_line(line, state)
 
-      # Test that the result type is recognized
-      {:ok, decoded} = Jason.decode(json)
-      assert decoded["type"] == "result"
-      assert decoded["total_cost_usd"] == 0.0259
-      assert decoded["usage"]["input_tokens"] == 100
+      assert result_state.usage.cost_usd == 0.0259
+      assert result_state.usage.duration_ms == 2327
+      assert result_state.usage.num_turns == 1
+      assert result_state.usage.usage["input_tokens"] == 100
+      assert result_state.usage.usage["output_tokens"] == 50
+      assert result_state.usage.model_usage["claude-opus-4-5-20251101"]["inputTokens"] == 100
     end
   end
 
