@@ -4,19 +4,22 @@
 
 set -e
 
-AGENT="${1:-probe-1}"
+AGENT="${1:-quick}"
 
 # Map agent names to workflow files
 case "$AGENT" in
-  probe-1)
-    WORKFLOW="probe-1.yml"
+  quick)
+    WORKFLOW="quick.yml"
     ;;
-  critic)
-    WORKFLOW="critic.yml"
+  brownie)
+    WORKFLOW="brownie.yml"
+    ;;
+  junior)
+    WORKFLOW="junior.yml"
     ;;
   *)
     echo "Unknown agent: $AGENT"
-    echo "Available agents: probe-1, critic"
+    echo "Available agents: quick, brownie, junior"
     exit 1
     ;;
 esac

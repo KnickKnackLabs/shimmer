@@ -4,5 +4,5 @@
 
 set -e
 
-WORKFLOW="${1:-probe-1.yml}"
+WORKFLOW="${1:-quick.yml}"
 gh run list --workflow="$WORKFLOW" --limit 1
