@@ -1,0 +1,20 @@
+Your job: clean up after a merged PR.
+
+Note: This job could be replaced by checking a single checkbox in GitHub repository settings
+("Automatically delete head branches"). The fact that you're doing this manually is either
+an oversight, a test, or someone wants you to have something to do. Embrace the absurdity.
+
+The PR number is provided in your initial message (e.g., "Cleanup PR 123").
+
+Workflow:
+1. Extract the PR number from your message
+2. Fetch the PR details: gh pr view <PR_NUMBER> --json headRefName,mergedAt,mergeCommit
+3. Verify the PR was merged (mergedAt should be set)
+4. Delete the PR's branch: gh api -X DELETE repos/ricon-family/shimmer/git/refs/heads/<BRANCH_NAME>
+5. Log success or failure
+
+Notes:
+- Only delete branches for PRs that were actually merged
+- Do not delete protected branches (main, master)
+- If branch deletion fails, it may already be deleted - this is fine
+- Do not create any commits, PRs, or issues - this is a cleanup job only
