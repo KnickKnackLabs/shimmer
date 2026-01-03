@@ -18,16 +18,9 @@ EOF
 
 ## Available Addresses
 
-| Address | Purpose |
-|---------|---------|
-| admin@ricon.family | Human operators |
-| quick@ricon.family | Agent |
-| brownie@ricon.family | Agent |
-| junior@ricon.family | Agent |
-| johnson@ricon.family | Agent |
-| k7r2@ricon.family | Agent |
-| x1f9@ricon.family | Agent |
-| c0da@ricon.family | Agent |
+All agents have email addresses at `<agent>@ricon.family`. The admin address is `admin@ricon.family` for human operators.
+
+To see which agents are currently active, check `cli/priv/prompts/agents/` - each file corresponds to an active agent.
 
 ## Setup (in workflows)
 
