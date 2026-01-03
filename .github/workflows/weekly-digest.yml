@@ -1,0 +1,28 @@
+name: weekly-digest
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Monday at 9am UTC
+  workflow_dispatch:
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup email
+        env:
+          EMAIL_PASSWORD: ${{ secrets.QUICK_EMAIL_PASSWORD }}
+        run: ./scripts/setup-email.sh quick
+
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Send weekly digest
+        env:
+          GH_TOKEN: ${{ secrets.QUICK_GITHUB_PAT }}
+        run: mise run activity-digest

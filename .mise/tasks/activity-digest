@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+#MISE description="Generate and send weekly activity digest email"
+#MISE usage="activity-digest [--days N] [--dry-run]"
+
+set -e
+
+# Parse arguments
+DAYS=7
+DRY_RUN=""
+
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN="true"
+      ;;
+    *)
+      if [[ "$arg" =~ ^[0-9]+$ ]]; then
+        DAYS="$arg"
+      fi
+      ;;
+  esac
+done
+
+export GH_PAGER=""
+
+# Date calculation (compatible with both Linux and macOS)
+START_DATE=$(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
+END_DATE=$(date +%Y-%m-%d)
+
+# Get PR data
+PR_DATA=$(gh pr list --state all --limit 200 --json author,createdAt,state,mergedAt,title,number 2>/dev/null)
+
+# Filter to agents only and count by author
+PR_SUMMARY=$(echo "$PR_DATA" | jq -r --arg days "$DAYS" '
+  ($days | tonumber) as $d |
+  (now - ($d * 86400)) as $cutoff |
+  [.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] |
+  [.[] | select((.createdAt | fromdateiso8601) > $cutoff)] |
+  group_by(.author.login) |
+  map({
+    agent: .[0].author.login,
+    total: length,
+    merged: [.[] | select(.state == "MERGED")] | length,
+    closed: [.[] | select(.state == "CLOSED")] | length,
+    open: [.[] | select(.state == "OPEN")] | length
+  }) |
+  sort_by(-.total) |
+  .[] |
+  "  - \(.agent): \(.total) PRs (\(.merged) merged, \(.closed) closed, \(.open) open)"
+' 2>/dev/null || echo "  (no agent PR data)")
+
+# Get merged PR highlights (sort by mergedAt descending)
+MERGED_PRS=$(echo "$PR_DATA" | jq -r --arg days "$DAYS" '
+  ($days | tonumber) as $d |
+  (now - ($d * 86400)) as $cutoff |
+  [.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] |
+  [.[] | select((.createdAt | fromdateiso8601) > $cutoff)] |
+  [.[] | select(.state == "MERGED")] |
+  sort_by(.mergedAt) | reverse |
+  .[0:5] |
+  .[] |
+  "  - #\(.number): \(.title)"
+' 2>/dev/null || echo "  (none)")
+
+# Collect issue data
+ISSUE_DATA=$(gh issue list --state all --limit 200 --json author,createdAt,state,title,number 2>/dev/null)
+
+ISSUE_SUMMARY=$(echo "$ISSUE_DATA" | jq -r --arg days "$DAYS" '
+  ($days | tonumber) as $d |
+  (now - ($d * 86400)) as $cutoff |
+  [.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] |
+  [.[] | select((.createdAt | fromdateiso8601) > $cutoff)] |
+  group_by(.author.login) |
+  map({
+    agent: .[0].author.login,
+    total: length,
+    open: [.[] | select(.state == "OPEN")] | length,
+    closed: [.[] | select(.state == "CLOSED")] | length
+  }) |
+  sort_by(-.total) |
+  .[] |
+  "  - \(.agent): \(.total) issues (\(.open) open, \(.closed) closed)"
+' 2>/dev/null || echo "  (no agent issue data)")
+
+# Calculate totals
+AGENT_COUNT=$(echo "$PR_DATA" | jq '[.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] | map(.author.login) | unique | length' 2>/dev/null || echo "0")
+TOTAL_PRS=$(echo "$PR_DATA" | jq --arg days "$DAYS" '
+  ($days | tonumber) as $d |
+  (now - ($d * 86400)) as $cutoff |
+  [.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] |
+  [.[] | select((.createdAt | fromdateiso8601) > $cutoff)] |
+  length
+' 2>/dev/null || echo "0")
+MERGED_COUNT=$(echo "$PR_DATA" | jq --arg days "$DAYS" '
+  ($days | tonumber) as $d |
+  (now - ($d * 86400)) as $cutoff |
+  [.[] | select(.author.login != null) | select(.author.login | test("-ricon$"))] |
+  [.[] | select((.createdAt | fromdateiso8601) > $cutoff)] |
+  [.[] | select(.state == "MERGED")] |
+  length
+' 2>/dev/null || echo "0")
+
+# Handle empty sections
+if [ -z "$PR_SUMMARY" ]; then
+  PR_SUMMARY="  (no agent PRs this period)"
+fi
+if [ -z "$ISSUE_SUMMARY" ]; then
+  ISSUE_SUMMARY="  (no agent issues this period)"
+fi
+if [ -z "$MERGED_PRS" ]; then
+  MERGED_PRS="  (none)"
+fi
+
+# Generate email body
+EMAIL_BODY="Weekly Agent Activity Digest
+$START_DATE to $END_DATE
+
+SUMMARY
+-------
+Active agents: $AGENT_COUNT
+Total PRs: $TOTAL_PRS ($MERGED_COUNT merged)
+
+PULL REQUESTS BY AGENT
+----------------------
+$PR_SUMMARY
+
+ISSUES BY AGENT
+---------------
+$ISSUE_SUMMARY
+
+RECENTLY MERGED PRs
+-------------------
+$MERGED_PRS
+
+---
+This digest was automatically generated.
+View full activity: https://github.com/ricon-family/shimmer/pulse"
+
+if [ -n "$DRY_RUN" ]; then
+  echo "=== DRY RUN - Email would be sent with: ==="
+  echo ""
+  echo "To: admin@ricon.family"
+  echo "Subject: [Shimmer] Weekly Agent Activity Digest ($START_DATE - $END_DATE)"
+  echo ""
+  echo "$EMAIL_BODY"
+else
+  # Send email using himalaya
+  himalaya message send << EOF
+From: quick@ricon.family
+To: admin@ricon.family
+Subject: [Shimmer] Weekly Agent Activity Digest ($START_DATE - $END_DATE)
+
+$EMAIL_BODY
+EOF
+  echo "Digest email sent to admin@ricon.family"
+fi
