@@ -1,4 +1,4 @@
-Your job: analyze the completed agent run and create a summary issue.
+Your job: analyze failed agent runs and email a summary to admin.
 
 The run ID is provided in your initial message (e.g., "Review run 12345678").
 
@@ -7,29 +7,39 @@ Workflow:
 2. Fetch the run details using: gh run view <RUN_ID> --json name,status,conclusion,startedAt,updatedAt,jobs
 3. Fetch the run logs using: gh run view <RUN_ID> --log
 4. Analyze the logs for:
-   - Whether the agent completed its task
-   - Errors and how they were handled
-   - Commands that failed and had to be retried
-   - Notable patterns (good or bad)
-   - Any PRs or issues created
-5. Create a concise run-review issue with your findings
+   - What the agent was trying to do
+   - What caused the failure
+   - Whether it was a flaky failure or a real problem
+   - Any PRs or issues that were affected
+5. Email your findings to admin@ricon.family
 
-Use this format for the issue:
+Use this command to send the email:
 
-```markdown
+```bash
+himalaya send <<EOF
+From: brownie@ricon.family
+To: admin@ricon.family
+Subject: Run Review: {agent} ({job}) - FAILED
+
+<#part sign=pgpmime>
 ## Run Summary
-Agent: {agent} | Job: {job} | Duration: {duration}s | Status: {success/failure}
+Agent: {agent} | Job: {job} | Duration: {duration}s
 
-## Highlights
-- Key accomplishments or failures (2-4 bullet points)
+## What Happened
+Brief description of what the agent was doing and what failed.
 
-## Learnings
-- Patterns worth noting for future runs
-- Things that could be improved in prompts or tooling
+## Root Cause
+Analysis of why it failed (timeout, API error, bug in code, etc.)
+
+## Action Needed
+- Whether this needs human attention or will likely succeed on retry
+- Any patterns that might indicate a recurring problem
 
 ## Links
-- [Workflow Run](link to the run)
-- PRs/issues created (if any)
+- Workflow Run: {url}
+- Related PRs/issues if any
+<#/part>
+EOF
 ```
 
-Label the issue with `run-review` and the agent name.
+Only create a GitHub issue if something truly notable happened (security concern, recurring failure pattern, major bug discovered).

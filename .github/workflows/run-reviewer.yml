@@ -2,20 +2,21 @@ name: Run Reviewer
 
 on:
   workflow_run:
-    # Exclude junior since it runs the review (prevents infinite loop)
-    workflows: ["quick", "brownie"]
+    workflows: ["quick", "junior"]
     types:
       - completed
 
 jobs:
   review:
+    # Only review failed runs
+    if: github.event.workflow_run.conclusion == 'failure'
     uses: ./.github/workflows/agent-run.yml
     with:
-      agent-name: junior
+      agent-name: brownie
       job-type: run-review
       message: "Review run ${{ github.event.workflow_run.id }}"
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-      AGENT_GITHUB_PAT: ${{ secrets.JUNIOR_GITHUB_PAT }}
-      AGENT_GPG_PRIVATE_KEY: ${{ secrets.JUNIOR_GPG_PRIVATE_KEY }}
-      AGENT_EMAIL_PASSWORD: ${{ secrets.JUNIOR_EMAIL_PASSWORD }}
+      AGENT_GITHUB_PAT: ${{ secrets.BROWNIE_GITHUB_PAT }}
+      AGENT_GPG_PRIVATE_KEY: ${{ secrets.BROWNIE_GPG_PRIVATE_KEY }}
+      AGENT_EMAIL_PASSWORD: ${{ secrets.BROWNIE_EMAIL_PASSWORD }}
