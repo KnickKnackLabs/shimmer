@@ -21,9 +21,11 @@ The run ID is provided in your message (e.g., "Log run 12345678").
 
 ## Email Format
 
+Use your own email address as defined in your agent prompt:
+
 ```
 himalaya template send <<'EOF'
-From: brownie@ricon.family
+From: <your-agent>@ricon.family
 To: admin@ricon.family
 Subject: Run Digest: <agent> (<job>) - <SUCCESS/FAILURE>
 

@@ -13,11 +13,11 @@ Workflow:
    - Any PRs or issues that were affected
 5. Email your findings to admin@ricon.family
 
-Use this command to send the email:
+Use this command to send the email (use your own email address as defined in your agent prompt):
 
 ```bash
 himalaya template send <<EOF
-From: brownie@ricon.family
+From: <your-agent>@ricon.family
 To: admin@ricon.family
 Subject: Run Review: {agent} ({job}) - FAILED
 
