@@ -8,7 +8,13 @@ Agents work on this repository via scheduled GitHub Actions runs.
 
 ## Commands
 
-See README.md for available mise tasks.
+Run `mise tasks` to see all available tasks. Key ones:
+
+- `mise run check` - Run all checks (test, format, lint) before committing
+- `mise run test` - Run tests
+- `mise run format` - Check formatting (use `--fix` to auto-fix)
+- `mise run lint` - Run Credo linter
+- `mise run tasks` - List open GitHub issues
 
 ## Constraints
 
@@ -24,7 +30,7 @@ This file is for any agent working on this repository.
 
 ## PR Process
 
-- Run tests locally before pushing
+- Run `mise run check` before pushing to verify tests, formatting, and linting pass
 - After creating or updating a PR, verify all CI checks pass with `mise run wait-for-checks`
 - PRs are merged with squash and the branch is deleted
 
