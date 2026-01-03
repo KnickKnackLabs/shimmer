@@ -80,11 +80,18 @@ jobs:
 
       - name: Determine message
         id: message
+        env:
+          INPUT_MESSAGE: ${{ inputs.message }}
+          BRANCH_NAME: ${{ steps.branch.outputs.name }}
         run: |
-          if [ -z "${{ inputs.message }}" ]; then
-            echo "msg=Branch: ${{ steps.branch.outputs.name }}" >> $GITHUB_OUTPUT
+          if [ -z "$INPUT_MESSAGE" ]; then
+            echo "msg=Branch: $BRANCH_NAME" >> $GITHUB_OUTPUT
           else
-            echo "msg=${{ inputs.message }}" >> $GITHUB_OUTPUT
+            {
+              echo "msg<<EOF"
+              echo "$INPUT_MESSAGE"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
           fi
 
       - name: Run CLI
