@@ -16,7 +16,7 @@ Workflow:
 Use this command to send the email:
 
 ```bash
-himalaya send <<EOF
+himalaya template send <<EOF
 From: brownie@ricon.family
 To: admin@ricon.family
 Subject: Run Review: {agent} ({job}) - FAILED

@@ -2,7 +2,7 @@ name: Run Reviewer
 
 on:
   workflow_run:
-    workflows: ["quick", "junior"]
+    workflows: ["quick", "junior", "brownie"]
     types:
       - completed
 
