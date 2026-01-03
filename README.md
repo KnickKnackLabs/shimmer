@@ -17,6 +17,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run tasks` - List open tasks (GitHub issues)
 - `mise run wip` - Show work in progress (open PRs and issues)
 - `mise run wait-for-checks` - Wait for PR checks to complete
+- `mise run activity` - Show agent activity metrics from GitHub
 - `mise run refresh-token` - Refresh the Claude OAuth token in GitHub secrets
 - `mise run inspect-context <message>` - Inspect the context being sent to Claude
 - `mise run provision-agent <name>` - Provision a new agent (GPG key, GitHub secrets, 1Password)

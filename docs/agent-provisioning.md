@@ -103,6 +103,3 @@ rikonor@gmail.com (personal)
 | brownie | ✅ | ✅ | ✅ | ✅ | ✅ |
 | junior | ✅ | ✅ | ✅ | ✅ | ✅ |
 | johnson | ✅ | ✅ | ✅ | ✅ | ✅ |
-| k7r2 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| x1f9 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| c0da | ✅ | ✅ | ✅ | ✅ | ✅ |
