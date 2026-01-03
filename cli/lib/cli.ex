@@ -10,6 +10,7 @@ defmodule Cli do
   @default_model "claude-opus-4-5-20251101"
   @truncate_edit_limit 60
   @truncate_prompt_limit 100
+  @buffer_flush_timeout_ms 100
 
   defp prompts_dir do
     # Try multiple paths - cwd might be repo root or cli directory
@@ -322,9 +323,6 @@ defmodule Cli do
         wait_for_port(port, retries - 1, interval)
     end
   end
-
-  # Flush partial buffer after this many milliseconds of inactivity
-  @buffer_flush_timeout_ms 100
 
   defp stream_output(port, %{buffer: buffer} = state) do
     receive do
