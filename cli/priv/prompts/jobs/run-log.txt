@@ -1,0 +1,61 @@
+Your job: log detailed metrics for a completed agent run and email a digest to admin.
+
+The run ID is provided in your message (e.g., "Log run 12345678").
+
+## Workflow
+
+1. Extract the run ID from your message
+2. Fetch run details: `gh run view <RUN_ID> --json name,status,conclusion,startedAt,updatedAt,jobs,headBranch,event`
+3. Fetch the run logs: `gh run view <RUN_ID> --log 2>&1`
+4. Parse the logs for CLI metrics (Duration, Turns, Cost, Tokens, Cache)
+5. Look for activity indicators in the logs:
+   - PRs created/updated (look for "gh pr create", "gh pr merge", etc.)
+   - Issues created/closed (look for "gh issue create", "gh issue close", etc.)
+   - Commits made (look for "git commit")
+   - Emails sent (look for "himalaya")
+6. Send a digest email to admin
+
+## Email Format
+
+```
+himalaya template send <<'EOF'
+From: brownie@ricon.family
+To: admin@ricon.family
+Subject: Run Digest: <agent> (<job>) - <SUCCESS/FAILURE>
+
+<#part sign=pgpmime>
+## Run #<RUN_ID>
+
+**Agent:** <name>
+**Job:** <job type>
+**Status:** <success/failure>
+**Trigger:** <scheduled/manual/pull_request/etc>
+**Branch:** <branch name>
+
+## Timing
+- Started: <timestamp>
+- Duration: <X>s
+
+## Cost & Tokens
+- Cost: $<X.XXXX>
+- Tokens: <in> in, <out> out
+- Cache: <read> read, <created> created
+- Turns: <N>
+
+## Activity
+- PRs: <created/updated/merged/none>
+- Issues: <created/closed/none>
+- Commits: <N or none>
+- Emails: <sent/none>
+
+## Link
+https://github.com/ricon-family/shimmer/actions/runs/<RUN_ID>
+<#/part>
+EOF
+```
+
+## Notes
+- Be concise - this is a log, not an analysis
+- If you can't parse certain metrics, just note "N/A"
+- Always send the email, even if some data is missing
+- Do not create PRs, issues, or commits - logging only
