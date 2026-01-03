@@ -445,14 +445,14 @@ defmodule Cli do
     IO.puts("Run Metrics:")
 
     if usage.duration_ms do
-      duration_s = Float.round(usage.duration_ms / 1000, 1)
+      duration_s = :erlang.float_to_binary(usage.duration_ms / 1000, decimals: 1)
       IO.puts("  Duration: #{duration_s}s")
     end
 
     if usage.num_turns, do: IO.puts("  Turns: #{usage.num_turns}")
 
     if usage.cost_usd do
-      cost = Float.round(usage.cost_usd, 4)
+      cost = :erlang.float_to_binary(usage.cost_usd, decimals: 4)
       IO.puts("  Cost: $#{cost}")
     end
 
