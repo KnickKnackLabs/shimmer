@@ -171,10 +171,20 @@ defmodule CliTest do
       }
 
       result = Cli.format_tool_input(input)
-      assert result =~ "  url: https://example.com"
-      # Short prompts should NOT have ellipsis
-      assert result =~ "  prompt: Get content"
-      refute result =~ "Get content..."
+      # Should not have leading empty line when description is missing
+      assert result == "  url: https://example.com\n  prompt: Get content"
+    end
+
+    test "formats WebFetch tool input with url and empty description" do
+      input = %{
+        "url" => "https://example.com",
+        "prompt" => "Get content",
+        "description" => ""
+      }
+
+      result = Cli.format_tool_input(input)
+      # Should not have leading empty line when description is empty
+      assert result == "  url: https://example.com\n  prompt: Get content"
     end
 
     test "formats prompt input without description" do

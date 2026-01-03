@@ -511,9 +511,13 @@ defmodule Cli do
   end
 
   def format_tool_input(%{"url" => url, "prompt" => prompt} = input) do
-    desc = Map.get(input, "description", "")
     prompt_preview = truncate(prompt, @truncate_prompt_limit)
-    "  #{desc}\n  url: #{url}\n  prompt: #{prompt_preview}"
+
+    case Map.get(input, "description") do
+      nil -> "  url: #{url}\n  prompt: #{prompt_preview}"
+      "" -> "  url: #{url}\n  prompt: #{prompt_preview}"
+      desc -> "  #{desc}\n  url: #{url}\n  prompt: #{prompt_preview}"
+    end
   end
 
   def format_tool_input(%{"prompt" => prompt} = input) do
