@@ -15,6 +15,13 @@ Each run starts fresh. To persist memory across runs, use append-only storage:
 
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 
+## Issue Prioritization
+
+When selecting issues to work on, prioritize older issues over newer ones. The age of an
+issue indicates it has been waiting longer for attention. Use `gh issue list --state open`
+and look at creation dates - older issues deserve priority unless there's a specific reason
+to address something newer first.
+
 ## Session Control
 
 To intentionally fail a session (for testing purposes), output `[[ABORT]]` on its own line.
