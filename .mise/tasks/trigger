@@ -4,27 +4,14 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_agent-workflow"
+
 AGENT="${1:-quick}"
 MESSAGE="${2:-}"
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
-# Map agent names to workflow files
-case "$AGENT" in
-  quick)
-    WORKFLOW="quick.yml"
-    ;;
-  brownie)
-    WORKFLOW="brownie.yml"
-    ;;
-  junior)
-    WORKFLOW="junior.yml"
-    ;;
-  *)
-    echo "Unknown agent: $AGENT"
-    echo "Available agents: quick, brownie, junior"
-    exit 1
-    ;;
-esac
+WORKFLOW=$(get_workflow_for_agent "$AGENT") || exit 1
 
 if [ -n "$MESSAGE" ]; then
   gh workflow run "$WORKFLOW" -f message="$MESSAGE"

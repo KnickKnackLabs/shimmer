@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Shared helper for agent-to-workflow mapping
+# Source this file, then call: get_workflow_for_agent <agent_name>
+
+# Known agents and their workflows
+KNOWN_AGENTS="quick brownie junior"
+
+get_workflow_for_agent() {
+  local agent="$1"
+
+  case "$agent" in
+    quick)
+      echo "quick.yml"
+      ;;
+    brownie)
+      echo "brownie.yml"
+      ;;
+    junior)
+      echo "junior.yml"
+      ;;
+    *)
+      echo "Unknown agent: $agent" >&2
+      echo "Available agents: $KNOWN_AGENTS" >&2
+      return 1
+      ;;
+  esac
+}

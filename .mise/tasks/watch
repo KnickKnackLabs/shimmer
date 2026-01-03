@@ -4,25 +4,12 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_agent-workflow"
+
 AGENT="${1:-quick}"
 
-# Map agent names to workflow files
-case "$AGENT" in
-  quick)
-    WORKFLOW="quick.yml"
-    ;;
-  brownie)
-    WORKFLOW="brownie.yml"
-    ;;
-  junior)
-    WORKFLOW="junior.yml"
-    ;;
-  *)
-    echo "Unknown agent: $AGENT"
-    echo "Available agents: quick, brownie, junior"
-    exit 1
-    ;;
-esac
+WORKFLOW=$(get_workflow_for_agent "$AGENT") || exit 1
 
 RUN_ID=$(gh run list --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
 gh run watch "$RUN_ID"
