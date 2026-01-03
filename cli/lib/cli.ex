@@ -223,7 +223,7 @@ defmodule Cli do
         [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
       )
 
-    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil})
+    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil, abort: false})
 
     if status == 124 do
       IO.puts("\n---")
@@ -344,7 +344,15 @@ defmodule Cli do
 
       {^port, {:exit_status, status}} ->
         print_usage_summary(state)
-        status
+
+        # If agent signaled abort, override exit status
+        if state.abort do
+          IO.puts("\n---")
+          IO.puts("Agent requested session abort via [[ABORT]]")
+          1
+        else
+          status
+        end
     after
       @buffer_flush_timeout_ms ->
         # Flush partial buffer on timeout to show long lines in progress
@@ -393,7 +401,13 @@ defmodule Cli do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
         IO.write(text)
-        state
+
+        # Check for ABORT signal from agent
+        if String.contains?(text, "[[ABORT]]") do
+          %{state | abort: true}
+        else
+          state
+        end
 
       # Handle tool use start - show which tool is being called
       {:ok,
