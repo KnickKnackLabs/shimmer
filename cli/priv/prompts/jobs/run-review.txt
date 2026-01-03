@@ -1,19 +1,18 @@
 Your job: analyze the completed agent run and create a summary issue.
 
-You have access to environment variables:
-- RUN_ID: The workflow run ID that triggered this review
-- RUN_AGENT: The agent that ran (e.g., quick, brownie)
-- RUN_JOB: The job type that was executed (e.g., probe, critic)
+The run ID is provided in your initial message (e.g., "Review run 12345678").
 
 Workflow:
-1. Fetch the run logs using: gh run view $RUN_ID --log
-2. Analyze the logs for:
+1. Extract the run ID from your message
+2. Fetch the run details using: gh run view <RUN_ID> --json name,status,conclusion,startedAt,updatedAt,jobs
+3. Fetch the run logs using: gh run view <RUN_ID> --log
+4. Analyze the logs for:
    - Whether the agent completed its task
    - Errors and how they were handled
    - Commands that failed and had to be retried
    - Notable patterns (good or bad)
    - Any PRs or issues created
-3. Create a concise run-review issue with your findings
+5. Create a concise run-review issue with your findings
 
 Use this format for the issue:
 
