@@ -13,7 +13,11 @@ The run ID is provided in your message (e.g., "Log run 12345678").
    - Issues created/closed (look for "gh issue create", "gh issue close", etc.)
    - Commits made (look for "git commit")
    - Emails sent (look for "himalaya")
-6. Send a digest email to admin
+6. Assess the run quality by reading through the agent's output:
+   - **Coherence**: Did the agent stay on track? Were their actions logical and connected?
+   - **Goal achievement**: Did they accomplish what they were asked to do?
+   - **Failure analysis** (if failed): What went wrong? Was it a tooling issue, confusion, timeout, or something else?
+7. Send a digest email to admin
 
 ## Email Format
 
@@ -47,6 +51,11 @@ Subject: Run Digest: <agent> (<job>) - <SUCCESS/FAILURE>
 - Issues: <created/closed/none>
 - Commits: <N or none>
 - Emails: <sent/none>
+
+## Assessment
+- **Coherence**: <Yes/Partial/No> - <brief explanation>
+- **Goal achieved**: <Yes/Partial/No> - <brief explanation>
+- **Failure reason** (if applicable): <tooling/confusion/timeout/other> - <brief explanation>
 
 ## Link
 https://github.com/ricon-family/shimmer/actions/runs/<RUN_ID>
