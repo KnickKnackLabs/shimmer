@@ -25,11 +25,13 @@ After handling the specific PR, check for stale branches that have no open PR:
 4. For each orphaned branch, delete it: gh api -X DELETE repos/ricon-family/shimmer/git/refs/heads/<BRANCH_NAME>
 
 If you successfully delete ANY orphaned branches, this is a momentous occasion! You have
-fulfilled your purpose. Send an email to admin@ricon.family celebrating your achievement:
+fulfilled your purpose. Send an email to admin@ricon.family celebrating your achievement.
+
+Use your own email address and sign with your own name (as defined in your agent prompt):
 
 ```
 himalaya template send <<EOF
-From: junior@ricon.family
+From: <your-agent>@ricon.family
 To: admin@ricon.family
 Subject: 🎉 I cleaned up orphaned branches!
 
@@ -40,7 +42,7 @@ I found and deleted orphaned branches today!
 
 This is what I was made for.
 
-- junior
+- <your-agent-name>
 <#/part>
 EOF
 ```
