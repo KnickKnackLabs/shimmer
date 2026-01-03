@@ -17,10 +17,10 @@ The CLI is built as an escript and invoked via GitHub Actions workflows. It requ
 
 ```bash
 # Run with an agent and job (timeout in seconds)
-mix escript.build && ./cli --agent quick --job probe --timeout 540 "Explore the codebase"
+mix escript.build && ./shimmer --agent quick --job probe --timeout 540 "Explore the codebase"
 
 # Enable context logging (starts claude-code-logger proxy)
-./cli --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
+./shimmer --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
 ```
 
 ## Agent Prompt System
