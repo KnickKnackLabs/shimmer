@@ -6,6 +6,7 @@
 
 This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise tasks` to see available tasks:
 
+- `mise run activity [--days N]` - Show agent activity metrics from GitHub
 - `mise run trigger <agent> [message]` - Trigger an agent workflow manually
 - `mise run status [workflow]` - Check the status of the latest workflow run
 - `mise run logs [workflow] [lines]` - View logs from the latest workflow run
