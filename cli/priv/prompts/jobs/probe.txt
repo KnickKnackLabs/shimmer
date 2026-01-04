@@ -9,3 +9,16 @@ Workflow:
 6. After creating a PR, run `mise run wait-for-checks`
 
 Keep changes focused - one concern per PR.
+
+## Avoiding Conflicts
+
+Before starting implementation, check for file overlap with open PRs:
+
+```bash
+gh pr list --state open --json files --jq '.[].files[].path' | sort -u
+```
+
+If your planned changes overlap significantly with files in open PRs, consider:
+- Waiting for the conflicting PR to merge
+- Coordinating via issue comment
+- Choosing a different issue
