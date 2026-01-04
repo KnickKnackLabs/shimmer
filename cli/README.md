@@ -36,8 +36,8 @@ When an agent runs, available files are concatenated to form the system prompt.
 ### Adding a new agent
 
 1. Create `priv/prompts/agents/<name>.txt` with agent identity
-2. Optionally create or reuse a job in `priv/prompts/jobs/`
-3. Create a workflow in `.github/workflows/<name>.yml`
+2. Create or reuse a job in `priv/prompts/jobs/`
+3. Create a workflow in `.github/workflows/<agent>-<job>.yml` that calls `agent-run.yml` (see existing workflows for the pattern)
 4. Run with `--agent <name> --job <job>`
 
 ## Configuration
