@@ -150,8 +150,8 @@ defmodule Cli do
   2. Agent identity from `priv/prompts/agents/{agent_name}.txt`
   3. Job description from `priv/prompts/jobs/{job_name}.txt` (if provided)
 
-  Returns `nil` if `agent_name` is `nil`. Returns available prompts
-  if some files are missing, or `nil` if all are missing.
+  Returns `nil` if `agent_name` is `nil` or empty. Returns the combined
+  prompt content if at least one file exists, or `nil` if all are missing.
 
   ## Examples
 
