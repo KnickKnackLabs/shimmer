@@ -517,8 +517,7 @@ defmodule Cli do
     prompt_preview = truncate(prompt, @truncate_prompt_limit)
 
     case Map.get(input, "description") do
-      nil -> "  url: #{url}\n  prompt: #{prompt_preview}"
-      "" -> "  url: #{url}\n  prompt: #{prompt_preview}"
+      desc when desc in [nil, ""] -> "  url: #{url}\n  prompt: #{prompt_preview}"
       desc -> "  #{desc}\n  url: #{url}\n  prompt: #{prompt_preview}"
     end
   end
@@ -527,8 +526,7 @@ defmodule Cli do
     prompt_preview = truncate(prompt, @truncate_prompt_limit)
 
     case Map.get(input, "description") do
-      nil -> "  prompt: #{prompt_preview}"
-      "" -> "  prompt: #{prompt_preview}"
+      desc when desc in [nil, ""] -> "  prompt: #{prompt_preview}"
       desc -> "  #{desc}\n  prompt: #{prompt_preview}"
     end
   end
