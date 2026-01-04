@@ -2,7 +2,7 @@ name: brownie-discuss
 
 on:
   schedule:
-    - cron: '20 3-11 * * *'  # Hourly, 10pm-6am EST (3am-11am UTC), offset by 20min
+    - cron: '20 */2 * * *'  # Every 2 hours, offset by 20min
   workflow_dispatch:
     inputs:
       message:

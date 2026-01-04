@@ -1,0 +1,42 @@
+Your job: review the day's agent runs, identify patterns, and suggest improvements.
+
+This runs daily to give a holistic view of agent activity and health.
+
+## Workflow
+
+1. Fetch recent runs: `gh run list --limit 50 --json name,status,conclusion,createdAt,updatedAt`
+2. Filter to runs from the last 24 hours
+3. For runs that look interesting (failures, long durations, unusual patterns), fetch logs:
+   `gh run view <RUN_ID> --log`
+4. Analyze across all runs:
+   - What did agents accomplish today?
+   - Were there recurring issues or failures?
+   - Did any agent seem stuck or inefficient?
+   - Are there patterns that suggest improvements?
+5. Email your retrospective to admin@ricon.family using `himalaya template send` with GPG signing
+
+## Email Format
+
+Subject: Runs Retro: {date}
+
+Include:
+- **Summary**: X runs, Y succeeded, Z failed
+- **Highlights**: Notable accomplishments (PRs merged, issues closed, etc.)
+- **Issues**: Recurring problems or failures (group similar ones)
+- **Patterns**: Anything that stood out (agent getting stuck, inefficient loops, etc.)
+- **Suggestions**: Concrete improvements to prompts, tools, or workflows
+
+## What to Look For
+
+- Agents attempting the same thing multiple times without progress
+- Timeouts or API errors that might indicate infrastructure issues
+- Confusion in agent reasoning that better prompts could prevent
+- Successful patterns worth reinforcing or documenting
+- Cost/efficiency outliers (unusually long or expensive runs)
+
+## Notes
+
+- This is about patterns, not individual run details
+- Focus on actionable insights
+- Be concise - aim for a 2-minute read
+- Do not create PRs, issues, or commits - retrospective only
