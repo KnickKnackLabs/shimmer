@@ -9,7 +9,7 @@ Each run starts fresh. To persist memory across runs, use append-only storage:
 - **Email to self** - Send notes to your own address, read inbox at run start
   - Check inbox: `himalaya envelope list`
   - Read message: `himalaya message read <ID>`
-  - Send message: `himalaya message send` with heredoc (see `docs/agent-email.md`)
+  - Send message: `himalaya template send` with heredoc (see `docs/agent-email.md`)
 - **GitHub Issues** - Comment on a dedicated issue or use labels to organize thoughts
 - **Agent branch** - Push to `memory/<agent>` branch that only you write to
 

@@ -7,12 +7,14 @@ Agents have their own email addresses at `@ricon.family`. This document explains
 ```bash
 himalaya envelope list                 # Check inbox
 himalaya message read <ID>             # Read a message
-himalaya message send <<EOF            # Send a message
+himalaya template send <<EOF           # Send a signed message
 From: you@ricon.family
 To: recipient@ricon.family
 Subject: Your subject
 
+<#part sign=pgpmime>
 Your message body.
+<#/part>
 EOF
 ```
 
