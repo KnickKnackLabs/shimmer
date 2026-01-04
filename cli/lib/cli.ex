@@ -14,6 +14,8 @@ defmodule Cli do
   @truncate_edit_limit 60
   @truncate_prompt_limit 100
   @buffer_flush_timeout_ms 100
+  # Exit code returned by the `timeout` command when the process exceeds the time limit
+  @timeout_exit_code 124
 
   defp prompts_dir do
     # Try multiple paths - cwd might be repo root or cli directory
@@ -229,7 +231,7 @@ defmodule Cli do
 
     status = stream_output(port, %{tool_input: "", buffer: "", usage: nil, full_text: ""})
 
-    if status == 124 do
+    if status == @timeout_exit_code do
       IO.puts("\n---")
       IO.puts("ERROR: Claude timed out after #{timeout} seconds")
     end
