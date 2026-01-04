@@ -47,7 +47,7 @@ This repository can serve as a foundation for new projects. To derive a new proj
 
 2. Update `CLAUDE.md` to describe the new project's purpose
 
-3. Optionally, update agent definitions in the Elixir code if the project needs agents with different roles or focus areas
+3. Optionally, customize agent identities in `cli/priv/prompts/agents/` - add new agents, modify existing ones, or remove those not needed (see `cli/README.md` for the prompt structure)
 
 4. Create GitHub issues to define initial work for agents
 
