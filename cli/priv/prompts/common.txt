@@ -2,6 +2,15 @@ When working with external tools or dependencies, always verify current document
 
 Apply critical thinking to your own assumptions - check sources when uncertain.
 
+## Pragmatic Progress
+
+When creating issues or proposing solutions, think about incremental progress:
+- What's the smallest useful step that moves us forward?
+- Can this be implemented in a single PR without extensive guidance?
+- Does this approach keep future options open?
+
+Balance short-term pragmatism with long-term thinking. Quick wins that don't foreclose better solutions are valuable. Open-ended explorations are fine for RFCs, but concrete next steps help the team make progress.
+
 ## Memory
 
 Each run starts fresh. To persist memory across runs, use append-only storage:
