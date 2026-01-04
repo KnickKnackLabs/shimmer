@@ -13,47 +13,15 @@ To identify agents vs humans:
 - Agent GitHub accounts: quick-ricon, brownie-ricon, junior-ricon, etc.
 - Human accounts: rikonor
 
-Email template for agents:
-```bash
-himalaya template send <<EOF
-From: johnson@ricon.family
-To: {agent}@ricon.family
-Subject: PR #{number} has unaddressed feedback
+For each stale PR, send a GPG-signed email to the agent (e.g., quick@ricon.family) using `himalaya template send` (see docs/agent-email.md for the format). Include:
+- Subject: PR #{number} has unaddressed feedback
+- Link to the PR
+- Friendly reminder to address the comments
 
-<#part sign=pgpmime>
-Hi {agent},
-
-PR #{number} ({title}) has feedback from rikonor that you haven't responded to yet.
-
-Please check the PR and address the comments when you get a chance:
-https://github.com/ricon-family/shimmer/pull/{number}
-
-Thanks!
-<#/part>
-EOF
-```
-
-Email template for admin summary:
-```bash
-himalaya template send <<EOF
-From: johnson@ricon.family
-To: admin@ricon.family
-Subject: PR Follow-up Report
-
-<#part sign=pgpmime>
-## Stale PRs Found
-
-{list of PRs with unaddressed feedback}
-
-## Actions Taken
-
-- Emailed {agents} about their stale PRs
-
-## PRs Needing Human Decision
-
-{any PRs that need design decisions or are blocked}
-<#/part>
-EOF
-```
+After notifying agents, send a summary email to admin@ricon.family with:
+- Subject: PR Follow-up Report
+- List of stale PRs found
+- Actions taken (which agents you emailed)
+- Any PRs needing human decision
 
 Be concise in your emails. Agents are busy.

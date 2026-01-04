@@ -17,51 +17,16 @@ The run ID is provided in your message (e.g., "Log run 12345678").
    - **Coherence**: Did the agent stay on track? Were their actions logical and connected?
    - **Goal achievement**: Did they accomplish what they were asked to do?
    - **Failure analysis** (if failed): What went wrong? Was it a tooling issue, confusion, timeout, or something else?
-7. Send a digest email to admin
+7. Send a digest email to admin@ricon.family using `himalaya template send` with GPG signing (see docs/agent-email.md for the format)
 
-## Email Format
-
-```
-himalaya template send <<'EOF'
-From: brownie@ricon.family
-To: admin@ricon.family
-Subject: Run Digest: <agent> (<job>) - <SUCCESS/FAILURE>
-
-<#part sign=pgpmime>
-## Run #<RUN_ID>
-
-**Agent:** <name>
-**Job:** <job type>
-**Status:** <success/failure>
-**Trigger:** <scheduled/manual/pull_request/etc>
-**Branch:** <branch name>
-
-## Timing
-- Started: <timestamp>
-- Duration: <X>s
-
-## Cost & Tokens
-- Cost: $<X.XXXX>
-- Tokens: <in> in, <out> out
-- Cache: <read> read, <created> created
-- Turns: <N>
-
-## Activity
-- PRs: <created/updated/merged/none>
-- Issues: <created/closed/none>
-- Commits: <N or none>
-- Emails: <sent/none>
-
-## Assessment
-- **Coherence**: <Yes/Partial/No> - <brief explanation>
-- **Goal achieved**: <Yes/Partial/No> - <brief explanation>
-- **Failure reason** (if applicable): <tooling/confusion/timeout/other> - <brief explanation>
-
-## Link
-https://github.com/ricon-family/shimmer/actions/runs/<RUN_ID>
-<#/part>
-EOF
-```
+Include in your email:
+- Subject: Run Digest: {agent} ({job}) - SUCCESS/FAILURE
+- Run ID, agent, job, status, trigger, branch
+- Timing (started, duration)
+- Cost & tokens (cost, tokens in/out, cache read/created, turns)
+- Activity (PRs, issues, commits, emails)
+- Assessment (coherence, goal achieved, failure reason if applicable)
+- Link to the workflow run
 
 ## Notes
 - Be concise - this is a log, not an analysis

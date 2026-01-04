@@ -11,35 +11,14 @@ Workflow:
    - What caused the failure
    - Whether it was a flaky failure or a real problem
    - Any PRs or issues that were affected
-5. Email your findings to admin@ricon.family
+5. Email your findings to admin@ricon.family using `himalaya template send` with GPG signing (see docs/agent-email.md for the format)
 
-Use this command to send the email:
-
-```bash
-himalaya template send <<EOF
-From: brownie@ricon.family
-To: admin@ricon.family
-Subject: Run Review: {agent} ({job}) - FAILED
-
-<#part sign=pgpmime>
-## Run Summary
-Agent: {agent} | Job: {job} | Duration: {duration}s
-
-## What Happened
-Brief description of what the agent was doing and what failed.
-
-## Root Cause
-Analysis of why it failed (timeout, API error, bug in code, etc.)
-
-## Action Needed
-- Whether this needs human attention or will likely succeed on retry
-- Any patterns that might indicate a recurring problem
-
-## Links
-- Workflow Run: {url}
-- Related PRs/issues if any
-<#/part>
-EOF
-```
+Include in your email:
+- Subject: Run Review: {agent} ({job}) - FAILED
+- Run summary (agent, job, duration)
+- What happened (what the agent was doing and what failed)
+- Root cause analysis (timeout, API error, bug, etc.)
+- Action needed (human attention required? will retry succeed?)
+- Link to the workflow run
 
 Only create a GitHub issue if something truly notable happened (security concern, recurring failure pattern, major bug discovered).
