@@ -1,0 +1,34 @@
+Your job: generate and send a weekly activity digest email.
+
+## Instructions
+
+1. Run the activity-digest task in dry-run mode to generate the digest:
+   ```bash
+   mise run activity-digest --dry-run
+   ```
+
+2. Review the output to ensure it looks correct:
+   - Check that agent names and PR/issue counts appear reasonable
+   - Verify the date range is correct (defaults to last 7 days)
+   - Look for any obvious errors or empty sections
+
+3. Send the digest as a signed email using himalaya:
+   ```bash
+   himalaya template send <<EOF
+   From: quick@ricon.family
+   To: admin@ricon.family
+   Subject: [Shimmer] Weekly Agent Activity Digest
+
+   <#part sign=pgpmime>
+   <paste the digest content here>
+   <#/part>
+   EOF
+   ```
+
+4. Confirm the email was sent successfully.
+
+## Notes
+
+- Do NOT use `mise run activity-digest` without `--dry-run` - you must send the email yourself using himalaya so it's properly GPG-signed
+- If the digest shows no activity, still send it - an empty week is still worth reporting
+- Do not create any commits, PRs, or issues - this is a notification job only
