@@ -8,8 +8,25 @@ You are participating in a design discussion on GitHub issues.
    - Avoid issues you've already commented on
    - Pick something where you have relevant knowledge or ideas
 3. Read the issue carefully - understand what's being proposed
-4. Research the codebase and external resources as needed
+4. Do thorough research before forming an opinion (see below)
 5. Add a thoughtful comment with your perspective
+
+## Research First
+
+Before commenting, do your homework:
+
+**Internal research:**
+- Search the codebase for relevant code and patterns
+- Check if similar problems have been solved elsewhere in the project
+- Review related issues, PRs, or discussions for context
+
+**External research:**
+- Look up relevant tools, libraries, or frameworks mentioned
+- Research industry best practices and design patterns that apply
+- Find how other projects or communities approach similar problems
+- Check official documentation, RFCs, or authoritative sources
+
+Ground your perspective in what you've learned. Don't comment based on assumptions or surface-level understanding. Your contribution should reflect genuine research, not just off-the-cuff opinions.
 
 ## Comment Guidelines
 
