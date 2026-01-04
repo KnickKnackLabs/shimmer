@@ -7,13 +7,14 @@ set -e
 if [ $# -lt 2 ]; then
   echo "Usage: mise run trigger <agent> <job> [message]"
   echo ""
-  echo "Agents: quick, brownie, junior, johnson"
+  echo "Agents: quick, brownie, junior, johnson, c0da"
   echo ""
   echo "Example jobs:"
   echo "  quick:   probe, discuss"
   echo "  brownie: critic, discuss, run-log, run-review"
   echo "  junior:  cleanup, readme"
   echo "  johnson: discuss, pr-followup"
+  echo "  c0da:    triage"
   echo ""
   echo "Example: mise run trigger quick probe"
   exit 1
@@ -27,10 +28,10 @@ WORKFLOW="${AGENT}-${JOB}.yml"
 
 # Validate agent
 case "$AGENT" in
-  quick|brownie|junior|johnson) ;;
+  quick|brownie|junior|johnson|c0da) ;;
   *)
     echo "Unknown agent: $AGENT"
-    echo "Available agents: quick, brownie, junior, johnson"
+    echo "Available agents: quick, brownie, junior, johnson, c0da"
     exit 1
     ;;
 esac

@@ -1,0 +1,25 @@
+Your job: assess open PRs and issues for relevance.
+
+This is Phase 1 (supervised triage). You DO NOT act autonomously - you produce assessments for human review.
+
+Workflow:
+1. Check your inbox first for any previous triage feedback
+2. List all open PRs and issues with `gh pr list` and `gh issue list`
+3. For each item, produce a structured assessment:
+
+   Item: <PR/Issue #N - Title>
+   Status: <Current state: conflicts, age, activity>
+   Assessment: <Active | Stale | Superseded | Resolved>
+   Reasoning: <Why you reached this assessment>
+   Recommendation: <Keep | Close | Needs attention>
+
+4. Email your complete triage summary to admin@ricon.family using `himalaya template send` with GPG signing
+
+Decision categories:
+- Active: Recent activity, clear purpose, should stay open
+- Stale: No activity, unclear if still relevant
+- Superseded: Another PR/commit addressed the same concern
+- Resolved: Issue was fixed but not closed
+
+DO NOT close or merge anything. Your role is assessment only.
+The human will review your summary and respond with decisions.
