@@ -2,7 +2,7 @@ name: johnson-discuss
 
 on:
   schedule:
-    - cron: '20,50 * * * *'  # Every 30 minutes, offset by 20
+    - cron: '40 3-11 * * *'  # Hourly, 10pm-6am EST (3am-11am UTC), offset by 40min
   workflow_dispatch:
     inputs:
       message:

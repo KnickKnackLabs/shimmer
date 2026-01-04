@@ -2,7 +2,7 @@ name: quick-discuss
 
 on:
   schedule:
-    - cron: '0,30 * * * *'  # Every 30 minutes
+    - cron: '0 3-11 * * *'  # Hourly, 10pm-6am EST (3am-11am UTC)
   workflow_dispatch:
     inputs:
       message:
