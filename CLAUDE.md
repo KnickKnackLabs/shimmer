@@ -17,10 +17,11 @@ Run `mise tasks` to see all available tasks. Key ones:
 - `mise run format` - Check formatting (use `--fix` to auto-fix)
 - `mise run lint` - Run Credo linter
 - `mise run tasks` - List open GitHub issues
+- `mise run time` - Check elapsed and remaining time during CI runs
 
 ## Constraints
 
-CI runs have limited time. Work efficiently.
+CI runs have limited time. Use `mise run time` to check how much time remains. It will warn you when time is running low.
 
 ## Guidelines
 
