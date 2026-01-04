@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+#MISE description="Show workflow usage and estimated compute minutes"
+#MISE usage="usage [--days N]"
+
+set -e
+
+DAYS="${1:-1}"
+
+export GH_PAGER=""
+
+echo "=== Workflow Usage Report ==="
+echo "Last $DAYS day(s)"
+echo ""
+
+# Calculate date range
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  START_DATE=$(date -v-${DAYS}d +%Y-%m-%d)
+else
+  START_DATE=$(date -d "-$DAYS days" +%Y-%m-%d)
+fi
+
+echo "=== Runs by Workflow ==="
+gh run list --limit 500 --json workflowName,createdAt,updatedAt,status,conclusion 2>/dev/null | jq -r --arg start "$START_DATE" '
+  map(select(.createdAt >= $start)) |
+  group_by(.workflowName) |
+  map({
+    workflow: .[0].workflowName,
+    total: length,
+    success: map(select(.conclusion == "success")) | length,
+    failure: map(select(.conclusion == "failure")) | length,
+    skipped: map(select(.conclusion == "skipped")) | length
+  }) |
+  sort_by(-.total) |
+  .[] |
+  "\(.workflow)\t\(.total)\t\(.success) ok\t\(.failure) fail\t\(.skipped) skip"
+' | column -t -s $'\t'
+
+echo ""
+echo "=== Run Duration Estimates ==="
+gh run list --limit 500 --status success --json workflowName,createdAt,updatedAt 2>/dev/null | jq -r --arg start "$START_DATE" '
+  map(select(.createdAt >= $start)) |
+  map({
+    workflow: .workflowName,
+    duration_sec: ((.updatedAt | fromdateiso8601) - (.createdAt | fromdateiso8601))
+  }) |
+  group_by(.workflow) |
+  map({
+    workflow: .[0].workflow,
+    count: length,
+    avg_min: ((map(.duration_sec) | add) / length / 60 | . * 10 | floor / 10),
+    total_min: ((map(.duration_sec) | add) / 60 | floor)
+  }) |
+  sort_by(-.total_min) |
+  .[] |
+  "\(.workflow)\t\(.count) runs\t~\(.avg_min)m avg\t\(.total_min)m total"
+' | column -t -s $'\t'
+
+echo ""
+echo "=== Totals ==="
+STATS=$(gh run list --limit 500 --json workflowName,createdAt,updatedAt,status,conclusion 2>/dev/null | jq -r --arg start "$START_DATE" '
+  map(select(.createdAt >= $start)) |
+  {
+    total_runs: length,
+    success: map(select(.conclusion == "success")) | length,
+    failure: map(select(.conclusion == "failure")) | length
+  } |
+  "\(.total_runs) runs (\(.success) success, \(.failure) failure)"
+')
+echo "Total: $STATS"
+
+TOTAL_MINUTES=$(gh run list --limit 500 --status success --json createdAt,updatedAt 2>/dev/null | jq -r --arg start "$START_DATE" '
+  map(select(.createdAt >= $start)) |
+  map(((.updatedAt | fromdateiso8601) - (.createdAt | fromdateiso8601))) |
+  add / 60 | floor
+')
+echo "Estimated compute: ~${TOTAL_MINUTES} minutes"
+
+echo ""
+echo "=== Scheduled Workflow Frequencies ==="
+echo "(from .github/workflows/*.yml)"
+grep -rh "cron:" .github/workflows/ 2>/dev/null | sed 's/.*cron://' | sed 's/^ *//' | sort | uniq -c | sort -rn || echo "No cron schedules found"
