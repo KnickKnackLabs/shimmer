@@ -1,28 +1,53 @@
 #!/usr/bin/env bash
 #MISE description="Watch the latest workflow run until completion"
-#MISE usage="watch [agent]"
+#MISE usage="watch <agent> <job>"
 
 set -e
 
-AGENT="${1:-quick}"
+if [ $# -lt 2 ]; then
+  echo "Usage: mise run watch <agent> <job>"
+  echo ""
+  echo "Agents: quick, brownie, junior, johnson, c0da"
+  echo ""
+  echo "Example jobs:"
+  echo "  quick:   probe, discuss"
+  echo "  brownie: critic, discuss, run-log, run-review"
+  echo "  junior:  cleanup, readme"
+  echo "  johnson: discuss, pr-followup"
+  echo "  c0da:    triage, activity-digest"
+  echo ""
+  echo "Example: mise run watch quick probe"
+  exit 1
+fi
 
-# Map agent names to workflow files
+AGENT="$1"
+JOB="$2"
+WORKFLOW="${AGENT}-${JOB}.yml"
+
+# Validate agent
 case "$AGENT" in
-  quick)
-    WORKFLOW="quick.yml"
-    ;;
-  brownie)
-    WORKFLOW="brownie.yml"
-    ;;
-  junior)
-    WORKFLOW="junior.yml"
-    ;;
+  quick|brownie|junior|johnson|c0da) ;;
   *)
     echo "Unknown agent: $AGENT"
-    echo "Available agents: quick, brownie, junior"
+    echo "Available agents: quick, brownie, junior, johnson, c0da"
     exit 1
     ;;
 esac
 
+# Validate workflow exists
+if [ ! -f ".github/workflows/$WORKFLOW" ]; then
+  echo "Workflow not found: $WORKFLOW"
+  echo ""
+  echo "Available workflows for $AGENT:"
+  ls .github/workflows/${AGENT}-*.yml 2>/dev/null | xargs -n1 basename | sed 's/^/  /' || echo "  (none)"
+  exit 1
+fi
+
 RUN_ID=$(gh run list --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
+
+if [ -z "$RUN_ID" ]; then
+  echo "No runs found for workflow: $WORKFLOW"
+  exit 1
+fi
+
 gh run watch "$RUN_ID"
