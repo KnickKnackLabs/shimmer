@@ -34,6 +34,7 @@ defmodule Cli do
   @doc """
   Escript entry point. Parses args, runs the CLI, and exits with the returned status.
   """
+  @spec main([String.t()]) :: no_return()
   def main(args) do
     args |> run() |> System.halt()
   end
@@ -42,6 +43,7 @@ defmodule Cli do
   Runs the CLI with the given arguments and returns an exit code.
   Does not call System.halt - suitable for testing.
   """
+  @spec run([String.t()]) :: non_neg_integer()
   def run(args) do
     {opts, rest} = parse_args(args)
 
@@ -159,6 +161,7 @@ defmodule Cli do
       nil
 
   """
+  @spec load_system_prompt(String.t() | nil, String.t() | nil) :: String.t() | nil
   def load_system_prompt(nil, _job), do: nil
   def load_system_prompt("", _job), do: nil
 
@@ -180,6 +183,7 @@ defmodule Cli do
   end
 
   # Keep backward-compatible 1-arity version for tests
+  @spec load_system_prompt(String.t() | nil) :: String.t() | nil
   def load_system_prompt(agent_name), do: load_system_prompt(agent_name, nil)
 
   defp read_prompt_file(path) do
@@ -377,6 +381,7 @@ defmodule Cli do
 
   Returns `:ok` after writing any extracted text to stdout.
   """
+  @spec flush_partial_buffer(String.t()) :: :ok
   def flush_partial_buffer(partial) do
     # Try to extract text from partial JSON if it looks like a streaming event
     # Pattern: look for "text":" followed by content
@@ -398,7 +403,15 @@ defmodule Cli do
     end
   end
 
+  @typep stream_state :: %{
+           tool_input: String.t(),
+           buffer: String.t(),
+           usage: map() | nil,
+           full_text: String.t()
+         }
+
   @doc false
+  @spec process_line(String.t(), stream_state()) :: stream_state()
   def process_line(line, state) do
     case Jason.decode(line) do
       # Handle streaming text deltas
@@ -492,6 +505,7 @@ defmodule Cli do
   Formats tool input map into a human-readable string for display.
   Returns nil for unrecognized input formats.
   """
+  @spec format_tool_input(map()) :: String.t() | nil
   def format_tool_input(%{"command" => cmd}) do
     "  $ #{cmd}"
   end
