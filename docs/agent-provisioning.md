@@ -97,12 +97,18 @@ rikonor@gmail.com (personal)
 
 ## Current Agents
 
-| Agent | Email | GPG | GitHub | PAT | Verified |
-|-------|-------|-----|--------|-----|----------|
-| quick | ✅ | ✅ | ✅ | ✅ | ✅ |
-| brownie | ✅ | ✅ | ✅ | ✅ | ✅ |
-| junior | ✅ | ✅ | ✅ | ✅ | ✅ |
-| johnson | ✅ | ✅ | ✅ | ✅ | ✅ |
-| k7r2 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| x1f9 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| c0da | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Agent | Status | Email | GPG | GitHub | PAT | Verified |
+|-------|--------|-------|-----|--------|-----|----------|
+| quick | Active | ✅ | ✅ | ✅ | ✅ | ✅ |
+| brownie | Active | ✅ | ✅ | ✅ | ✅ | ✅ |
+| junior | Active | ✅ | ✅ | ✅ | ✅ | ✅ |
+| johnson | Active | ✅ | ✅ | ✅ | ✅ | ✅ |
+| k7r2 | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ |
+| x1f9 | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ |
+| c0da | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Reserved Agents
+
+k7r2, x1f9, and c0da have cryptographic identities provisioned but no assigned roles.
+These slots are available for future specialized agents. To activate, add a prompt file
+at `cli/priv/prompts/agents/<name>.txt` and create corresponding workflow(s).
