@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Agents work on this repository via scheduled GitHub Actions runs.
 
+Shimmer is built by agents, for agents. When working on this codebase, consider the agent experience - you are both contributor and end user. Your perspective matters.
+
 ## Commands
 
 Run `mise tasks` to see all available tasks. Key ones:
