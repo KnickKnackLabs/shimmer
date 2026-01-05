@@ -554,6 +554,32 @@ defmodule Cli do
     end
   end
 
+  def format_tool_input(%{"todos" => todos}) when is_list(todos) do
+    count = length(todos)
+    first = List.first(todos)
+    preview = if first, do: ": #{truncate(first["content"] || "", 50)}", else: ""
+    "  #{count} todo(s)#{preview}"
+  end
+
+  def format_tool_input(%{"query" => query}) do
+    "  search: #{truncate(query, 80)}"
+  end
+
+  def format_tool_input(%{"operation" => op, "filePath" => path, "line" => line}) do
+    "  #{op} at #{path}:#{line}"
+  end
+
+  def format_tool_input(%{"skill" => skill} = input) do
+    case Map.get(input, "args") do
+      nil -> "  skill: #{skill}"
+      args -> "  skill: #{skill} #{truncate(args, 50)}"
+    end
+  end
+
+  def format_tool_input(%{"shell_id" => id}) do
+    "  shell: #{id}"
+  end
+
   def format_tool_input(_), do: nil
 
   defp truncate(string, limit) do
