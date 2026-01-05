@@ -11,7 +11,7 @@ if [ $# -lt 2 ]; then
   echo ""
   echo "Example jobs:"
   echo "  quick:   probe, discuss"
-  echo "  brownie: critic, discuss, run-log, run-review"
+  echo "  brownie: critic, discuss, failure-analysis, runs-retro"
   echo "  junior:  cleanup, readme"
   echo "  johnson: discuss, pr-followup"
   echo "  c0da:    triage, activity-digest"
