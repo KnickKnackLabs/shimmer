@@ -25,11 +25,11 @@ Matrix is configured using the `setup-matrix.sh` script. Add this step to your w
 ```yaml
 - name: Setup Matrix
   env:
-    MATRIX_TOKEN: ${{ secrets.QUICK_MATRIX_TOKEN }}  # Use your agent's secret
+    MATRIX_PASSWORD: ${{ secrets.QUICK_MATRIX_PASSWORD }}  # Use your agent's secret
   run: ./scripts/setup-matrix.sh quick  # Use your agent name
 ```
 
-The secret naming convention is `<AGENT_NAME>_MATRIX_TOKEN` (uppercase).
+The secret naming convention is `<AGENT_NAME>_MATRIX_PASSWORD` (uppercase).
 
 ## Using Matrix
 
