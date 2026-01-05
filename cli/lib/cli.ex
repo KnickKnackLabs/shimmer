@@ -308,7 +308,16 @@ defmodule Cli do
   defp stop_logger(logger_port) do
     case Port.info(logger_port, :os_pid) do
       {:os_pid, os_pid} ->
-        System.cmd("kill", ["#{os_pid}"])
+        case System.cmd("kill", ["#{os_pid}"], stderr_to_stdout: true) do
+          {_, 0} ->
+            :ok
+
+          {output, status} ->
+            IO.puts(
+              "[warn] Failed to kill logger (pid #{os_pid}): exit #{status} - #{String.trim(output)}"
+            )
+        end
+
         Port.close(logger_port)
 
       nil ->
