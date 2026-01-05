@@ -27,7 +27,7 @@ DOMAIN="ricon.family"
 HOMESERVER="https://matrix.ricon.family"
 
 # Default room for agents (Welcome room)
-DEFAULT_ROOM="!QpXvgUwQAdmpoOwrEe:ricon.family"
+DEFAULT_ROOM="!vkxFpCzDfFAFHjipPU:ricon.family"
 
 # Login with matrix-commander (creates credentials.json automatically)
 # Note: Use full user ID (@agent:ricon.family) because homeserver is matrix.ricon.family
