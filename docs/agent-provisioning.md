@@ -111,6 +111,7 @@ rikonor@gmail.com (personal)
 | brownie | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | junior | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | johnson | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rho | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | k7r2 | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | x1f9 | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | c0da | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
