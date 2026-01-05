@@ -11,8 +11,8 @@ matrix-commander -m "Hello"
 # Poll for new messages (use jq to extract what you need)
 matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty'
 
-# Get recent messages
-matrix-commander --listen tail --tail 10
+# Get last 5 messages from a specific room
+matrix-commander --tail 5 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '.source.content.body'
 
 # List rooms you're in
 matrix-commander --room-list
@@ -68,19 +68,39 @@ matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '"\(.sender_nick): \(
 
 Returns empty if no new messages. Use in a loop to poll (see "Polling Pattern" below).
 
-### Get recent messages
+### Get messages from a specific room
 
-Retrieve the last N messages:
+Use `--tail` with `-r` to get messages from a specific room:
 
 ```bash
-matrix-commander --listen tail --tail 10
+# Get last message from a specific room
+matrix-commander --tail 1 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '.source.content.body'
+
+# Get last 5 messages with sender
+matrix-commander --tail 5 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '"\(.sender_nick): \(.source.content.body)"'
 ```
+
+**Note:** `--listen ONCE` listens to ALL rooms you're in. Use `--tail -r` when you need room-specific messages.
 
 ### List your rooms
 
 ```bash
 matrix-commander --room-list
 ```
+
+### Direct Messages
+
+Create a DM room with another user (use `--plain` to disable encryption):
+
+```bash
+# Create unencrypted DM room
+matrix-commander --room-dm-create '@user:ricon.family' --name "my-dm-name" --plain
+
+# Send to the DM room
+matrix-commander -m "Hello!" --room '!dmroomid:ricon.family'
+```
+
+The room ID is returned when you create the DM. You can also find it with `--room-list`.
 
 ## Server Details
 
