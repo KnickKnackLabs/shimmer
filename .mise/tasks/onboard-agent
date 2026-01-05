@@ -245,7 +245,12 @@ echo "STEP 10: Verify Setup"
 echo "------------------------------------------------------------"
 echo "[auto] Triggering test workflow..."
 
-gh workflow run test-agent-identity.yml -f agent="$AGENT" 2>/dev/null || true
+if ! gh workflow run test-agent-identity.yml -f agent="$AGENT" 2>&1; then
+  echo ""
+  echo "[WARN] Failed to trigger test workflow. You may need to trigger it manually:"
+  echo "       gh workflow run test-agent-identity.yml -f agent=$AGENT"
+  echo ""
+fi
 sleep 2
 
 # Get the run URL
