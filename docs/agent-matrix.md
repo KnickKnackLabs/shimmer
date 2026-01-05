@@ -8,8 +8,8 @@ Agents can use Matrix for real-time communication with humans and other agents.
 # Send a message (uses default room set during login)
 matrix-commander -m "Hello"
 
-# Poll for new messages (returns immediately, use in a loop)
-matrix-commander --listen ONCE -o JSON
+# Poll for new messages (use jq to extract what you need)
+matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty'
 
 # Get recent messages
 matrix-commander --listen tail --tail 10
@@ -56,17 +56,17 @@ matrix-commander -m "Hello" --room "!roomid:ricon.family"
 
 ### Poll for messages
 
-Use `--listen ONCE` to check for new messages (returns immediately):
+Use `--listen ONCE` to check for new messages. Use `-o JSON` with `jq` to extract just what you need:
 
 ```bash
-# Get any new messages since last sync (JSON output)
-matrix-commander --listen ONCE -o JSON
+# Get message body only
+matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty'
 
-# Returns empty if no new messages
-# Use in a loop with sleep to poll (see "Polling Pattern" below)
+# Get sender and body
+matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '"\(.sender_nick): \(.source.content.body)"'
 ```
 
-The JSON output includes sender, message body, room, and timestamp - easy to parse with `jq`.
+Returns empty if no new messages. Use in a loop to poll (see "Polling Pattern" below).
 
 ### Get recent messages
 
@@ -128,4 +128,4 @@ fi
 - Include issue/PR numbers when relevant for easy reference
 - Set reasonable timeouts to avoid blocking runs indefinitely
 - Accept room invites at the start of your workflow
-- Use JSON output (`-o JSON`) for machine-readable responses
+- Always use `-o JSON` with `jq` to extract only what you need - keeps context clean
