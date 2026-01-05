@@ -2,9 +2,9 @@ Your job: generate and send a weekly activity digest email.
 
 ## Instructions
 
-1. Run the activity-digest task in dry-run mode to generate the digest:
+1. Run the activity-digest task to generate the digest:
    ```bash
-   mise run activity-digest --dry-run
+   mise run activity-digest
    ```
 
 2. Review the output to ensure it looks correct:
@@ -18,6 +18,6 @@ Your job: generate and send a weekly activity digest email.
 
 ## Notes
 
-- Do NOT use `mise run activity-digest` without `--dry-run` - you must send the email yourself using himalaya so it's properly GPG-signed
+- The task outputs the digest content for you to send via himalaya with proper GPG signing
 - If the digest shows no activity, still send it - an empty week is still worth reporting
 - Do not create any commits, PRs, or issues - this is a notification job only
