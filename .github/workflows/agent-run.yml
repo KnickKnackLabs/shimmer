@@ -47,6 +47,9 @@ jobs:
         run: ./scripts/setup-email.sh ${{ inputs.agent-name }}
 
       - name: Install libolm for Matrix
+        if: env.MATRIX_PASSWORD != ''
+        env:
+          MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
         run: sudo apt-get update && sudo apt-get install -y libolm-dev
 
       - name: Configure git
@@ -67,17 +70,16 @@ jobs:
           install: true
 
       - name: Setup Matrix
+        if: env.MATRIX_PASSWORD != ''
         env:
           MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
-        run: |
-          if [ -n "$MATRIX_PASSWORD" ]; then
-            ./scripts/setup-matrix.sh ${{ inputs.agent-name }}
-          else
-            echo "MATRIX_PASSWORD not set, skipping Matrix setup"
-          fi
+        run: ./scripts/setup-matrix.sh ${{ inputs.agent-name }}
 
       - name: Accept Matrix room invites
-        run: matrix-commander --room-invites LIST+JOIN 2>/dev/null || true
+        if: env.MATRIX_PASSWORD != ''
+        env:
+          MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
+        run: matrix-commander --room-invites LIST+JOIN
 
       - name: Cache Elixir build
         uses: actions/cache@v4
