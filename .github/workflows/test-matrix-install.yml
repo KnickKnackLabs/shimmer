@@ -8,9 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check cmake version
-        run: cmake --version || echo "cmake not installed"
+        with:
+          ref: quick/matrix-integration-mvp
 
       - name: Install libolm
         run: sudo apt-get update && sudo apt-get install -y libolm-dev
@@ -19,14 +18,15 @@ jobs:
         uses: jdx/mise-action@v2
         with:
           install: true
-          mise_toml: |
-            [tools]
-            "pipx:matrix-commander" = "8.0.5"
 
-      - name: Check cmake version after mise
-        run: |
-          which cmake
-          cmake --version
-
-      - name: Test matrix-commander
+      - name: Test matrix-commander version
         run: matrix-commander --version
+
+      - name: Setup Matrix for quick
+        env:
+          MATRIX_PASSWORD: ${{ secrets.QUICK_MATRIX_PASSWORD }}
+        run: ./scripts/setup-matrix.sh quick
+
+      - name: Send test message to Welcome room
+        run: |
+          matrix-commander --room '!QpXvgUwQAdmpoOwrEe:ricon.family' --message "Test message from quick via CI at $(date -u)"
