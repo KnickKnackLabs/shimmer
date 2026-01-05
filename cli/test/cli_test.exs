@@ -221,9 +221,9 @@ defmodule CliTest do
   end
 
   describe "process_line/2" do
-    test "outputs text delta and accumulates to full_text" do
+    test "outputs text delta and tracks abort_seen" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
-      state = %{tool_input: "", full_text: ""}
+      state = %{tool_input: "", abort_seen: false}
 
       output =
         capture_io(fn ->
@@ -232,7 +232,31 @@ defmodule CliTest do
         end)
 
       assert output == "Hello"
-      assert_received {:result, %{tool_input: "", full_text: "Hello"}}
+      assert_received {:result, %{tool_input: "", abort_seen: false}}
+    end
+
+    test "detects [[ABORT]] on its own line" do
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
+      state = %{tool_input: "", abort_seen: false}
+
+      capture_io(fn ->
+        result = Cli.process_line(line, state)
+        send(self(), {:result, result})
+      end)
+
+      assert_received {:result, %{abort_seen: true}}
+    end
+
+    test "does not detect [[ABORT]] embedded in text" do
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"some [[ABORT]] text"}}})
+      state = %{tool_input: "", abort_seen: false}
+
+      capture_io(fn ->
+        result = Cli.process_line(line, state)
+        send(self(), {:result, result})
+      end)
+
+      assert_received {:result, %{abort_seen: false}}
     end
 
     test "resets tool_input on tool_use start and prints tool name" do

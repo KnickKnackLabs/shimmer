@@ -267,7 +267,7 @@ defmodule Cli do
         [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
       )
 
-    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil, full_text: ""})
+    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil, abort_seen: false})
 
     if status == @timeout_exit_code do
       IO.puts("\n---")
@@ -395,8 +395,8 @@ defmodule Cli do
       {^port, {:exit_status, status}} ->
         print_usage_summary(state)
 
-        # If agent signaled abort (must be on its own line), override exit status
-        if Regex.match?(~r/^\[\[ABORT\]\]$/m, state.full_text) do
+        # If agent signaled abort, override exit status
+        if state.abort_seen do
           IO.puts("\n---")
           IO.puts("Agent requested session abort via [[ABORT]]")
           1
@@ -450,7 +450,7 @@ defmodule Cli do
            tool_input: String.t(),
            buffer: String.t(),
            usage: map() | nil,
-           full_text: String.t()
+           abort_seen: boolean()
          }
 
   @doc false
@@ -460,7 +460,9 @@ defmodule Cli do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
         IO.write(text)
-        %{state | full_text: state.full_text <> text}
+        # Check for [[ABORT]] on its own line (incremental detection)
+        abort_seen = state.abort_seen || Regex.match?(~r/^\[\[ABORT\]\]$/m, text)
+        %{state | abort_seen: abort_seen}
 
       # Handle tool use start - show which tool is being called
       {:ok,
