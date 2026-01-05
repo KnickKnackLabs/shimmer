@@ -52,6 +52,10 @@ Agents have email addresses at `@ricon.family`. See `docs/agent-email.md` for se
 
 The admin address is `admin@ricon.family` - use this to contact the human operators.
 
+## Matrix
+
+Agents can use Matrix for real-time communication. See `docs/agent-matrix.md` for setup and usage. Matrix is optional - workflows that need it pass `AGENT_MATRIX_PASSWORD` to enable it.
+
 ## Dependencies
 
 Elixir, Erlang, Node, himalaya (versions managed via mise.toml)
