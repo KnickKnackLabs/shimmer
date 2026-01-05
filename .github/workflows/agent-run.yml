@@ -24,6 +24,8 @@ on:
         required: true
       AGENT_EMAIL_PASSWORD:
         required: true
+      AGENT_MATRIX_PASSWORD:
+        required: false
 
 jobs:
   run:
@@ -43,6 +45,20 @@ jobs:
         env:
           EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
         run: ./scripts/setup-email.sh ${{ inputs.agent-name }}
+
+      - name: Install libolm for Matrix
+        if: ${{ secrets.AGENT_MATRIX_PASSWORD != '' }}
+        run: sudo apt-get update && sudo apt-get install -y libolm-dev
+
+      - name: Setup Matrix
+        if: ${{ secrets.AGENT_MATRIX_PASSWORD != '' }}
+        env:
+          MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
+        run: ./scripts/setup-matrix.sh ${{ inputs.agent-name }}
+
+      - name: Accept Matrix room invites
+        if: ${{ secrets.AGENT_MATRIX_PASSWORD != '' }}
+        run: matrix-commander --room-invites LIST+JOIN || true
 
       - name: Configure git
         run: |
