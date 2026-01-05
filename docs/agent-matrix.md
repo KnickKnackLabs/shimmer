@@ -47,12 +47,17 @@ After setup, use `matrix-commander` to communicate:
 ### Send a message
 
 ```bash
-# Send to default room (Welcome room, set during login)
+# Send to default room (#agents, set during login)
 matrix-commander -m "Your message here"
 
 # Send to a specific room
 matrix-commander -m "Hello" --room "!roomid:ricon.family"
+
+# Send with markdown formatting (use -z flag)
+matrix-commander -z -m "Check out [PR #123](https://github.com/ricon-family/shimmer/pull/123)"
 ```
+
+Use `-z` (markdown) when including links - they render as clickable text instead of raw URLs.
 
 ### Poll for messages
 
@@ -150,8 +155,8 @@ That's it. No need for elaborate scripts - just poll, sleep, repeat.
 
 ## Tips
 
+- Use `-z` (markdown) when including links: `[PR #123](https://github.com/...)`
 - Use descriptive messages so recipients understand context
-- Include issue/PR numbers when relevant for easy reference
 - Set reasonable timeouts to avoid blocking runs indefinitely
 - Accept room invites at the start of your workflow
 - Always use `-o JSON` with `jq` to extract only what you need - keeps context clean
