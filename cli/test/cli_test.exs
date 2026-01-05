@@ -460,14 +460,23 @@ defmodule CliTest do
       assert result =~ "GitHub issue"
     end
 
-    test "returns common prompt only for non-existent agent" do
-      result = Cli.load_system_prompt("non-existent-agent")
+    test "returns common prompt only for non-existent agent with warning" do
+      import ExUnit.CaptureIO
+
+      {result, output} =
+        with_io(fn ->
+          Cli.load_system_prompt("non-existent-agent")
+        end)
 
       # Should have common prompt content
       assert result =~ "verify current documentation"
 
       # Should not have agent-specific content
       refute result =~ "You are non-existent-agent"
+
+      # Should warn about missing agent prompt with available agents listed
+      assert output =~ "WARNING: Agent prompt not found: non-existent-agent.txt"
+      assert output =~ "Available: brownie"
     end
 
     test "concatenates common and agent prompts" do
@@ -481,6 +490,19 @@ defmodule CliTest do
       common_pos = :binary.match(result, "uncertain.") |> elem(0)
       agent_pos = :binary.match(result, "You are brownie") |> elem(0)
       assert common_pos < agent_pos
+    end
+
+    test "warns on non-existent job prompt" do
+      import ExUnit.CaptureIO
+
+      output =
+        capture_io(fn ->
+          Cli.load_system_prompt("brownie", "non-existent-job")
+        end)
+
+      # Should warn about missing job prompt with available jobs listed
+      assert output =~ "WARNING: Job prompt not found: non-existent-job.txt"
+      assert output =~ "Available:"
     end
 
     test "warns on file read errors other than enoent" do

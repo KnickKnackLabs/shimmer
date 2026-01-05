@@ -168,11 +168,17 @@ defmodule Cli do
   def load_system_prompt(agent_name, job_name) do
     dir = prompts_dir()
 
+    agent_path = Path.join([dir, "agents", "#{agent_name}.txt"])
+    warn_if_missing(agent_path, :agent, agent_name, dir)
+
+    job_path = if job_name, do: Path.join([dir, "jobs", "#{job_name}.txt"]), else: nil
+    if job_path, do: warn_if_missing(job_path, :job, job_name, dir)
+
     parts =
       [
         read_prompt_file(Path.join([dir, "common.txt"])),
-        read_prompt_file(Path.join([dir, "agents", "#{agent_name}.txt"])),
-        if(job_name, do: read_prompt_file(Path.join([dir, "jobs", "#{job_name}.txt"])), else: "")
+        read_prompt_file(agent_path),
+        if(job_path, do: read_prompt_file(job_path), else: "")
       ]
       |> Enum.reject(&(&1 == ""))
 
@@ -197,6 +203,34 @@ defmodule Cli do
       {:error, reason} ->
         IO.puts("WARNING: Failed to read #{path}: #{reason}")
         ""
+    end
+  end
+
+  defp warn_if_missing(path, type, name, prompts_dir) do
+    unless File.exists?(path) do
+      type_name = if type == :agent, do: "Agent", else: "Job"
+      subdir = if type == :agent, do: "agents", else: "jobs"
+      available = list_available(prompts_dir, subdir)
+
+      available_hint =
+        if available != [], do: " Available: #{Enum.join(available, ", ")}", else: ""
+
+      IO.puts("WARNING: #{type_name} prompt not found: #{name}.txt#{available_hint}")
+    end
+  end
+
+  defp list_available(prompts_dir, subdir) do
+    dir = Path.join(prompts_dir, subdir)
+
+    case File.ls(dir) do
+      {:ok, files} ->
+        files
+        |> Enum.filter(&String.ends_with?(&1, ".txt"))
+        |> Enum.map(&String.replace_suffix(&1, ".txt", ""))
+        |> Enum.sort()
+
+      {:error, _} ->
+        []
     end
   end
 
