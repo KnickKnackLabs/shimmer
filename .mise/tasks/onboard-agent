@@ -198,8 +198,33 @@ fi
 
 wait_for_enter
 
-# STEP 8: Verify
-echo "STEP 8: Verify Setup"
+# STEP 8: Matrix Setup
+echo "STEP 8: Matrix Setup"
+echo "------------------------------------------------------------"
+
+MATRIX_PASSWORD=$(op item get "${AGENT} - Matrix" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
+MATRIX_USER="@${AGENT}:ricon.family"
+
+if [ -z "$MATRIX_PASSWORD" ]; then
+  echo "[WARN] No Matrix password found in 1Password, skipping Matrix setup"
+  echo "       Run: mise run provision-agent $AGENT to create Matrix credentials"
+else
+  echo "[YOU] Create Matrix user via Synapse Admin:"
+  echo "      User:     $MATRIX_USER"
+  echo "      Password: $MATRIX_PASSWORD"
+  echo ""
+
+  wait_for_enter
+
+  echo "[auto] Storing password as GitHub secret ${AGENT_UPPER}_MATRIX_PASSWORD..."
+  echo "$MATRIX_PASSWORD" | gh secret set "${AGENT_UPPER}_MATRIX_PASSWORD"
+  echo "[auto] Done! Agent will log in with password during workflow runs."
+fi
+
+wait_for_enter
+
+# STEP 9: Verify
+echo "STEP 9: Verify Setup"
 echo "------------------------------------------------------------"
 echo "[auto] Triggering test workflow..."
 

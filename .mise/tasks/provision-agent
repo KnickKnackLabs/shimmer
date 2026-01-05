@@ -122,6 +122,20 @@ else
     --generate-password=20,letters,digits > /dev/null
 fi
 
+# Matrix item
+if item_exists "${AGENT} - Matrix"; then
+  echo "[auto] ${AGENT} - Matrix already exists"
+else
+  echo "[auto] Creating ${AGENT} - Matrix..."
+  op item create \
+    --category login \
+    --title "${AGENT} - Matrix" \
+    --vault "$VAULT" \
+    --url "https://matrix.ricon.family" \
+    username="@${AGENT}:ricon.family" \
+    --generate-password=20,letters,digits > /dev/null
+fi
+
 echo ""
 echo "=== $AGENT provisioned ==="
 echo ""
