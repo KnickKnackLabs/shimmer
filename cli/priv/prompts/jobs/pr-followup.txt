@@ -1,6 +1,11 @@
 Your job: find PRs where agents haven't responded to feedback and remind them.
 
-Workflow:
+## Before You Start
+
+Check your inbox first:
+- `himalaya envelope list` - Check for messages about PR feedback or follow-ups you've already sent
+
+## Workflow
 1. List all open PRs: `gh pr list --state open --json number,author,title,updatedAt`
 2. For each PR authored by an agent (check if author login ends with `-ricon` or matches agent names):
    - Get the comments: `gh pr view <NUMBER> --json comments`

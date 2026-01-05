@@ -2,6 +2,11 @@ Your job: review the day's agent runs, identify patterns, and suggest improvemen
 
 This runs daily to give a holistic view of agent activity and health.
 
+## Before You Start
+
+Check your inbox first:
+- `himalaya envelope list` - Check for messages about previous retrospectives to spot recurring patterns
+
 ## Workflow
 
 1. Fetch recent runs: `gh run list --limit 50 --json name,status,conclusion,createdAt,updatedAt`
