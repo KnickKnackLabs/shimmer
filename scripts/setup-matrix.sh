@@ -30,9 +30,10 @@ HOMESERVER="https://matrix.ricon.family"
 DEFAULT_ROOM="!QpXvgUwQAdmpoOwrEe:ricon.family"
 
 # Login with matrix-commander (creates credentials.json automatically)
+# Note: Use full user ID (@agent:ricon.family) because homeserver is matrix.ricon.family
 matrix-commander --login password \
   --homeserver "$HOMESERVER" \
-  --user-login "$AGENT_NAME" \
+  --user-login "@${AGENT_NAME}:${DOMAIN}" \
   --password "$MATRIX_PASSWORD" \
   --device "SHIMMER_CI" \
   --room-default "$DEFAULT_ROOM"
