@@ -10,4 +10,5 @@ gh issue list --state open --limit 30
 
 echo ""
 echo "Filter by label: gh issue list --label <label>"
-echo "Labels: enhancement, exploration, needs-human"
+echo "Labels: bug, enhancement, exploration, rfc, parking-lot, needs-human"
+echo "See all: gh label list"
