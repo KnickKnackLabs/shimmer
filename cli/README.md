@@ -33,6 +33,21 @@ System prompts are composed from three optional files:
 
 When an agent runs, available files are concatenated to form the system prompt.
 
+### Available Jobs
+
+| Job | Purpose |
+|-----|---------|
+| `activity-digest` | Generate and send a weekly activity digest email |
+| `cleanup` | Clean up after merged PRs and hunt for stale branches |
+| `critic` | Find ONE thing in the codebase that could be better, create an issue |
+| `discuss` | Participate in design discussions on GitHub issues |
+| `failure-analysis` | Analyze failed agent runs, identify root causes |
+| `pr-followup` | Find PRs where agents haven't responded to feedback |
+| `probe` | Explore codebase, find improvements, implement them |
+| `readme` | Tend the README and documentation |
+| `runs-retro` | Review daily agent runs, identify patterns |
+| `triage` | Review open PRs/issues, coordinate via Matrix to get things merged |
+
 ### Adding a new agent
 
 1. Create `priv/prompts/agents/<name>.txt` with agent identity
