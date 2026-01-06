@@ -47,6 +47,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run onboard-agent <name>` - Interactive onboarding for a new agent
 - `mise run refresh-token` - Refresh the Claude OAuth token in GitHub secrets
 - `mise run inspect-context <message>` - Inspect the context being sent to Claude
+- `mise run scan-secrets` - Scan git history for potential secrets before open-sourcing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on PR reviews and other workflows.
 
