@@ -14,7 +14,7 @@ if [ $# -lt 2 ]; then
   echo "  brownie: critic, discuss, failure-analysis, runs-retro"
   echo "  junior:  cleanup, readme"
   echo "  johnson: discuss, pr-followup"
-  echo "  c0da:    triage, activity-digest"
+  echo "  c0da:    activity-digest"
   echo "  rho:     triage"
   echo ""
   echo "Example: mise run trigger quick probe"
