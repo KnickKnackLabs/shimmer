@@ -18,6 +18,17 @@ defmodule Cli do
   @timeout_exit_code 124
 
   defp prompts_dir do
+    case :code.priv_dir(:cli) do
+      {:error, :bad_name} ->
+        # Escript/development: fall back to cwd-based discovery
+        find_prompts_in_cwd()
+
+      path when is_list(path) ->
+        Path.join(List.to_string(path), "prompts")
+    end
+  end
+
+  defp find_prompts_in_cwd do
     # Try multiple paths - cwd might be repo root or cli directory
     cwd = File.cwd!()
 
