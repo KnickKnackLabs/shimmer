@@ -96,7 +96,6 @@ jobs:
           cd cli
           mix local.hex --force
           mix deps.get
-          mix compile
 
       - name: Determine message
         id: message
@@ -121,4 +120,4 @@ jobs:
           RUN_TIMEOUT: 540
         run: |
           export RUN_START_TIME=$(date +%s)
-          cd cli && mix shimmer --agent ${{ inputs.agent-name }} --job ${{ inputs.job-type }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
+          mix -C cli shimmer --agent ${{ inputs.agent-name }} --job ${{ inputs.job-type }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
