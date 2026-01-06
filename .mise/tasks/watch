@@ -4,18 +4,33 @@
 
 set -e
 
+# Discover agents from prompt files (source of truth for agents)
+get_agents() {
+  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+    | xargs -n1 basename \
+    | sed 's/\.txt$//' \
+    | sort
+}
+
+# Discover jobs for a specific agent
+get_jobs() {
+  local agent="$1"
+  ls .github/workflows/${agent}-*.yml 2>/dev/null \
+    | xargs -n1 basename \
+    | sed "s/^${agent}-//; s/\.yml$//" \
+    | sort
+}
+
 if [ $# -lt 2 ]; then
   echo "Usage: mise run watch <agent> <job>"
   echo ""
-  echo "Agents: quick, brownie, junior, johnson, c0da, rho"
+  echo "Agents: $(get_agents | tr '\n' ' ')"
   echo ""
-  echo "Example jobs:"
-  echo "  quick:   probe, discuss"
-  echo "  brownie: critic, discuss, failure-analysis, runs-retro"
-  echo "  junior:  cleanup, readme"
-  echo "  johnson: discuss, pr-followup"
-  echo "  c0da:    triage, activity-digest"
-  echo "  rho:     triage"
+  echo "Jobs for each agent:"
+  for agent in $(get_agents); do
+    jobs=$(get_jobs "$agent" | tr '\n' ' ')
+    echo "  $agent: $jobs"
+  done
   echo ""
   echo "Example: mise run watch quick probe"
   exit 1
@@ -26,14 +41,11 @@ JOB="$2"
 WORKFLOW="${AGENT}-${JOB}.yml"
 
 # Validate agent
-case "$AGENT" in
-  quick|brownie|junior|johnson|c0da|rho) ;;
-  *)
-    echo "Unknown agent: $AGENT"
-    echo "Available agents: quick, brownie, junior, johnson, c0da, rho"
-    exit 1
-    ;;
-esac
+if ! get_agents | grep -qx "$AGENT"; then
+  echo "Unknown agent: $AGENT"
+  echo "Available agents: $(get_agents | tr '\n' ' ')"
+  exit 1
+fi
 
 # Validate workflow exists
 if [ ! -f ".github/workflows/$WORKFLOW" ]; then
