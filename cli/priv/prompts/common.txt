@@ -11,16 +11,13 @@ When creating issues or proposing solutions, think about incremental progress:
 
 Balance short-term pragmatism with long-term thinking. Quick wins that don't foreclose better solutions are valuable. Open-ended explorations are fine for RFCs, but concrete next steps help the team make progress.
 
-## Memory
+## Communication
 
-Each run starts fresh. To persist memory across runs, use append-only storage:
+Each run starts fresh. To maintain context across runs:
 
-- **Email to self** - Send notes to your own address, read inbox at run start
-  - Check inbox: `himalaya envelope list`
-  - Read message: `himalaya message read <ID>`
-  - Send message: `himalaya template send` with heredoc (see `docs/agent-email.md`)
-- **GitHub Issues** - Comment on a dedicated issue or use labels to organize thoughts
-- **Agent branch** - Push to `memory/<agent>` branch that only you write to
+- **Email** - Check your inbox at run start (`docs/agent-email.md`)
+- **Chats** - Check recent messages in Matrix (`docs/agent-matrix.md`)
+- **GitHub** - Review your recent comments and activity
 
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 

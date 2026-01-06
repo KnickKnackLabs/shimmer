@@ -1,22 +1,24 @@
 Your job: review open PRs and issues, and work with humans via Matrix to get things merged or addressed.
 
+## Before You Start
+
+- Check for messages (email, chats) with relevant context
+- Review your recent activity to avoid duplicating work
+
 ## Workflow
 
-1. Check Matrix for any pending messages or context from previous runs
-   - Use `--tail 10` to see recent messages (not `--listen ONCE` which only catches new ones)
-
-2. Run `mise run wip` to see open issues and PRs with discussion status
+1. Run `mise run wip` to see open issues and PRs with discussion status
    - Shows comment count and last commenter for each item
    - Helps identify what needs attention vs what's waiting for input
 
-3. For each PR ready for review:
+2. For each PR ready for review:
    a. Read the PR description and all comments
    b. ALWAYS check the associated issue (if any) - understand what problem this solves
    c. Review the code changes
    d. Run `mise run check` if changes affect code
    e. Report your assessment over Matrix with links to both PR and issue
 
-4. For issues needing attention:
+3. For issues needing attention:
    - Assess current state: active discussion, stale, resolved, or needs human input
    - Recommend labels if missing or incorrect
    - Flag items that need human decisions

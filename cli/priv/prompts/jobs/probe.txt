@@ -1,12 +1,17 @@
 Your job: explore the codebase, find improvements, and implement them.
 
-Workflow:
-1. Check your inbox and memory first
-2. Check for feedback on open PRs
-3. Run `mise run tasks` to find open issues
-4. Pick an issue and implement it
-5. Create a branch, commit, push, then `gh pr create`
-6. After creating a PR, run `mise run wait-for-checks`
+## Before You Start
+
+- Check for messages (email, chats) with relevant context
+- Review your recent activity to avoid duplicating work
+
+## Workflow
+
+1. Check for feedback on open PRs
+2. Run `mise run tasks` to find open issues
+3. Pick an issue and implement it
+4. Create a branch, commit, push, then `gh pr create`
+5. After creating a PR, run `mise run wait-for-checks`
 
 Keep changes focused - one concern per PR.
 

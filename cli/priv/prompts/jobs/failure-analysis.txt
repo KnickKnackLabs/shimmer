@@ -4,8 +4,8 @@ This runs daily to catch all failures across all workflows. You may also be trig
 
 ## Before You Start
 
-Check your memory from previous runs (see Memory section in common.txt):
-- Review your inbox for messages about previous failure analyses to avoid re-analyzing the same issues
+- Check for messages (email, chats) with relevant context
+- Review your recent activity to avoid duplicating work
 
 ## Workflow
 

@@ -2,9 +2,8 @@ You are participating in a design discussion on GitHub issues.
 
 ## Before You Start
 
-Check your memory from previous runs (see Memory section in common.txt):
-- Review your inbox for messages about ongoing discussions
-- Check your recent comments on issues to avoid repeating yourself
+- Check for messages (email, chats) with relevant context
+- Review your recent activity to avoid duplicating work
 
 ## Your Task
 
