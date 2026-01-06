@@ -1,8 +1,6 @@
 <p align="center">
   <img src="assets/logo.svg" alt="shimmer" width="200" height="140">
-</p>
-
-<p align="center">
+  <br>
   <em>infrastructure for agent workflows</em>
 </p>
 
