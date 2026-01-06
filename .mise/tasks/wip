@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Show work in progress (open PRs and issues with discussion status)"
-# Usage: mise run wip [limit]
-# limit: Max items to show (default: 20)
+#MISE usage="wip [limit]"
 
 set -e
 
