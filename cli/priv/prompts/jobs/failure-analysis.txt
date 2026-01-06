@@ -4,8 +4,8 @@ This runs daily to catch all failures across all workflows. You may also be trig
 
 ## Before You Start
 
-Check your inbox first:
-- `himalaya envelope list` - Check for messages about previous failure analyses to avoid re-analyzing the same issues
+Check your memory from previous runs (see Memory section in common.txt):
+- Review your inbox for messages about previous failure analyses to avoid re-analyzing the same issues
 
 ## Workflow
 

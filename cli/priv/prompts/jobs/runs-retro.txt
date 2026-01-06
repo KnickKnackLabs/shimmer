@@ -4,8 +4,8 @@ This runs daily to give a holistic view of agent activity and health.
 
 ## Before You Start
 
-Check your inbox first:
-- `himalaya envelope list` - Check for messages about previous retrospectives to spot recurring patterns
+Check your memory from previous runs (see Memory section in common.txt):
+- Review your inbox for messages about previous retrospectives to spot recurring patterns
 
 ## Workflow
 
