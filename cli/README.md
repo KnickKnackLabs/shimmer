@@ -46,6 +46,7 @@ When an agent runs, available files are concatenated to form the system prompt.
 | `probe` | Explore codebase, find improvements, implement them |
 | `readme` | Tend the README and documentation |
 | `runs-retro` | Review daily agent runs, identify patterns |
+| `scan-secrets` | Scan git history for secrets, report findings via email |
 | `triage` | Review open PRs/issues, coordinate via Matrix to get things merged |
 
 ### Adding a new agent
