@@ -53,7 +53,7 @@ defmodule Cli do
 
     print_header(opts, message, timeout, agent, model)
 
-    case validate_args(message, agent, timeout) do
+    case validate_args(message, agent, timeout, model) do
       {:error, msg} ->
         IO.puts("ERROR: #{msg}")
         1
@@ -80,15 +80,33 @@ defmodule Cli do
     IO.puts("---")
   end
 
-  defp validate_args(message, agent, timeout) do
+  defp validate_args(message, agent, timeout, model) do
     cond do
-      String.trim(message) == "" -> {:error, "No message provided"}
-      agent == nil or agent == "" -> {:error, "--agent is required and cannot be empty"}
-      timeout == nil -> {:error, "--timeout is required"}
-      timeout <= 0 -> {:error, "--timeout must be greater than 0"}
-      true -> :ok
+      String.trim(message) == "" ->
+        {:error, "No message provided"}
+
+      agent == nil or agent == "" ->
+        {:error, "--agent is required and cannot be empty"}
+
+      timeout == nil ->
+        {:error, "--timeout is required"}
+
+      timeout <= 0 ->
+        {:error, "--timeout must be greater than 0"}
+
+      not valid_model?(model) ->
+        {:error,
+         "Invalid model: must contain only alphanumeric characters, hyphens, and underscores"}
+
+      true ->
+        :ok
     end
   end
+
+  # Validate model parameter to prevent shell injection.
+  # Model names should only contain alphanumeric characters, hyphens, and underscores.
+  defp valid_model?(model) when is_binary(model), do: Regex.match?(~r/^[a-zA-Z0-9_-]+$/, model)
+  defp valid_model?(_), do: false
 
   defp parse_args(args) do
     {opts, rest, invalid} =
