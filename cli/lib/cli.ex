@@ -257,7 +257,14 @@ defmodule Cli do
         [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
       )
 
-    status = stream_output(port, %{tool_input: "", buffer: "", usage: nil, abort_seen: false})
+    status =
+      stream_output(port, %{
+        tool_input: "",
+        buffer: "",
+        usage: nil,
+        abort_seen: false,
+        recent_text: ""
+      })
 
     if status == @timeout_exit_code do
       IO.puts("\n---")
@@ -440,7 +447,8 @@ defmodule Cli do
            tool_input: String.t(),
            buffer: String.t(),
            usage: map() | nil,
-           abort_seen: boolean()
+           abort_seen: boolean(),
+           recent_text: String.t()
          }
 
   @doc false
@@ -450,9 +458,11 @@ defmodule Cli do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
         IO.write(text)
-        # Check for [[ABORT]] on its own line (incremental detection)
-        abort_seen = state.abort_seen || Regex.match?(~r/^\[\[ABORT\]\]$/m, text)
-        %{state | abort_seen: abort_seen}
+        # Keep a sliding window of recent text to detect [[ABORT]] across chunk boundaries
+        # The signal is 11 chars, so we keep 20 to ensure we can always match it
+        recent_text = String.slice(state.recent_text <> text, -20, 20)
+        abort_seen = state.abort_seen || Regex.match?(~r/^\[\[ABORT\]\]$/m, recent_text)
+        %{state | abort_seen: abort_seen, recent_text: recent_text}
 
       # Handle tool use start - show which tool is being called
       {:ok,

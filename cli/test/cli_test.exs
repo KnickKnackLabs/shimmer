@@ -223,7 +223,7 @@ defmodule CliTest do
   describe "process_line/2" do
     test "outputs text delta and tracks abort_seen" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
-      state = %{tool_input: "", abort_seen: false}
+      state = %{tool_input: "", abort_seen: false, recent_text: ""}
 
       output =
         capture_io(fn ->
@@ -232,12 +232,12 @@ defmodule CliTest do
         end)
 
       assert output == "Hello"
-      assert_received {:result, %{tool_input: "", abort_seen: false}}
+      assert_received {:result, %{tool_input: "", abort_seen: false, recent_text: "Hello"}}
     end
 
     test "detects [[ABORT]] on its own line" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
-      state = %{tool_input: "", abort_seen: false}
+      state = %{tool_input: "", abort_seen: false, recent_text: ""}
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
@@ -247,9 +247,32 @@ defmodule CliTest do
       assert_received {:result, %{abort_seen: true}}
     end
 
+    test "detects [[ABORT]] split across streaming chunks" do
+      # First chunk ends mid-signal
+      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABO"}}})
+      state1 = %{tool_input: "", abort_seen: false, recent_text: ""}
+
+      capture_io(fn ->
+        result = Cli.process_line(line1, state1)
+        send(self(), {:result1, result})
+      end)
+
+      assert_received {:result1, %{abort_seen: false, recent_text: _recent} = state2}
+
+      # Second chunk completes the signal
+      line2 = ~s({"type":"stream_event","event":{"delta":{"text":"RT]]\\n"}}})
+
+      capture_io(fn ->
+        result = Cli.process_line(line2, state2)
+        send(self(), {:result2, result})
+      end)
+
+      assert_received {:result2, %{abort_seen: true}}
+    end
+
     test "does not detect [[ABORT]] embedded in text" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"some [[ABORT]] text"}}})
-      state = %{tool_input: "", abort_seen: false}
+      state = %{tool_input: "", abort_seen: false, recent_text: ""}
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
