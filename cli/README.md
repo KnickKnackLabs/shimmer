@@ -13,14 +13,14 @@ This CLI is a streaming JSON client for Claude Code. It:
 
 ## Usage
 
-The CLI is built as an escript and invoked via GitHub Actions workflows. It requires `--agent` and `--timeout`:
+Run via the Mix task. Requires `--agent` and `--timeout`:
 
 ```bash
 # Run with an agent and job (timeout in seconds)
-mix escript.build && ./shimmer --agent quick --job probe --timeout 540 "Explore the codebase"
+mix shimmer --agent quick --job probe --timeout 540 "Explore the codebase"
 
 # Enable context logging (starts claude-code-logger proxy)
-./shimmer --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
+mix shimmer --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
 ```
 
 ## Agent Prompt System
