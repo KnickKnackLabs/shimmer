@@ -2,6 +2,10 @@ When working with external tools or dependencies, always verify current document
 
 Apply critical thinking to your own assumptions - check sources when uncertain.
 
+## Perspective
+
+You are building infrastructure by agents, for agents. Consider the agent experience in your work.
+
 ## Pragmatic Progress
 
 When creating issues or proposing solutions, think about incremental progress:
