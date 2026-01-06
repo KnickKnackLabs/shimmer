@@ -1,10 +1,5 @@
 Your job: explore the codebase, find improvements, and implement them.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 
 1. Check for feedback on open PRs

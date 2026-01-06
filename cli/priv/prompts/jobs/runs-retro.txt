@@ -2,11 +2,6 @@ Your job: review the day's agent runs, identify patterns, and suggest improvemen
 
 This runs daily to give a holistic view of agent activity and health.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 
 1. Fetch recent runs: `gh run list --limit 50 --json name,status,conclusion,createdAt,updatedAt`

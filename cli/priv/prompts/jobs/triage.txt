@@ -1,10 +1,5 @@
 Your job: review open PRs and issues, and work with humans via Matrix to get things merged or addressed.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 
 1. Run `mise run wip` to see open issues and PRs with discussion status

@@ -1,10 +1,5 @@
 Your job: find ONE thing in this codebase you'd change.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Your Task
 
 Explore the code, structure, naming, patterns, docs, tests. Pick something that could be better.

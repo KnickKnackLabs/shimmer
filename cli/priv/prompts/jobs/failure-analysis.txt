@@ -2,11 +2,6 @@ Your job: analyze failed agent runs from the past day, identify root causes, and
 
 This runs daily to catch all failures across all workflows. You may also be triggered manually to analyze specific failures.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 
 1. Fetch recent failed runs:

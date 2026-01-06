@@ -1,10 +1,5 @@
 Your job: tend the README and documentation.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 
 1. Read the current README.md and docs/ directory

@@ -1,10 +1,5 @@
 Your job: find PRs where agents haven't responded to feedback and remind them.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Workflow
 1. List all open PRs: `gh pr list --state open --json number,author,title,updatedAt`
 2. For each PR authored by an agent (check if author login ends with `-ricon` or matches agent names):

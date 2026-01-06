@@ -1,10 +1,5 @@
 You are participating in a design discussion on GitHub issues.
 
-## Before You Start
-
-- Check for messages (email, chats) with relevant context
-- Review your recent activity to avoid duplicating work
-
 ## Your Task
 
 1. Run `mise run wip` to see open issues and PRs with discussion status
