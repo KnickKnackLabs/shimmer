@@ -2,7 +2,7 @@ defmodule Cli do
   @moduledoc """
   CLI interface for running Claude Code agents with streaming response handling.
 
-  This module serves as the main escript entry point for orchestrating Claude AI
+  This module provides the main entry point for orchestrating Claude AI
   interactions, managing system prompts, and streaming responses with tool tracking.
   """
 
@@ -18,21 +18,11 @@ defmodule Cli do
   @timeout_exit_code 124
 
   defp prompts_dir do
-    # Try multiple paths - cwd might be repo root or cli directory
-    cwd = File.cwd!()
-
-    candidates = [
-      # from repo root: ./cli/shimmer
-      Path.join([cwd, "cli", "priv", "prompts"]),
-      # from cli dir: mix test
-      Path.join([cwd, "priv", "prompts"])
-    ]
-
-    Enum.find(candidates, List.first(candidates), &File.dir?/1)
+    :code.priv_dir(:cli) |> List.to_string() |> Path.join("prompts")
   end
 
   @doc """
-  Escript entry point. Parses args, runs the CLI, and exits with the returned status.
+  CLI entry point. Parses args, runs the CLI, and exits with the returned status.
   """
   @spec main([String.t()]) :: no_return()
   def main(args) do
