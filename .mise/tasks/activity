@@ -58,6 +58,31 @@ echo "$ISSUE_DATA" | jq -r --arg days "$DAYS" '
 ' 2>/dev/null | column -t -s $'\t' || echo "No agent issue data found"
 
 echo ""
+echo "=== Merge Conflict Status ==="
+CONFLICT_DATA=$(gh pr list --state open --json number,author,mergeable,files 2>/dev/null)
+echo "$CONFLICT_DATA" | jq -r '
+  {
+    total: length,
+    conflicting: [.[] | select(.mergeable == "CONFLICTING")] | length,
+    clean: [.[] | select(.mergeable == "MERGEABLE")] | length,
+    unknown: [.[] | select(.mergeable == "UNKNOWN")] | length
+  } |
+  "Open PRs: \(.total) (\(.conflicting) conflicting, \(.clean) clean, \(.unknown) unknown)"
+' 2>/dev/null || echo "Unable to fetch conflict status"
+
+echo ""
+echo "=== File Hotspots (Open PRs) ==="
+echo "$CONFLICT_DATA" | jq -r '
+  [.[] | .files[]? | .path] |
+  group_by(.) |
+  map(select(length > 1)) |
+  map({file: .[0], count: length}) |
+  sort_by(-.count) |
+  .[] |
+  "\(.file): \(.count) open PRs"
+' 2>/dev/null | head -10 || echo "No file hotspots detected"
+
+echo ""
 echo "=== Summary ==="
 AGENT_COUNT=$(echo "$PR_DATA" | jq '[.[] | select(.author.login | test("-ricon$"))] | map(.author.login) | unique | length')
 TOTAL_PRS=$(echo "$PR_DATA" | jq --arg days "$DAYS" '
