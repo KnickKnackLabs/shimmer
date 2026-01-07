@@ -420,16 +420,12 @@ defmodule Cli do
     # Pattern: look for "text":" followed by content
     case Regex.run(~r/"text"\s*:\s*"((?:[^"\\]|\\.)*)$/, partial) do
       [_, text] ->
-        # Unescape basic JSON escapes (order matters - backslash first)
-        unescaped =
-          text
-          |> String.replace("\\\\", "\x00BACKSLASH\x00")
-          |> String.replace("\\n", "\n")
-          |> String.replace("\\t", "\t")
-          |> String.replace("\\\"", "\"")
-          |> String.replace("\x00BACKSLASH\x00", "\\")
-
-        IO.write(unescaped)
+        # Complete the JSON string and use Jason to handle all escape sequences
+        # This properly handles \r, \b, \f, \/, \uXXXX in addition to \n, \t, \\, \"
+        case Jason.decode("\"#{text}\"") do
+          {:ok, unescaped} -> IO.write(unescaped)
+          {:error, _} -> :ok
+        end
 
       nil ->
         :ok
