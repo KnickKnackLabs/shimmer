@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Watch the latest workflow run until completion"
-#MISE usage="watch <agent> <job>"
+#USAGE arg "<agent>" help="Agent name"
+#USAGE arg "<job>" help="Job name"
 
 set -e
 
