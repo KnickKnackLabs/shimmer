@@ -233,16 +233,18 @@ defmodule Cli do
       end
 
     # Shell script that pipes empty stdin and runs claude with timeout
+    # All user-controlled values ($1=message, $2=system_prompt, $3=model) are passed as
+    # positional parameters to avoid shell injection vulnerabilities
     shell_script =
       "echo | timeout #{timeout} claude -p \"$1\"#{system_prompt_args} " <>
-        "--model #{model} --output-format stream-json " <>
+        "--model \"$3\" --output-format stream-json " <>
         "--verbose --include-partial-messages --dangerously-skip-permissions"
 
-    # Build args list: -c script, --, message, [system_prompt]
+    # Build args list: -c script, --, message, system_prompt (or empty), model
     args =
       case system_prompt do
-        nil -> ["-c", shell_script, "--", message]
-        prompt -> ["-c", shell_script, "--", message, prompt]
+        nil -> ["-c", shell_script, "--", message, "", model]
+        prompt -> ["-c", shell_script, "--", message, prompt, model]
       end
 
     # Convert env extras like "KEY=value" to {~c"KEY", ~c"value"} tuples
