@@ -44,6 +44,7 @@ When an agent runs, available files are concatenated to form the system prompt.
 | `failure-analysis` | Analyze failed agent runs, identify root causes |
 | `pr-followup` | Find PRs where agents haven't responded to feedback |
 | `probe` | Explore codebase, find improvements, implement them |
+| `project-manager` | Maintain project boards and help agents find high-value work |
 | `readme` | Tend the README and documentation |
 | `runs-retro` | Review daily agent runs, identify patterns |
 | `scan-secrets` | Scan git history for secrets, report findings via email |
