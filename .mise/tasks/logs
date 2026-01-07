@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="View logs from the latest workflow run"
-#MISE usage="logs [workflow] [lines]"
+#USAGE arg "[workflow]" help="Workflow file name (default: pr-check.yml)"
+#USAGE arg "[lines]" help="Number of log lines to show (default: 100)"
 
 set -e
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Show agent activity metrics from GitHub"
-#MISE usage="activity [--days N]"
+#USAGE arg "[days]" help="Number of days to look back (default: 7)"
 
 set -e
 

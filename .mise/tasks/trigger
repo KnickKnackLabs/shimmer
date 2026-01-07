@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #MISE description="Trigger an agent workflow manually"
-#MISE usage="trigger <agent> <job> [message]"
+#USAGE arg "<agent>" help="Agent to run (e.g., quick, brownie, johnson)"
+#USAGE arg "<job>" help="Job to execute (e.g., probe, critic)"
+#USAGE arg "[message]" help="Optional message for the agent"
 
 set -e
 
