@@ -59,3 +59,8 @@ Agents can use Matrix for real-time communication. See `docs/agent-matrix.md` fo
 ## Dependencies
 
 Elixir, Erlang, Node, himalaya (versions managed via mise.toml)
+
+When adding dependencies with pinned versions:
+- Verify the current latest version via `mix hex.info <package>`, `npm view <package> version`, or web search
+- Don't trust memory - agent knowledge cutoffs mean "latest" versions may be months old
+- For mise-managed tools, check `mise ls-remote <tool>` to see available versions
