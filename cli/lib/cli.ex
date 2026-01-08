@@ -297,7 +297,9 @@ defmodule Cli do
   end
 
   defp run_with_logger(message, system_prompt, timeout, model) do
-    log_file = "/tmp/claude-context-#{:os.system_time(:second)}.log"
+    # Use microseconds + random suffix to avoid collision when multiple CLI processes start close together
+    random_suffix = :rand.uniform(0xFFFF) |> Integer.to_string(16) |> String.pad_leading(4, "0")
+    log_file = "/tmp/claude-context-#{:os.system_time(:microsecond)}-#{random_suffix}.log"
 
     # Start the logger in the background, using mise exec to ensure correct PATH
     logger_script =
