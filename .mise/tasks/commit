@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Stage all changes and commit with a message"
-#MISE usage="commit <message>"
+#USAGE arg "<message>" help="Commit message"
 
 set -e
 

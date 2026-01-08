@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Commit and push in one step"
-#MISE usage="ship <message>"
+#USAGE arg "<message>" help="Commit message"
 
 set -e
 
