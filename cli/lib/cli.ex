@@ -434,15 +434,28 @@ defmodule Cli do
         stream_output(port, new_state)
 
       {^port, {:exit_status, status}} ->
-        # Flush any remaining buffer content before exit (issue #367)
-        if buffer != "" do
-          flush_partial_buffer(buffer)
-        end
+        # Process any remaining buffer content before exit
+        # First try as complete JSON (issue #374), fall back to partial flush (issue #367)
+        final_state =
+          if buffer != "" do
+            case Jason.decode(buffer) do
+              {:ok, _} ->
+                # Buffer contains complete JSON - process it to capture events like usage
+                process_line(buffer, state)
 
-        print_usage_summary(state)
+              {:error, _} ->
+                # Buffer is partial - just flush any visible text
+                flush_partial_buffer(buffer)
+                state
+            end
+          else
+            state
+          end
+
+        print_usage_summary(final_state)
 
         # If agent signaled abort, override exit status
-        if state.abort_seen do
+        if final_state.abort_seen do
           IO.puts("\n---")
           IO.puts("Agent requested session abort via [[ABORT]]")
           1
