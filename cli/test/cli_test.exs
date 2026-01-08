@@ -294,7 +294,7 @@ defmodule CliTest do
   describe "process_line/2" do
     test "outputs text delta and tracks abort_seen" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: ""}
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       output =
         capture_io(fn ->
@@ -303,12 +303,19 @@ defmodule CliTest do
         end)
 
       assert output == "Hello"
-      assert_received {:result, %{tool_input: "", abort_seen: false, recent_text: "Hello"}}
+
+      assert_received {:result,
+                       %{
+                         tool_input: "",
+                         abort_seen: false,
+                         recent_text: "Hello",
+                         flushed_text: ""
+                       }}
     end
 
     test "detects [[ABORT]] on its own line" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: ""}
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
@@ -321,7 +328,7 @@ defmodule CliTest do
     test "detects [[ABORT]] split across streaming chunks" do
       # First chunk ends mid-signal
       line1 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABO"}}})
-      state1 = %{tool_input: "", abort_seen: false, recent_text: ""}
+      state1 = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
         result = Cli.process_line(line1, state1)
@@ -343,7 +350,7 @@ defmodule CliTest do
 
     test "does not detect [[ABORT]] embedded in text" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"some [[ABORT]] text"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: ""}
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
@@ -351,6 +358,55 @@ defmodule CliTest do
       end)
 
       assert_received {:result, %{abort_seen: false}}
+    end
+
+    test "skips already-flushed text prefix" do
+      # Simulates the scenario from issue #338:
+      # 1. Partial buffer was flushed showing "Hello wor"
+      # 2. Full line completes with "Hello world"
+      # 3. Should only output "ld" (the new part)
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: "Hello wor"}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      # Should only output the new part
+      assert output == "ld"
+      # flushed_text should be reset after processing complete line
+      assert_received {:result, %{flushed_text: ""}}
+    end
+
+    test "outputs full text when flushed_text is empty" do
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      assert output == "Hello world"
+    end
+
+    test "outputs full text when flushed_text does not match prefix" do
+      # Edge case: flushed text doesn't match the complete text
+      # (shouldn't happen in practice, but handle gracefully)
+      line = ~s({"type":"stream_event","event":{"delta":{"text":"Different text"}}})
+      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: "Hello"}
+
+      output =
+        capture_io(fn ->
+          result = Cli.process_line(line, state)
+          send(self(), {:result, result})
+        end)
+
+      # Should output the full text since flushed doesn't match
+      assert output == "Different text"
     end
 
     test "resets tool_input on tool_use start and prints tool name" do
@@ -529,6 +585,31 @@ defmodule CliTest do
     test "outputs nothing for empty string" do
       output = capture_io(fn -> Cli.flush_partial_buffer("") end)
       assert output == ""
+    end
+  end
+
+  describe "extract_partial_text/1" do
+    test "extracts text from partial JSON" do
+      partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)
+      assert Cli.extract_partial_text(partial) == "Hello wor"
+    end
+
+    test "handles JSON escapes" do
+      partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
+      assert Cli.extract_partial_text(partial) == "line1\nline2\ttab"
+    end
+
+    test "returns empty string for non-text partial" do
+      partial = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{)
+      assert Cli.extract_partial_text(partial) == ""
+    end
+
+    test "returns empty string for non-JSON" do
+      assert Cli.extract_partial_text("random data") == ""
+    end
+
+    test "returns empty string for empty input" do
+      assert Cli.extract_partial_text("") == ""
     end
   end
 

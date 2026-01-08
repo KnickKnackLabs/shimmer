@@ -305,7 +305,8 @@ defmodule Cli do
         buffer: "",
         usage: nil,
         abort_seen: false,
-        recent_text: ""
+        recent_text: "",
+        flushed_text: ""
       })
 
     if status == @timeout_exit_code do
@@ -452,26 +453,47 @@ defmodule Cli do
     after
       @buffer_flush_timeout_ms ->
         # Flush partial buffer on timeout to show long lines in progress
+        # Keep buffer intact so continuation data isn't lost (issue #338)
         case buffer do
           "" ->
             stream_output(port, state)
 
           partial ->
-            flush_partial_buffer(partial)
-            stream_output(port, %{state | buffer: ""})
+            # Extract text from current partial buffer
+            extracted = extract_partial_text(partial)
+
+            # Only output the new text beyond what was already flushed
+            new_text =
+              if String.starts_with?(extracted, state.flushed_text) do
+                String.slice(
+                  extracted,
+                  String.length(state.flushed_text),
+                  String.length(extracted)
+                )
+              else
+                # Flushed text doesn't match - shouldn't happen, but output everything
+                extracted
+              end
+
+            if new_text != "" do
+              IO.write(new_text)
+            end
+
+            # Track all text we've shown from this buffer
+            stream_output(port, %{state | flushed_text: extracted})
         end
     end
   end
 
   @doc """
-  Flush incomplete JSON lines from the buffer without processing them as JSON.
+  Extract text from incomplete JSON lines in the buffer without processing as JSON.
   These are partial lines that haven't completed yet, so we try to extract
   any text content for display.
 
-  Returns `:ok` after writing any extracted text to stdout.
+  Returns the unescaped text that was extracted, or empty string if none found.
   """
-  @spec flush_partial_buffer(String.t()) :: :ok
-  def flush_partial_buffer(partial) do
+  @spec extract_partial_text(String.t()) :: String.t()
+  def extract_partial_text(partial) do
     # Try to extract text from partial JSON if it looks like a streaming event
     # Pattern: look for "text":" followed by content
     case Regex.run(~r/"text"\s*:\s*"((?:[^"\\]|\\.)*)$/, partial) do
@@ -479,12 +501,27 @@ defmodule Cli do
         # Complete the JSON string and use Jason to handle all escape sequences
         # This properly handles \r, \b, \f, \/, \uXXXX in addition to \n, \t, \\, \"
         case Jason.decode("\"#{text}\"") do
-          {:ok, unescaped} -> IO.write(unescaped)
-          {:error, _} -> :ok
+          {:ok, unescaped} -> unescaped
+          {:error, _} -> ""
         end
 
       nil ->
-        :ok
+        ""
+    end
+  end
+
+  @doc """
+  Flush incomplete JSON lines from the buffer without processing them as JSON.
+  Writes extracted text to stdout. This is a convenience wrapper around
+  `extract_partial_text/1`.
+
+  Returns `:ok` after writing any extracted text to stdout.
+  """
+  @spec flush_partial_buffer(String.t()) :: :ok
+  def flush_partial_buffer(partial) do
+    case extract_partial_text(partial) do
+      "" -> :ok
+      text -> IO.write(text)
     end
   end
 
@@ -493,7 +530,8 @@ defmodule Cli do
            buffer: String.t(),
            usage: map() | nil,
            abort_seen: boolean(),
-           recent_text: String.t()
+           recent_text: String.t(),
+           flushed_text: String.t()
          }
 
   @doc false
@@ -502,12 +540,14 @@ defmodule Cli do
     case Jason.decode(line) do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
-        IO.write(text)
+        # Write text, skipping any prefix already shown via partial flush (issue #338)
+        write_text_delta(text, state.flushed_text)
         # Keep a sliding window of recent text to detect [[ABORT]] across chunk boundaries
         # The signal is 11 chars, so we keep 20 to ensure we can always match it
         recent_text = String.slice(state.recent_text <> text, -20, 20)
         abort_seen = state.abort_seen || Regex.match?(~r/^\[\[ABORT\]\]$/m, recent_text)
-        %{state | abort_seen: abort_seen, recent_text: recent_text}
+        # Reset flushed_text since this line is now complete
+        %{state | abort_seen: abort_seen, recent_text: recent_text, flushed_text: ""}
 
       # Handle tool use start - show which tool is being called
       {:ok,
@@ -550,6 +590,22 @@ defmodule Cli do
       usage: Map.get(result, "usage"),
       model_usage: Map.get(result, "modelUsage")
     }
+  end
+
+  # Write text delta, skipping any prefix that was already flushed (issue #338)
+  defp write_text_delta(text, flushed_text) do
+    text_to_write =
+      if flushed_text != "" && String.starts_with?(text, flushed_text) do
+        String.slice(text, String.length(flushed_text), String.length(text))
+      else
+        text
+      end
+
+    if text_to_write != "" do
+      IO.write(text_to_write)
+    end
+
+    :ok
   end
 
   defp print_usage_summary(%{usage: nil}), do: :ok
