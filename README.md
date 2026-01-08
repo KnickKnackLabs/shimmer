@@ -33,7 +33,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 ### Task Management
 
 - `mise run tasks` - List open tasks (GitHub issues)
-- `mise run wip` - Show work in progress (open PRs and issues)
+- `mise run wip` - Show work in progress (open PRs and issues with discussion status)
 
 ### Agent Metrics
 
