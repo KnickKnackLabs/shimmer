@@ -43,8 +43,7 @@ defmodule Cli.MixProject do
           targets: [
             linux_x86_64: [os: :linux, cpu: :x86_64],
             linux_arm64: [os: :linux, cpu: :aarch64],
-            darwin_arm64: [os: :darwin, cpu: :aarch64],
-            windows_x86_64: [os: :windows, cpu: :x86_64]
+            darwin_arm64: [os: :darwin, cpu: :aarch64]
           ]
         ]
       ]
