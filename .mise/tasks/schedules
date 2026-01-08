@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#MISE description="Show agent job schedules"
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Fetch all workflow states upfront
+workflow_data=$(gh api repos/:owner/:repo/actions/workflows --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null || true)
+
+echo "Agent Schedules"
+echo "==============="
+echo ""
+printf "%-8s %-10s %-20s %-20s %s\n" "STATUS" "AGENT" "JOB" "SCHEDULE" "DESCRIPTION"
+printf "%-8s %-10s %-20s %-20s %s\n" "------" "-----" "---" "--------" "-----------"
+
+# Parse workflow files and extract schedule info
+for workflow in .github/workflows/*.yml; do
+  # Skip non-agent workflows
+  filename=$(basename "$workflow")
+  basename="${filename%.yml}"
+  [[ "$basename" == "agent-run" || "$basename" == "pr-check" || "$basename" == "test-agent-identity" ]] && continue
+
+  # Check if it has a schedule
+  if grep -q "schedule:" "$workflow"; then
+    # Extract agent and job from filename (format: agent-job.yml)
+    agent=$(echo "$basename" | cut -d'-' -f1)
+    job=$(echo "$basename" | cut -d'-' -f2-)
+
+    # Extract cron and comment
+    cron_line=$(grep -A1 "schedule:" "$workflow" | grep "cron:" | head -1)
+    cron=$(echo "$cron_line" | sed "s/.*cron: *['\"]\\([^'\"]*\\)['\"].*/\\1/")
+    comment=$(echo "$cron_line" | sed "s/.*# *\\(.*\\)/\\1/" | grep -v "cron:" || echo "")
+
+    # Get workflow state from cached data
+    state=$(echo "$workflow_data" | grep "\.github/workflows/${filename}" | cut -f2)
+
+    if [[ "$state" == "active" ]]; then
+      status="✓"
+    elif [[ "$state" == "disabled_manually" ]]; then
+      status="✗"
+    else
+      status="?"
+    fi
+
+    printf "%-8s %-10s %-20s %-20s %s\n" "$status" "$agent" "$job" "$cron" "$comment"
+  fi
+done | sort -k2
