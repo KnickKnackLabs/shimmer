@@ -41,6 +41,17 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run activity-digest [--days N]` - Generate and send weekly activity digest email
 - `mise run usage [--days N]` - Show workflow usage and estimated compute minutes
 
+### Identity
+
+- `mise run as <agent>` - Switch to an agent's identity for local work (use with `eval`)
+- `mise run whoami` - Show current git and GitHub identity
+
+Example:
+```bash
+eval $(mise run as quick)
+mise run whoami
+```
+
 ### Admin
 
 - `mise run provision-agent <name>` - Provision a new agent (GPG key, GitHub secrets, 1Password)

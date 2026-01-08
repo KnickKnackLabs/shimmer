@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#MISE description="Show current git and GitHub identity"
+
+echo "Git identity:"
+echo "  Author:    ${GIT_AUTHOR_NAME:-$(git config user.name)} <${GIT_AUTHOR_EMAIL:-$(git config user.email)}>"
+echo "  Committer: ${GIT_COMMITTER_NAME:-$(git config user.name)} <${GIT_COMMITTER_EMAIL:-$(git config user.email)}>"
+echo ""
+echo "GitHub identity:"
+if [ -n "$GH_TOKEN" ]; then
+  gh_user=$(gh api user --jq '.login' 2>/dev/null || echo "(failed to fetch)")
+  echo "  Logged in as: $gh_user"
+else
+  echo "  GH_TOKEN not set, using: $(gh auth status 2>&1 | grep 'Logged in' | sed 's/.*as //' || echo '(unknown)')"
+fi

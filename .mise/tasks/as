@@ -48,7 +48,7 @@ fi
 
 # Fetch GitHub PAT from 1Password
 ITEM="${AGENT} - GitHub"
-PAT=$(op item get "$ITEM" --vault "$VAULT" --fields PAT 2>/dev/null || true)
+PAT=$(op item get "$ITEM" --vault "$VAULT" --fields PAT --reveal 2>/dev/null || true)
 
 if [ -z "$PAT" ]; then
   echo "ERROR: Could not find PAT in 1Password item '$ITEM'" >&2
@@ -65,4 +65,4 @@ echo "export GIT_COMMITTER_NAME='$AGENT'"
 
 # Print info to stderr so it doesn't interfere with eval
 echo "# Agent identity set: $AGENT ($EMAIL)" >&2
-echo "# To apply: eval \$(mise run as $AGENT)" >&2
+echo "# Verify with: mise run whoami" >&2
