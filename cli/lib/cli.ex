@@ -615,7 +615,13 @@ defmodule Cli do
   def format_tool_input(%{"todos" => todos}) when is_list(todos) do
     count = length(todos)
     first = List.first(todos)
-    preview = if first, do: ": #{truncate(first["content"] || "", 50)}", else: ""
+
+    preview =
+      case first do
+        %{"content" => content} when is_binary(content) -> ": #{truncate(content, 50)}"
+        _ -> ""
+      end
+
     "  #{count} todo(s)#{preview}"
   end
 

@@ -146,6 +146,43 @@ defmodule CliTest do
       assert result =~ "line3\\nline4"
     end
 
+    test "formats TodoWrite tool input with map todos" do
+      input = %{
+        "todos" => [
+          %{"content" => "First task", "status" => "in_progress", "activeForm" => "Doing first"},
+          %{"content" => "Second task", "status" => "pending", "activeForm" => "Doing second"}
+        ]
+      }
+
+      result = Cli.format_tool_input(input)
+      assert result == "  2 todo(s): First task"
+    end
+
+    test "formats TodoWrite tool input with empty todos list" do
+      input = %{"todos" => []}
+
+      result = Cli.format_tool_input(input)
+      assert result == "  0 todo(s)"
+    end
+
+    test "handles TodoWrite with non-map todo items gracefully" do
+      # Edge case: model sends malformed data (strings instead of maps)
+      input = %{"todos" => ["Task 1", "Task 2"]}
+
+      result = Cli.format_tool_input(input)
+      # Should not crash, just show count without preview
+      assert result == "  2 todo(s)"
+    end
+
+    test "handles TodoWrite with mixed todo items gracefully" do
+      # Edge case: some items are maps, some are not
+      input = %{"todos" => [nil, %{"content" => "Valid task"}]}
+
+      result = Cli.format_tool_input(input)
+      # First item is nil, so no preview
+      assert result == "  2 todo(s)"
+    end
+
     test "formats WebFetch tool input with prompt" do
       input = %{
         "prompt" => "Extract the main content",
