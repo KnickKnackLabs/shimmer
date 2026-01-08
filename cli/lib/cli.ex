@@ -383,6 +383,11 @@ defmodule Cli do
         stream_output(port, new_state)
 
       {^port, {:exit_status, status}} ->
+        # Flush any remaining buffer content before exit (issue #367)
+        if buffer != "" do
+          flush_partial_buffer(buffer)
+        end
+
         print_usage_summary(state)
 
         # If agent signaled abort, override exit status
