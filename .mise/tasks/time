@@ -32,11 +32,19 @@ remaining=$((RUN_TIMEOUT - elapsed))
 
 elapsed_min=$((elapsed / 60))
 elapsed_sec=$((elapsed % 60))
-remaining_min=$((remaining / 60))
-remaining_sec=$((remaining % 60))
 
 printf "Elapsed: %d:%02d\n" $elapsed_min $elapsed_sec
-printf "Remaining: %d:%02d\n" $remaining_min $remaining_sec
+
+if [ $remaining -lt 0 ]; then
+  exceeded=$((-remaining))
+  exceeded_min=$((exceeded / 60))
+  exceeded_sec=$((exceeded % 60))
+  printf "Remaining: 0:00 (exceeded by %d:%02d)\n" $exceeded_min $exceeded_sec
+else
+  remaining_min=$((remaining / 60))
+  remaining_sec=$((remaining % 60))
+  printf "Remaining: %d:%02d\n" $remaining_min $remaining_sec
+fi
 
 # Warn if less than 2 minutes remaining
 if [ $remaining -lt 120 ]; then
