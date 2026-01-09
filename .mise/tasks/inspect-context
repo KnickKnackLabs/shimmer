@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #MISE description="Inspect the context being sent to Claude"
-#USAGE flag "--agent <name>" help="Agent to use (default: probe-1)"
+#USAGE flag "--agent <name>" help="Agent to use (default: quick)"
 #USAGE arg "[message]" help="Message to send (default: Say hello)"
 
 set -e
 
 # Use usage variables with defaults
 MESSAGE="${usage_message:-Say hello}"
-AGENT="${usage_agent:-probe-1}"
+AGENT="${usage_agent:-quick}"
 
 cd "$(git rev-parse --show-toplevel)/cli"
 mix escript.build >/dev/null 2>&1
