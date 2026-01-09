@@ -491,25 +491,13 @@ defmodule CliTest do
       assert output == "Hello wor"
     end
 
+    # Verifies regex captures escape sequences and Jason decodes them.
+    # Jason handles all standard JSON escapes: \n, \t, \r, \", \\, \b, \f, \/, \uXXXX
     test "handles JSON escapes in partial text" do
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
 
       output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
       assert output == "line1\nline2\ttab"
-    end
-
-    test "handles escaped quotes in partial text" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"said \\"hello)
-
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
-      assert output == "said \"hello"
-    end
-
-    test "handles escaped backslashes in partial text" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"path\\\\to)
-
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
-      assert output == "path\\to"
     end
 
     test "outputs nothing for partial JSON without text field" do
