@@ -348,7 +348,19 @@ defmodule Cli do
           )
 
         stop_logger(logger_port)
-        # Clean up temp log file on success
+
+        # Show context log to user (the purpose of --log-context)
+        case File.read(log_file) do
+          {:ok, content} when content != "" ->
+            IO.puts("\n---")
+            IO.puts("Context log:")
+            IO.puts(content)
+
+          _ ->
+            :ok
+        end
+
+        # Clean up temp log file
         File.rm(log_file)
         status
 
