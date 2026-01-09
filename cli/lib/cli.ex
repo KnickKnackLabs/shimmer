@@ -555,13 +555,12 @@ defmodule Cli do
            had_newline_before_window: boolean()
          }
 
-  # Detect [[ABORT]] signal on its own line, handling chunk boundaries (#400).
+  # Detect [[ABORT]] signal on its own line, handling chunk boundaries (#400, #402).
   # Returns {abort_seen, recent_text, had_newline_before_window}
   defp check_abort_signal(text, state) do
     # Use a sliding window to catch signals split across chunks
     combined = state.recent_text <> text
     combined_len = String.length(combined)
-    recent_text = String.slice(combined, -20, 20)
 
     # Check if any text was trimmed and if it contained a newline
     trimmed_len = max(0, combined_len - 20)
@@ -573,14 +572,19 @@ defmodule Cli do
         do: true,
         else: state.had_newline_before_window
 
-    # Prepend newline if we know there was one before the window
+    # IMPORTANT: Check for abort in combined BEFORE truncating (#402)
+    # If [[ABORT]] is in the full text but gets pushed out of the window,
+    # we need to catch it before truncation
     text_to_check =
-      if had_newline_before_window, do: "\n" <> recent_text, else: recent_text
+      if had_newline_before_window, do: "\n" <> combined, else: combined
 
     # Match [[ABORT]] after newline or start, followed by newline or end
     abort_seen =
       state.abort_seen ||
         Regex.match?(~r/(?:^|\n)\[\[ABORT\]\](?:\n|$)/, text_to_check)
+
+    # Now truncate the window for next iteration
+    recent_text = String.slice(combined, -20, 20)
 
     {abort_seen, recent_text, had_newline_before_window}
   end
