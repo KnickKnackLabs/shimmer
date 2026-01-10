@@ -144,10 +144,16 @@ defmodule Cli do
         aliases: [h: :help]
       )
 
-    if invalid != [] do
-      invalid_names = Enum.map(invalid, fn {name, _} -> name end) |> Enum.join(", ")
-      IO.puts("WARNING: Unknown arguments ignored: #{invalid_names}")
-    end
+    Enum.each(invalid, fn
+      {name, nil} ->
+        IO.puts("WARNING: Unknown argument ignored: #{name}")
+
+      {"--timeout", value} ->
+        IO.puts("ERROR: --timeout requires an integer value, got: #{value}")
+
+      {name, value} ->
+        IO.puts("WARNING: Invalid argument: #{name}=#{value}")
+    end)
 
     {opts, rest}
   end

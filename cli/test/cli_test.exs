@@ -18,19 +18,23 @@ defmodule CliTest do
   describe "invalid argument handling" do
     test "warns about unknown arguments" do
       {output, _exit_code} = run_cli(["--agnet", "quick", "--timeout", "60"])
-      assert output =~ "WARNING: Unknown arguments ignored: --agnet"
+      assert output =~ "WARNING: Unknown argument ignored: --agnet"
     end
 
     test "warns about multiple unknown arguments" do
       {output, _exit_code} = run_cli(["--agnet", "quick", "--tiemout", "60"])
-      assert output =~ "WARNING: Unknown arguments ignored:"
-      assert output =~ "--agnet"
-      assert output =~ "--tiemout"
+      assert output =~ "WARNING: Unknown argument ignored: --agnet"
+      assert output =~ "WARNING: Unknown argument ignored: --tiemout"
     end
 
     test "no warning for valid arguments" do
       {output, _exit_code} = run_cli(["--agent", "quick", "--timeout", "60"])
-      refute output =~ "WARNING: Unknown arguments ignored"
+      refute output =~ "WARNING: Unknown argument"
+    end
+
+    test "shows specific error for non-integer timeout value" do
+      {output, _exit_code} = run_cli(["--agent", "quick", "--timeout", "abc", "hello"])
+      assert output =~ "ERROR: --timeout requires an integer value, got: abc"
     end
 
     test "returns exit code 1 for missing agent" do
