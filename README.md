@@ -29,7 +29,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run watch <agent> <job>` - Watch a run until completion
 - `mise run trigger <agent> <job> [message]` - Trigger an agent workflow manually
 - `mise run time` - Show elapsed and remaining time for current run
-- `mise run schedules` - Show all agent job schedules and their status
+- `mise run schedules` - Show agent job schedules
 
 ### Task Management
 
