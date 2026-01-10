@@ -1,4 +1,4 @@
-defmodule Cli do
+defmodule ShimmerCli do
   @moduledoc """
   CLI interface for running Claude Code agents with streaming response handling.
 
@@ -40,7 +40,7 @@ defmodule Cli do
   @timeout_exit_code 124
 
   defp prompts_dir do
-    :code.priv_dir(:cli) |> List.to_string() |> Path.join("prompts")
+    :code.priv_dir(:shimmer_cli) |> List.to_string() |> Path.join("prompts")
   end
 
   @doc """
@@ -187,7 +187,7 @@ defmodule Cli do
 
   ## Examples
 
-      iex> Cli.load_system_prompt(nil, nil)
+      iex> ShimmerCli.load_system_prompt(nil, nil)
       nil
 
   """
@@ -623,16 +623,16 @@ defmodule Cli do
 
   ## Examples
 
-      iex> Cli.text_beyond_flushed("hello world", "hello")
+      iex> ShimmerCli.text_beyond_flushed("hello world", "hello")
       " world"
 
-      iex> Cli.text_beyond_flushed("hello", "hello")
+      iex> ShimmerCli.text_beyond_flushed("hello", "hello")
       ""
 
-      iex> Cli.text_beyond_flushed("hello", "")
+      iex> ShimmerCli.text_beyond_flushed("hello", "")
       "hello"
 
-      iex> Cli.text_beyond_flushed("different", "hello")
+      iex> ShimmerCli.text_beyond_flushed("different", "hello")
       "different"
 
   """

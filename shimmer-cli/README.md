@@ -1,4 +1,4 @@
-# CLI
+# Shimmer CLI
 
 Elixir CLI that invokes Claude Code with agent-specific system prompts.
 

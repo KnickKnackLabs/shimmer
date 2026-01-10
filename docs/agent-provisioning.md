@@ -120,4 +120,4 @@ rikonor@gmail.com (personal)
 
 x1f9 has a cryptographic identity provisioned but no assigned role.
 This slot is available for a future specialized agent. To activate, add a prompt file
-at `cli/priv/prompts/agents/<name>.txt` and create corresponding workflow(s).
+at `shimmer-cli/priv/prompts/agents/<name>.txt` and create corresponding workflow(s).

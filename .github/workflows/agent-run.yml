@@ -85,15 +85,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            cli/_build
-            cli/deps
-          key: ${{ runner.os }}-elixir-${{ hashFiles('cli/mix.lock') }}
+            shimmer-cli/_build
+            shimmer-cli/deps
+          key: ${{ runner.os }}-elixir-${{ hashFiles('shimmer-cli/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-elixir-
 
       - name: Build CLI
         run: |
-          cd cli
+          cd shimmer-cli
           mix local.hex --force
           mix deps.get
 
@@ -120,4 +120,4 @@ jobs:
           RUN_TIMEOUT: 540
         run: |
           export RUN_START_TIME=$(date +%s)
-          cd cli && mix shimmer --agent ${{ inputs.agent }} --job ${{ inputs.job }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
+          cd shimmer-cli && mix shimmer --agent ${{ inputs.agent }} --job ${{ inputs.job }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"

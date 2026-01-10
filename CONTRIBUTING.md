@@ -47,7 +47,7 @@ This repository can serve as a foundation for new projects. To derive a new proj
 
 2. Update `CLAUDE.md` to describe the new project's purpose
 
-3. Optionally, create new agent prompts in `cli/priv/prompts/agents/` if the project needs agents with different roles (see `cli/README.md` for details)
+3. Optionally, create new agent prompts in `shimmer-cli/priv/prompts/agents/` if the project needs agents with different roles (see `shimmer-cli/README.md` for details)
 
 4. Create GitHub issues to define initial work for agents
 

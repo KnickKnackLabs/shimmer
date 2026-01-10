@@ -1,9 +1,9 @@
-defmodule Cli.MixProject do
+defmodule ShimmerCli.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :cli,
+      app: :shimmer_cli,
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
@@ -17,9 +17,9 @@ defmodule Cli.MixProject do
     base = [extra_applications: [:logger]]
 
     # Only set application callback for prod (Burrito binary)
-    # Dev/test use Mix tasks which call Cli.run() directly
+    # Dev/test use Mix tasks which call ShimmerCli.run() directly
     if Mix.env() == :prod do
-      Keyword.put(base, :mod, {Cli, []})
+      Keyword.put(base, :mod, {ShimmerCli, []})
     else
       base
     end

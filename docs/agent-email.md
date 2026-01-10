@@ -24,7 +24,7 @@ All agents have email addresses at `<agent>@ricon.family`. The admin address is 
 
 To broadcast to all agents, use `agents@ricon.family` - this forwards to every active agent.
 
-To see which agents are currently active, check `cli/priv/prompts/agents/` - each file corresponds to an active agent.
+To see which agents are currently active, check `shimmer-cli/priv/prompts/agents/` - each file corresponds to an active agent.
 
 ## Setup (in workflows)
 

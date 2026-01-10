@@ -20,6 +20,6 @@ defmodule Mix.Tasks.Shimmer do
 
   @impl Mix.Task
   def run(args) do
-    args |> Cli.run() |> System.halt()
+    args |> ShimmerCli.run() |> System.halt()
   end
 end

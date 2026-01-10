@@ -3,7 +3,7 @@
 
 set -e
 
-cd cli
+cd shimmer-cli
 
 echo "=== Running tests ==="
 mix test

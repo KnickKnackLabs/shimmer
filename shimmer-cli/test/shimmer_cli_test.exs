@@ -1,13 +1,13 @@
-defmodule CliTest do
+defmodule ShimmerCliTest do
   use ExUnit.Case
-  doctest Cli
+  doctest ShimmerCli
   import ExUnit.CaptureIO
 
-  # Helper to capture both IO output and return value from Cli.run
+  # Helper to capture both IO output and return value from ShimmerCli.run
   defp run_cli(args) do
     output =
       capture_io(fn ->
-        send(self(), {:result, Cli.run(args)})
+        send(self(), {:result, ShimmerCli.run(args)})
       end)
 
     receive do
@@ -88,15 +88,15 @@ defmodule CliTest do
     end
   end
 
-  describe "Cli module" do
+  describe "ShimmerCli module" do
     test "exports main/1 function" do
       # Verify the main entry point exists
-      assert function_exported?(Cli, :main, 1)
+      assert function_exported?(ShimmerCli, :main, 1)
     end
 
     test "module loads without errors" do
       # Basic smoke test - if this passes, the module compiles correctly
-      assert Code.ensure_loaded?(Cli)
+      assert Code.ensure_loaded?(ShimmerCli)
     end
   end
 
@@ -120,22 +120,22 @@ defmodule CliTest do
   describe "format_tool_input/1" do
     test "formats bash command input" do
       input = %{"command" => "ls -la"}
-      assert Cli.format_tool_input(input) == "  $ ls -la"
+      assert ShimmerCli.format_tool_input(input) == "  $ ls -la"
     end
 
     test "formats file path input for Read tool" do
       input = %{"file_path" => "/path/to/file.ex"}
-      assert Cli.format_tool_input(input) == "  -> /path/to/file.ex"
+      assert ShimmerCli.format_tool_input(input) == "  -> /path/to/file.ex"
     end
 
     test "formats pattern input for Glob tool" do
       input = %{"pattern" => "**/*.ex"}
-      assert Cli.format_tool_input(input) == "  pattern: **/*.ex"
+      assert ShimmerCli.format_tool_input(input) == "  pattern: **/*.ex"
     end
 
     test "formats pattern input for Grep tool with path" do
       input = %{"pattern" => "def main", "path" => "cli/lib/cli.ex"}
-      assert Cli.format_tool_input(input) == "  cli/lib/cli.ex\n  pattern: def main"
+      assert ShimmerCli.format_tool_input(input) == "  cli/lib/cli.ex\n  pattern: def main"
     end
 
     test "formats Edit tool input with old_string and new_string" do
@@ -145,7 +145,7 @@ defmodule CliTest do
         "new_string" => "new code here"
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result =~ "  /path/to/file.ex"
       # Short strings should NOT have ellipsis
       assert result =~ "  - old code here"
@@ -163,7 +163,7 @@ defmodule CliTest do
         "new_string" => long_string
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # Should truncate to 60 chars plus "..."
       assert result =~ String.duplicate("x", 60) <> "..."
     end
@@ -175,7 +175,7 @@ defmodule CliTest do
         "new_string" => "line3\nline4"
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result =~ "line1\\nline2"
       assert result =~ "line3\\nline4"
     end
@@ -188,14 +188,14 @@ defmodule CliTest do
         ]
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result == "  2 todo(s): First task"
     end
 
     test "formats TodoWrite tool input with empty todos list" do
       input = %{"todos" => []}
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result == "  0 todo(s)"
     end
 
@@ -203,7 +203,7 @@ defmodule CliTest do
       # Edge case: model sends malformed data (strings instead of maps)
       input = %{"todos" => ["Task 1", "Task 2"]}
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # Should not crash, just show count without preview
       assert result == "  2 todo(s)"
     end
@@ -212,7 +212,7 @@ defmodule CliTest do
       # Edge case: some items are maps, some are not
       input = %{"todos" => [nil, %{"content" => "Valid task"}]}
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # First item is nil, so no preview
       assert result == "  2 todo(s)"
     end
@@ -223,7 +223,7 @@ defmodule CliTest do
         "description" => "Fetching docs"
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result =~ "  Fetching docs"
       # Short prompts should NOT have ellipsis
       assert result =~ "  prompt: Extract the main content"
@@ -237,7 +237,7 @@ defmodule CliTest do
         "description" => "Fetching docs"
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result =~ "  Fetching docs"
       assert result =~ "  url: https://example.com/docs"
       # Short prompts should NOT have ellipsis
@@ -251,7 +251,7 @@ defmodule CliTest do
         "prompt" => "Get content"
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # Should not have leading empty line when description is missing
       assert result == "  url: https://example.com\n  prompt: Get content"
     end
@@ -263,14 +263,14 @@ defmodule CliTest do
         "description" => ""
       }
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # Should not have leading empty line when description is empty
       assert result == "  url: https://example.com\n  prompt: Get content"
     end
 
     test "formats prompt input without description" do
       input = %{"prompt" => "Some prompt text"}
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       # Short prompts should NOT have ellipsis
       assert result == "  prompt: Some prompt text"
       refute result =~ "Some prompt text..."
@@ -280,14 +280,14 @@ defmodule CliTest do
       long_prompt = String.duplicate("a", 150)
       input = %{"prompt" => long_prompt}
 
-      result = Cli.format_tool_input(input)
+      result = ShimmerCli.format_tool_input(input)
       assert result =~ String.duplicate("a", 100) <> "..."
       refute result =~ String.duplicate("a", 101)
     end
 
     test "returns nil for unrecognized input format" do
-      assert Cli.format_tool_input(%{"unknown" => "value"}) == nil
-      assert Cli.format_tool_input(%{}) == nil
+      assert ShimmerCli.format_tool_input(%{"unknown" => "value"}) == nil
+      assert ShimmerCli.format_tool_input(%{}) == nil
     end
   end
 
@@ -298,7 +298,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -318,7 +318,7 @@ defmodule CliTest do
       state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
-        result = Cli.process_line(line, state)
+        result = ShimmerCli.process_line(line, state)
         send(self(), {:result, result})
       end)
 
@@ -331,7 +331,7 @@ defmodule CliTest do
       state1 = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
-        result = Cli.process_line(line1, state1)
+        result = ShimmerCli.process_line(line1, state1)
         send(self(), {:result1, result})
       end)
 
@@ -341,7 +341,7 @@ defmodule CliTest do
       line2 = ~s({"type":"stream_event","event":{"delta":{"text":"RT]]\\n"}}})
 
       capture_io(fn ->
-        result = Cli.process_line(line2, state2)
+        result = ShimmerCli.process_line(line2, state2)
         send(self(), {:result2, result})
       end)
 
@@ -353,7 +353,7 @@ defmodule CliTest do
       state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
 
       capture_io(fn ->
-        result = Cli.process_line(line, state)
+        result = ShimmerCli.process_line(line, state)
         send(self(), {:result, result})
       end)
 
@@ -370,7 +370,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -386,7 +386,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -401,7 +401,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -417,7 +417,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -429,7 +429,7 @@ defmodule CliTest do
       line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{\\"cmd\\":"}}})
       state = %{tool_input: ""}
 
-      result = Cli.process_line(line, state)
+      result = ShimmerCli.process_line(line, state)
       assert result.tool_input == "{\"cmd\":"
     end
 
@@ -437,7 +437,7 @@ defmodule CliTest do
       line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"\\"ls\\"}"}}})
       state = %{tool_input: "{\"cmd\":"}
 
-      result = Cli.process_line(line, state)
+      result = ShimmerCli.process_line(line, state)
       assert result.tool_input == "{\"cmd\":\"ls\"}"
     end
 
@@ -447,7 +447,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -461,7 +461,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -476,7 +476,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          result = Cli.process_line(line, state)
+          result = ShimmerCli.process_line(line, state)
           send(self(), {:result, result})
         end)
 
@@ -489,21 +489,21 @@ defmodule CliTest do
       line = ~s({"type":"unknown"})
       state = %{tool_input: "preserved"}
 
-      assert Cli.process_line(line, state) == state
+      assert ShimmerCli.process_line(line, state) == state
     end
 
     test "returns state unchanged for invalid JSON" do
       line = "not valid json at all"
       state = %{tool_input: "preserved"}
 
-      assert Cli.process_line(line, state) == state
+      assert ShimmerCli.process_line(line, state) == state
     end
 
     test "returns state unchanged for empty line" do
       line = ""
       state = %{tool_input: "preserved"}
 
-      assert Cli.process_line(line, state) == state
+      assert ShimmerCli.process_line(line, state) == state
     end
   end
 
@@ -527,7 +527,7 @@ defmodule CliTest do
         })
 
       state = %{tool_input: "", full_text: "", usage: nil}
-      result_state = Cli.process_line(line, state)
+      result_state = ShimmerCli.process_line(line, state)
 
       assert result_state.usage.cost_usd == 0.0259
       assert result_state.usage.duration_ms == 2327
@@ -543,7 +543,7 @@ defmodule CliTest do
       # Simulates a partial streaming event with incomplete text
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)
 
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
+      output = capture_io(fn -> ShimmerCli.flush_partial_buffer(partial) end)
       assert output == "Hello wor"
     end
 
@@ -552,26 +552,26 @@ defmodule CliTest do
     test "handles JSON escapes in partial text" do
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
 
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
+      output = capture_io(fn -> ShimmerCli.flush_partial_buffer(partial) end)
       assert output == "line1\nline2\ttab"
     end
 
     test "outputs nothing for partial JSON without text field" do
       partial = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{)
 
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
+      output = capture_io(fn -> ShimmerCli.flush_partial_buffer(partial) end)
       assert output == ""
     end
 
     test "outputs nothing for non-JSON partial data" do
       partial = "some random data without json structure"
 
-      output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
+      output = capture_io(fn -> ShimmerCli.flush_partial_buffer(partial) end)
       assert output == ""
     end
 
     test "outputs nothing for empty string" do
-      output = capture_io(fn -> Cli.flush_partial_buffer("") end)
+      output = capture_io(fn -> ShimmerCli.flush_partial_buffer("") end)
       assert output == ""
     end
   end
@@ -579,62 +579,62 @@ defmodule CliTest do
   describe "extract_partial_text/1" do
     test "extracts text from partial JSON" do
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)
-      assert Cli.extract_partial_text(partial) == "Hello wor"
+      assert ShimmerCli.extract_partial_text(partial) == "Hello wor"
     end
 
     test "handles JSON escapes" do
       partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
-      assert Cli.extract_partial_text(partial) == "line1\nline2\ttab"
+      assert ShimmerCli.extract_partial_text(partial) == "line1\nline2\ttab"
     end
 
     test "returns empty string for non-text partial" do
       partial = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{)
-      assert Cli.extract_partial_text(partial) == ""
+      assert ShimmerCli.extract_partial_text(partial) == ""
     end
 
     test "returns empty string for non-JSON" do
-      assert Cli.extract_partial_text("random data") == ""
+      assert ShimmerCli.extract_partial_text("random data") == ""
     end
 
     test "returns empty string for empty input" do
-      assert Cli.extract_partial_text("") == ""
+      assert ShimmerCli.extract_partial_text("") == ""
     end
   end
 
   describe "text_beyond_flushed/2" do
     test "returns remainder when flushed matches prefix" do
-      assert Cli.text_beyond_flushed("hello world", "hello") == " world"
+      assert ShimmerCli.text_beyond_flushed("hello world", "hello") == " world"
     end
 
     test "returns empty string when fully flushed" do
-      assert Cli.text_beyond_flushed("hello", "hello") == ""
+      assert ShimmerCli.text_beyond_flushed("hello", "hello") == ""
     end
 
     test "returns full text when flushed is empty" do
-      assert Cli.text_beyond_flushed("hello", "") == "hello"
+      assert ShimmerCli.text_beyond_flushed("hello", "") == "hello"
     end
 
     test "returns full text when flushed does not match prefix" do
-      assert Cli.text_beyond_flushed("different", "hello") == "different"
+      assert ShimmerCli.text_beyond_flushed("different", "hello") == "different"
     end
 
     test "handles empty text" do
-      assert Cli.text_beyond_flushed("", "") == ""
-      assert Cli.text_beyond_flushed("", "flushed") == ""
+      assert ShimmerCli.text_beyond_flushed("", "") == ""
+      assert ShimmerCli.text_beyond_flushed("", "flushed") == ""
     end
   end
 
   describe "load_system_prompt/1" do
     test "returns nil for nil agent" do
-      assert Cli.load_system_prompt(nil) == nil
+      assert ShimmerCli.load_system_prompt(nil) == nil
     end
 
     test "returns nil for empty string agent" do
-      assert Cli.load_system_prompt("") == nil
+      assert ShimmerCli.load_system_prompt("") == nil
     end
 
     test "loads brownie agent prompt with common prompt" do
-      result = Cli.load_system_prompt("brownie")
+      result = ShimmerCli.load_system_prompt("brownie")
 
       # Should contain common prompt
       assert result =~ "verify current documentation"
@@ -645,7 +645,7 @@ defmodule CliTest do
     end
 
     test "loads agent prompt with job" do
-      result = Cli.load_system_prompt("quick", "probe")
+      result = ShimmerCli.load_system_prompt("quick", "probe")
 
       # Should contain common prompt
       assert result =~ "verify current documentation"
@@ -660,7 +660,7 @@ defmodule CliTest do
     end
 
     test "loads agent prompt with critic job" do
-      result = Cli.load_system_prompt("brownie", "critic")
+      result = ShimmerCli.load_system_prompt("brownie", "critic")
 
       # Should contain agent identity
       assert result =~ "You are brownie"
@@ -675,7 +675,7 @@ defmodule CliTest do
 
       {result, output} =
         with_io(fn ->
-          Cli.load_system_prompt("non-existent-agent")
+          ShimmerCli.load_system_prompt("non-existent-agent")
         end)
 
       # Should have common prompt content
@@ -690,7 +690,7 @@ defmodule CliTest do
     end
 
     test "concatenates common and agent prompts" do
-      result = Cli.load_system_prompt("brownie")
+      result = ShimmerCli.load_system_prompt("brownie")
 
       # Both prompts should be present (separated by newlines)
       assert result =~ "uncertain."
@@ -707,7 +707,7 @@ defmodule CliTest do
 
       output =
         capture_io(fn ->
-          Cli.load_system_prompt("brownie", "non-existent-job")
+          ShimmerCli.load_system_prompt("brownie", "non-existent-job")
         end)
 
       # Should warn about missing job prompt with available jobs listed
@@ -727,7 +727,7 @@ defmodule CliTest do
         # Capture the warning output
         output =
           ExUnit.CaptureIO.capture_io(fn ->
-            Cli.load_system_prompt("bad-agent")
+            ShimmerCli.load_system_prompt("bad-agent")
           end)
 
         assert output =~ "WARNING: Failed to read"
