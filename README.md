@@ -22,7 +22,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise t
 - `mise run agent:trigger <agent> <job> [message]` - Trigger an agent workflow manually
 - `mise run ci:time-remaining` - Show elapsed and remaining time for current run
 - `mise run agent:schedules` - Show agent job schedules
-- `mise run ci:wait-for-checks` - Wait for PR checks to complete
+- `mise run ci:wait-for-checks` - Wait for PR checks to complete (timeout 3 min)
 
 ### Task Management
 
