@@ -138,16 +138,16 @@ mutation {
 These cannot be configured via CLI/API - must use web UI at:
 https://github.com/orgs/ricon-family/projects/4/settings
 
-**Workflows to enable:**
-- [ ] Item closed → Set Status to "Done"
-- [ ] Pull request merged → Set Status to "Done"
-- [ ] Auto-archive items: `is:closed updated:<@today-14d`
-- [ ] Auto-add from repository: ricon-family/shimmer
+**Workflows enabled:**
+- [x] Item closed (issues only) → Set Status to "Done"
+- [x] Pull request merged → Set Status to "Done"
+- [x] Auto-archive items: `is:issue,pr is:closed updated:<@today-14d`
+- [x] Auto-add from repository: ricon-family/shimmer (`is:issue is:open`)
 
-**Views to create:**
-- [ ] Backlog (table, group by Priority)
-- [ ] Sprint Board (board, filter `iteration:@current`, columns by Status)
-- [ ] My Work (table, filter `assignee:@me`)
+**Views created:**
+- [x] Backlog (table, group by Priority, columns: Title, Assignees, Status, Iteration)
+- [x] Sprint Board (board, filter `iteration:@current`, columns by Status)
+- [x] My Work (table, filter `assignee:@me`)
 
 ### 5. Delete `bug` label
 
