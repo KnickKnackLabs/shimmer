@@ -17,6 +17,9 @@ This directory contains research, best practices, and decisions related to GitHu
 - [automation.md](concepts/automation.md) - Built-in workflows and GraphQL API
 - [insights.md](concepts/insights.md) - Charts and visualizations
 
+### Decisions
+- [recommendations.md](recommendations.md) - Configuration plan for shimmer project
+
 ## Status
 
-Research completed 2026-01-10. These docs cover GitHub Issues and Projects comprehensively, with focus on CLI and API access for agent workflows.
+Research completed 2026-01-10. Recommendations documented based on stakeholder input. Ready for project configuration.
