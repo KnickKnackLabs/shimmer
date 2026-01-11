@@ -338,6 +338,8 @@ Standardize issue creation with templates for common work types:
 
 Templates help contributors provide consistent, useful information.
 
+**Agent consideration**: Unlike the web UI which shows a template picker, agents must explicitly know template names and use `--template "Template Name"`. May need wrapper tooling or agent prompts to ensure template usage.
+
 ## Topics to Explore Further
 
 - Sub-issues (detailed guide)

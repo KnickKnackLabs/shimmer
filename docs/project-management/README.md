@@ -12,10 +12,11 @@ This directory contains research, best practices, and decisions related to GitHu
 - [issues.md](concepts/issues.md) - GitHub Issues fundamentals and features
 - [labels.md](concepts/labels.md) - Labels strategy and CLI usage
 - [milestones.md](concepts/milestones.md) - Milestones for time-boxed goals
-
-### Research
-- [research-log.md](research-log.md) - Running log of documentation reviewed
+- [projects.md](concepts/projects.md) - GitHub Projects for flexible work organization
+- [views.md](concepts/views.md) - Project views and layouts
+- [automation.md](concepts/automation.md) - Built-in workflows and GraphQL API
+- [insights.md](concepts/insights.md) - Charts and visualizations
 
 ## Status
 
-This knowledge base is actively being built through collaborative research sessions.
+Research completed 2026-01-10. These docs cover GitHub Issues and Projects comprehensively, with focus on CLI and API access for agent workflows.
