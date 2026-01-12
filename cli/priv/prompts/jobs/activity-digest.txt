@@ -4,7 +4,7 @@ Your job: generate and send a weekly activity digest email.
 
 1. Run the activity-digest task to generate the digest:
    ```bash
-   mise run activity-digest
+   mise run metrics:digest
    ```
 
 2. Review the output to ensure it looks correct:
