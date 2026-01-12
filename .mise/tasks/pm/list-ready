@@ -1,24 +1,13 @@
 #!/bin/bash
 #MISE description="List issues ready to be claimed"
-#MISE usage="list-ready [--unassigned]"
+#USAGE flag "--unassigned" help="Only show unassigned issues"
 set -eo pipefail
 
 PROJECT_NUM="4"
 OWNER="ricon-family"
 
-# Parse arguments
-UNASSIGNED_ONLY=false
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --unassigned)
-      UNASSIGNED_ONLY=true
-      shift
-      ;;
-    *)
-      shift
-      ;;
-  esac
-done
+# Get flag from mise usage parser
+UNASSIGNED_ONLY="${usage_unassigned:-false}"
 
 # Get items with Status = Ready
 ITEMS=$(gh project item-list "$PROJECT_NUM" --owner "$OWNER" --format json --limit 100 | \

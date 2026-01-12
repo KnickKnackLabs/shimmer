@@ -20,6 +20,15 @@ Run `mise tasks` to see all available tasks. Key ones:
 - `mise run tasks` - List open GitHub issues
 - `mise run time` - Check elapsed and remaining time during CI runs
 
+## Workflow
+
+Work is tracked in a GitHub Project. See `docs/agent-workflow.md` for details.
+
+- `mise run pm:list-ready` - Find issues ready to claim
+- `mise run pm:claim-issue <num>` - Claim an issue (sets In Progress + assigns you)
+
+When submitting a PR, use `Fixes #N` to auto-close the issue on merge.
+
 ## Constraints
 
 CI runs have limited time. Use `mise run time` to check how much time remains. It will warn you when time is running low.

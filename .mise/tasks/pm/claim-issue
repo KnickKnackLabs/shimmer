@@ -1,6 +1,6 @@
 #!/bin/bash
 #MISE description="Claim an issue (set In Progress + assign to self)"
-#MISE usage="claim-issue <issue-number>"
+#USAGE arg "<issue>" help="Issue number to claim"
 set -eo pipefail
 
 # Static IDs
@@ -11,10 +11,11 @@ REPO="ricon-family/shimmer"
 STATUS_FIELD="PVTSSF_lADODumhvM4BMSWkzg7nRgc"
 IN_PROGRESS_OPTION="cc214903"
 
-ISSUE_NUM="$1"
+# Get argument from mise usage parser
+ISSUE_NUM="${usage_issue:-$1}"
 
 if [[ -z "$ISSUE_NUM" ]]; then
-  echo "Usage: mise run pm:claim-issue <issue-number>"
+  echo "Usage: mise run pm:claim-issue <issue>"
   exit 1
 fi
 

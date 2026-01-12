@@ -1,6 +1,8 @@
 #!/bin/bash
 #MISE description="Edit project fields for an issue"
-#MISE usage="edit <issue-number> [--status STATUS] [--priority PRIORITY]"
+#USAGE arg "<issue>" help="Issue number"
+#USAGE flag "--status <status>" help="Status: Backlog, Ready, In Progress, In Review, Done"
+#USAGE flag "--priority <priority>" help="Priority: High, Medium, Low"
 set -eo pipefail
 
 # Static IDs (these don't change)
@@ -33,32 +35,13 @@ get_priority_option_id() {
   esac
 }
 
-# Parse arguments
-ISSUE_NUM=""
-STATUS=""
-PRIORITY=""
-
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --status)
-      STATUS="$2"
-      shift 2
-      ;;
-    --priority)
-      PRIORITY="$2"
-      shift 2
-      ;;
-    *)
-      if [[ -z "$ISSUE_NUM" ]]; then
-        ISSUE_NUM="$1"
-      fi
-      shift
-      ;;
-  esac
-done
+# Get arguments from mise usage parser
+ISSUE_NUM="${usage_issue:-$1}"
+STATUS="${usage_status:-}"
+PRIORITY="${usage_priority:-}"
 
 if [[ -z "$ISSUE_NUM" ]]; then
-  echo "Usage: mise run pm:edit <issue-number> [--status STATUS] [--priority PRIORITY]"
+  echo "Usage: mise run pm:edit-issue <issue> [--status STATUS] [--priority PRIORITY]"
   echo ""
   echo "Status options: Backlog, Ready, \"In Progress\", \"In Review\", Done"
   echo "Priority options: High, Medium, Low"
