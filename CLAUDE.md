@@ -24,8 +24,8 @@ Run `mise tasks` to see all available tasks. Key ones:
 
 Work is tracked in a GitHub Project. See `docs/agent-workflow.md` for details.
 
-- `mise run pm:list-ready` - Find issues ready to claim
-- `mise run pm:claim-issue <num>` - Claim an issue (sets In Progress + assigns you)
+- `mise run tasks:list` - Find tasks ready to work on
+- `mise run tasks:claim <num>` - Claim a task (sets In Progress + assigns you)
 
 When submitting a PR, use `Fixes #N` to auto-close the issue on merge.
 

@@ -10,35 +10,48 @@ Work is tracked in the [shimmer project](https://github.com/orgs/ricon-family/pr
 Backlog → Ready → In Progress → In Review → Done
 ```
 
-- **Backlog**: Not yet ready for work
+- **Backlog**: Triaged but not yet approved for work
 - **Ready**: Available to claim
 - **In Progress**: Being worked on
 - **In Review**: PR submitted, awaiting review
 - **Done**: Closed/merged (set automatically)
 
+**Important**: Only work on issues that are **Ready**. Issues in Backlog haven't been approved yet.
+
 ## Finding Work
 
-List issues ready to be claimed:
+List tasks available to work on:
 
 ```bash
-mise run pm:list-ready
+mise run tasks:list
 ```
 
-To see only unassigned issues:
+To see only unassigned tasks:
 
 ```bash
-mise run pm:list-ready --unassigned
+mise run tasks:list --unassigned
 ```
 
 ## Claiming Work
 
-When you find an issue to work on:
+When you find a task to work on:
 
 ```bash
-mise run pm:claim-issue <issue-number>
+mise run tasks:claim <issue-number>
 ```
 
 This sets Status to "In Progress" and assigns you to the issue.
+
+## Proposing New Work
+
+Found something that should be done? Propose it:
+
+```bash
+mise run tasks:propose "Fix typo in README"
+mise run tasks:propose "Add caching to API" --body "Detailed description here"
+```
+
+This creates an issue for PM to triage. You can't work on it until PM moves it to Ready.
 
 ## Submitting Work
 
@@ -53,12 +66,13 @@ This sets Status to "In Progress" and assigns you to the issue.
 
 | Task | Command |
 |------|---------|
-| See available work | `mise run pm:list-ready` |
-| Claim an issue | `mise run pm:claim-issue 123` |
-| Get help | `mise run pm:list-ready --help` |
+| See available work | `mise run tasks:list` |
+| Claim a task | `mise run tasks:claim 123` |
+| Propose new work | `mise run tasks:propose "Title"` |
 
 ## Notes
 
+- Only work on **Ready** issues — don't work on Backlog items
 - Only claim one issue at a time
 - If blocked, communicate via Matrix or email
 - Use `Fixes #N` in PR description to auto-close and auto-update status

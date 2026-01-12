@@ -1,5 +1,5 @@
 #!/bin/bash
-#MISE description="List issues ready to be claimed"
+#MISE description="List tasks available to work on"
 #USAGE flag "--unassigned" help="Only show unassigned issues"
 set -eo pipefail
 
