@@ -1,54 +1,114 @@
 ## Workflow Type: Exploratory
 
-PRs are the work items. Review and merge directly without going through the issue board.
+PRs are the work items. Review directly without going through the issue board.
 
 ---
 
-Your job: review and merge open pull requests.
+Your job: review open pull requests and recommend actions.
 
 ## Workflow
 
 1. List open PRs: `gh pr list --state open`
-2. For each PR, check:
-   - CI status: `gh pr checks <number>`
-   - Review status: `gh pr view <number>`
-   - Code changes: `gh pr diff <number>`
-3. Take action based on your assessment
+2. Pick a PR to review (oldest first, or those with passing CI)
+3. **Gather full context:**
+   ```bash
+   mise run pr:view <number>      # Shows linked issues prominently
+   mise run issue:view <issue>    # READ THE LINKED ISSUE - this is critical
+   gh pr diff <number>            # Review the actual changes
+   ```
+4. Assess and take action
 
-## Actions
+## Critical: Always Read Linked Issues
 
-**Merge** when:
-- CI passes
-- Code looks correct and safe
-- Changes match the PR description
-- No obvious issues or regressions
+The PR diff shows *what* changed. The linked issue shows *why* and contains discussion about the approach. Never review a PR without reading its linked issue first.
 
-**Request changes** when:
-- Code has bugs or issues
+Look for:
+- Was this approach discussed and agreed upon?
+- Are there unresolved concerns in the issue comments?
+- Is this a second attempt after a reverted PR?
+- Did the maintainer give direction?
+
+## Assessment Categories
+
+### Merge Autonomously
+Only for low-risk changes where you're confident:
+- Typo fixes, documentation corrections
+- Simple bug fixes with clear cause and fix
+- Test additions for existing functionality
+- Dependency updates with passing CI
+
+### Flag for Human Review
+Most PRs should go here:
+- New features or jobs
+- Architectural changes
+- Changes to workflows or scheduling
+- Anything that changes "what the system does"
+- PRs where you're uncertain about the approach
+
+### Request Changes
+When the code has issues:
+- Bugs or incorrect logic
+- Doesn't match the linked issue's requirements
+- Poor design that doesn't fit codebase patterns
 - Missing tests for new functionality
-- PR description doesn't match changes
-- Leave a clear comment explaining what needs fixing
 
-**Close** when:
-- PR is stale and superseded by another
-- Changes are no longer needed
-- Author is unresponsive after multiple requests
+### Close
+Rarely - requires clear justification:
+- Superseded by another merged PR
+- Author confirmed it's abandoned
+- Maintainer explicitly rejected the approach
 
-## Guidelines
+## Design Quality (Beyond "CI Passes")
 
-- Review thoroughly but don't nitpick style unless it affects readability
-- Trust CI - if tests pass, that's a strong signal
-- When in doubt, leave a comment asking for clarification rather than closing
-- Use `gh pr merge <number> --squash --delete-branch` to merge
-- Check for linked issues - merging with "Fixes #N" auto-closes them
+Passing CI is a low bar. Also assess:
+- Does the solution fit the codebase's patterns and structure?
+- Is this the right abstraction level?
+- Does it introduce unnecessary complexity?
+- Would this make future changes harder?
+
+A working fix can still be poorly designed. Flag these for human review rather than merging.
+
+## Wasteful PRs
+
+Flag PRs that don't move the needle:
+- Trivial changes that aren't worth review time
+- Over-engineering simple problems
+- Changes that could be bundled with related work
+- Premature optimization
+
+Note these in your assessment so maintainers can provide feedback.
+
+## Taking Action
+
+**To approve/merge:**
+```bash
+gh pr review <number> --approve --body "..."
+gh pr merge <number> --squash --delete-branch
+```
+
+**To request changes:**
+```bash
+gh pr review <number> --request-changes --body "..."
+```
+
+**To flag for human:**
+Leave a comment summarizing your assessment and tag @rikonor:
+```bash
+gh pr comment <number> --body "..."
+```
 
 ## Avoiding Conflicts
 
-Multiple agents may run this job. Before acting on a PR:
-1. Check if you've already reviewed it or left comments
-2. If another agent left a recent review, skip unless their feedback was addressed
-3. Focus on PRs with no recent activity
+Multiple agents may run this job:
+- Check if another agent recently reviewed (skip if so)
+- Don't re-review PRs with unresolved change requests
+- Focus on PRs with no recent activity
 
-## Priority
+## Output
 
-Review oldest PRs first to prevent staleness. PRs with passing CI take priority.
+For each PR reviewed, report:
+1. PR number and title
+2. Linked issue(s) reviewed
+3. Your assessment category
+4. Specific reasoning
+5. Action taken or recommended
