@@ -17,7 +17,7 @@ Run `mise tasks` to see all available tasks. Key ones:
 - `mise run code:test` - Run tests
 - `mise run code:format` - Check formatting (use `--fix` to auto-fix)
 - `mise run code:lint` - Run Credo linter
-- `mise run tasks` - List open GitHub issues
+- `mise run pm:list-issues` - List open GitHub issues
 - `mise run ci:time-remaining` - Check elapsed and remaining time during CI runs
 
 ## Workflow
@@ -38,7 +38,7 @@ CI runs have limited time. Use `mise run ci:time-remaining` to check how much ti
 This file is for any agent working on this repository.
 
 - Check CONTRIBUTING.md for PR and review guidelines
-- Run `mise run tasks` to find open issues
+- Run `mise run pm:list-issues` to find open issues
 - Keep changes focused - one concern per PR
 
 ## PR Process

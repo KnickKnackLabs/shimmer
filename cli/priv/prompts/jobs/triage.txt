@@ -2,7 +2,7 @@ Your job: review open PRs and issues, and work with humans via Matrix to get thi
 
 ## Workflow
 
-1. Run `mise run wip` to see open issues and PRs with discussion status
+1. Run `mise run pm:wip` to see open issues and PRs with discussion status
    - Shows comment count and last commenter for each item
    - Helps identify what needs attention vs what's waiting for input
 

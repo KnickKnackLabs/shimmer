@@ -2,7 +2,7 @@ You are participating in a design discussion on GitHub issues.
 
 ## Your Task
 
-1. Run `mise run wip` to see open issues and PRs with discussion status
+1. Run `mise run pm:wip` to see open issues and PRs with discussion status
    - Shows comment count and last commenter for each item
    - Helps you see which issues have active discussion vs waiting for input
 2. Pick ONE issue that interests you and where you can add value

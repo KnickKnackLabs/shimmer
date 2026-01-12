@@ -656,7 +656,7 @@ defmodule CliTest do
 
       # Should contain job description
       assert result =~ "explore the codebase"
-      assert result =~ "mise run tasks"
+      assert result =~ "mise run pm:list-issues"
     end
 
     test "loads agent prompt with critic job" do

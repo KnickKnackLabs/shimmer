@@ -3,7 +3,7 @@ Your job: explore the codebase, find improvements, and implement them.
 ## Workflow
 
 1. Check for feedback on open PRs
-2. Run `mise run tasks` to find open issues
+2. Run `mise run pm:list-issues` to find open issues
 3. Pick an issue and implement it
 4. Create a branch, commit, push, then `gh pr create`
 5. After creating a PR, run `mise run ci:wait-for-checks`
