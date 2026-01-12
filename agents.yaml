@@ -1,8 +1,0 @@
-# yaml-language-server: $schema=./agents.schema.json
-agents:
-  quick:
-    jobs:
-      probe:
-        schedule: "0 */4 * * *"
-      readme:
-        schedule: "0 8 * * 1"

@@ -1,5 +1,5 @@
 #!/bin/bash
-#MISE description="Generate workflow files from agents.yaml"
+#MISE description="Generate workflow files from workflows.yaml"
 #USAGE flag "--check" help="Check mode: fail if generated files differ from committed"
 set -eo pipefail
 
@@ -15,14 +15,14 @@ if [[ "$CHECK_MODE" == "true" ]]; then
   trap "rm -rf $OUTPUT_DIR" EXIT
 fi
 
-# Read agents and jobs from manifest
-AGENTS=$(yq -r '.agents | keys | .[]' agents.yaml)
+# Read jobs and agents from manifest
+JOBS=$(yq -r '.jobs | keys | .[]' workflows.yaml)
 
-for AGENT in $AGENTS; do
-  JOBS=$(yq -r ".agents.$AGENT.jobs | keys | .[]" agents.yaml)
+for JOB in $JOBS; do
+  AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
 
-  for JOB in $JOBS; do
-    SCHEDULE=$(yq -r ".agents.$AGENT.jobs.$JOB.schedule" agents.yaml)
+  for AGENT in $AGENTS; do
+    SCHEDULE=$(yq -r ".jobs.$JOB.agents.$AGENT.schedule" workflows.yaml)
     AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 
     OUTPUT_FILE="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
@@ -38,9 +38,9 @@ done
 if [[ "$CHECK_MODE" == "true" ]]; then
   DIFF_FOUND=false
 
-  for AGENT in $AGENTS; do
-    JOBS=$(yq -r ".agents.$AGENT.jobs | keys | .[]" agents.yaml)
-    for JOB in $JOBS; do
+  for JOB in $JOBS; do
+    AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
+    for AGENT in $AGENTS; do
       GENERATED="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
       COMMITTED=".github/workflows/${AGENT}-${JOB}.yml"
 
@@ -57,11 +57,11 @@ if [[ "$CHECK_MODE" == "true" ]]; then
 
   if [[ "$DIFF_FOUND" == "true" ]]; then
     echo ""
-    echo "Workflow files are out of sync with agents.yaml"
+    echo "Workflow files are out of sync with workflows.yaml"
     echo "Run 'mise run workflows:generate' to regenerate"
     exit 1
   fi
 
   echo ""
-  echo "All workflow files match agents.yaml"
+  echo "All workflow files match workflows.yaml"
 fi
