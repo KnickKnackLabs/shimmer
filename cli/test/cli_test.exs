@@ -294,7 +294,14 @@ defmodule CliTest do
   describe "process_line/2" do
     test "outputs text delta and tracks abort_seen" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
 
       output =
         capture_io(fn ->
@@ -315,7 +322,14 @@ defmodule CliTest do
 
     test "detects [[ABORT]] on its own line" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
@@ -328,7 +342,14 @@ defmodule CliTest do
     test "detects [[ABORT]] split across streaming chunks" do
       # First chunk ends mid-signal
       line1 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABO"}}})
-      state1 = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      state1 = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
 
       capture_io(fn ->
         result = Cli.process_line(line1, state1)
@@ -348,9 +369,83 @@ defmodule CliTest do
       assert_received {:result2, %{abort_seen: true}}
     end
 
+    test "detects [[ABORT]] split across chunks when followed by long text" do
+      # Issue #402: [[ABORT]] is complete in combined text but gets pushed out of
+      # the 20-char window by subsequent text. Need to check before truncating.
+      # First chunk ends mid-signal
+      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"prefix\\n[[ABO"}}})
+
+      state1 = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
+
+      capture_io(fn ->
+        result = Cli.process_line(line1, state1)
+        send(self(), {:result1, result})
+      end)
+
+      assert_received {:result1, %{abort_seen: false} = state2}
+
+      # Second chunk completes signal but has lots of text after
+      line2 =
+        ~s({"type":"stream_event","event":{"delta":{"text":"RT]]\\nlots of additional text that pushes it out of window"}}})
+
+      capture_io(fn ->
+        result = Cli.process_line(line2, state2)
+        send(self(), {:result2, result})
+      end)
+
+      # With the fix (#402), we check combined BEFORE truncating
+      assert_received {:result2, %{abort_seen: true}}
+    end
+
+    test "detects [[ABORT]] after >20 chars of text ending with newline" do
+      # Issue #400: When >20 chars of text are followed by [[ABORT]] on its own line,
+      # the old 20-char window would lose the newline that precedes [[ABORT]].
+      # First chunk: >20 chars of text ending with a newline (puts us at line boundary)
+      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"aaaaaaaaaaaaaaaaaaaaaaa\\n"}}})
+
+      state1 = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
+
+      capture_io(fn ->
+        result = Cli.process_line(line1, state1)
+        send(self(), {:result1, result})
+      end)
+
+      assert_received {:result1, %{abort_seen: false} = state2}
+
+      # Second chunk: the abort signal on its own line (should be detected)
+      line2 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
+
+      capture_io(fn ->
+        result = Cli.process_line(line2, state2)
+        send(self(), {:result2, result})
+      end)
+
+      # With the fix (#400), we track that there was a newline in the trimmed portion
+      assert_received {:result2, %{abort_seen: true}}
+    end
+
     test "does not detect [[ABORT]] embedded in text" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"some [[ABORT]] text"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
 
       capture_io(fn ->
         result = Cli.process_line(line, state)
@@ -366,7 +461,14 @@ defmodule CliTest do
       # 2. Full line completes with "Hello world"
       # 3. Should only output "ld" (the new part)
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: "Hello wor"}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "Hello wor",
+        had_newline_before_window: true
+      }
 
       output =
         capture_io(fn ->
@@ -382,7 +484,14 @@ defmodule CliTest do
 
     test "outputs full text when flushed_text is empty" do
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: ""}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "",
+        had_newline_before_window: true
+      }
 
       output =
         capture_io(fn ->
@@ -397,7 +506,14 @@ defmodule CliTest do
       # Edge case: flushed text doesn't match the complete text
       # (shouldn't happen in practice, but handle gracefully)
       line = ~s({"type":"stream_event","event":{"delta":{"text":"Different text"}}})
-      state = %{tool_input: "", abort_seen: false, recent_text: "", flushed_text: "Hello"}
+
+      state = %{
+        tool_input: "",
+        abort_seen: false,
+        recent_text: "",
+        flushed_text: "Hello",
+        had_newline_before_window: true
+      }
 
       output =
         capture_io(fn ->
