@@ -47,9 +47,6 @@ jobs:
         run: ./scripts/setup-email.sh ${{ inputs.agent }}
 
       - name: Install libolm for Matrix
-        if: env.MATRIX_PASSWORD != ''
-        env:
-          MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
         run: sudo apt-get update && sudo apt-get install -y libolm-dev
 
       - name: Configure git
@@ -70,15 +67,11 @@ jobs:
           install: true
 
       - name: Setup Matrix
-        if: env.MATRIX_PASSWORD != ''
         env:
           MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
         run: ./scripts/setup-matrix.sh ${{ inputs.agent }}
 
       - name: Accept Matrix room invites
-        if: env.MATRIX_PASSWORD != ''
-        env:
-          MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
         run: matrix-commander --room-invites LIST+JOIN
 
       - name: Cache Elixir build
