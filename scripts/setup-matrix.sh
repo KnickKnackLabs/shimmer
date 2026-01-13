@@ -18,9 +18,8 @@ if [ -z "$MATRIX_PASSWORD" ]; then
 fi
 
 if [ -z "$MATRIX_PASSWORD" ]; then
-  echo "ERROR: MATRIX_PASSWORD not set and could not fetch from 1Password"
-  echo "Usage: MATRIX_PASSWORD=xxx ./scripts/setup-matrix.sh <agent-name>"
-  exit 1
+  echo "Matrix password not provided, skipping Matrix setup"
+  exit 0
 fi
 
 DOMAIN="ricon.family"
