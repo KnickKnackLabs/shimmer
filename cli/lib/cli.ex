@@ -347,32 +347,33 @@ defmodule Cli do
         IO.puts("Logger started, output will be saved to: #{log_file}")
         IO.puts("---")
 
-        # Run Claude through the proxy
-        status =
-          run_claude(
-            message,
-            ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
-            system_prompt,
-            timeout,
-            model
-          )
+        try do
+          # Run Claude through the proxy
+          status =
+            run_claude(
+              message,
+              ["ANTHROPIC_BASE_URL=http://localhost:#{@logger_port}"],
+              system_prompt,
+              timeout,
+              model
+            )
 
-        stop_logger(logger_port)
+          # Show context log to user (the purpose of --log-context)
+          case File.read(log_file) do
+            {:ok, content} when content != "" ->
+              IO.puts("\n---")
+              IO.puts("Context log:")
+              IO.puts(content)
 
-        # Show context log to user (the purpose of --log-context)
-        case File.read(log_file) do
-          {:ok, content} when content != "" ->
-            IO.puts("\n---")
-            IO.puts("Context log:")
-            IO.puts(content)
+            _ ->
+              :ok
+          end
 
-          _ ->
-            :ok
+          status
+        after
+          stop_logger(logger_port)
+          File.rm(log_file)
         end
-
-        # Clean up temp log file
-        File.rm(log_file)
-        status
 
       :error ->
         stop_logger(logger_port)
