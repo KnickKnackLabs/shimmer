@@ -1,12 +1,12 @@
 [tools]
-node = "22"                              # LTS
-elixir = "1.19"                          # Latest stable
-erlang = "28.2"                          # Pinned for BEAM Machine ERTS builds
-zig = "0.15.2"                           # Required for Burrito cross-compilation
-"npm:@anthropic-ai/claude-code" = "latest"  # Claude Code CLI
-"npm:claude-code-logger" = "latest"      # For inspecting Claude Code context
-"ubi:pimalaya/himalaya" = "1.1.0"           # Email CLI for agents
-"1password-cli" = "2.32.0"                  # Credential management
-"pipx:matrix-commander" = "8.0.5"          # Matrix CLI for agent communication
-"pipx:check-jsonschema" = "0.36.0"         # JSON Schema validation
-yq = "4.50.1"                              # YAML processing
+node = "22"                               # LTS
+elixir = "1.19"                           # Latest stable
+erlang = "28.2"                           # Pinned for BEAM Machine ERTS builds
+zig = "0.15.2"                            # Required for Burrito cross-compilation
+"npm:@anthropic-ai/claude-code" = "2.1.6" # Claude Code CLI
+"npm:claude-code-logger" = "latest"       # For inspecting Claude Code context
+"ubi:pimalaya/himalaya" = "1.1.0"         # Email CLI for agents
+"1password-cli" = "2.32.0"                # Credential management
+"pipx:matrix-commander" = "8.0.5"         # Matrix CLI for agent communication
+"pipx:check-jsonschema" = "0.36.0"        # JSON Schema validation
+yq = "4.50.1"                             # YAML processing
