@@ -322,9 +322,10 @@ defmodule Cli do
     random_suffix = :rand.uniform(0xFFFF) |> Integer.to_string(16) |> String.pad_leading(4, "0")
     log_file = "/tmp/claude-context-#{:os.system_time(:microsecond)}-#{random_suffix}.log"
 
-    # Start the logger in the background, using mise exec to ensure correct PATH
+    # Start the logger in the background, using mise exec to ensure correct PATH.
+    # Use exec to replace the shell process so stop_logger/1 kills the actual logger.
     logger_script =
-      "mise exec -- claude-code-logger start --verbose --log-body > #{log_file} 2>&1"
+      "exec mise exec -- claude-code-logger start --verbose --log-body > #{log_file} 2>&1"
 
     logger_port =
       Port.open(
