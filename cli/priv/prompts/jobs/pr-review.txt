@@ -57,11 +57,16 @@ For PRs that need discussion before approval:
 - PRs where you're uncertain about the approach
 
 ### Request Changes
-When the code has issues:
+When the PR shouldn't be merged as-is:
 - Bugs or incorrect logic
 - Doesn't match the linked issue's requirements
 - Poor design that doesn't fit codebase patterns
 - Missing tests for new functionality
+- Superseded by another PR
+- Overlapping changes that need coordination
+- Missing linked issue (for non-trivial changes)
+
+Don't leave polite comments hoping the author will figure it out. Request changes with specific feedback.
 
 ### Close
 Rarely - requires clear justification:
