@@ -4,15 +4,18 @@
 set -eo pipefail
 
 SHOW_ALL="${usage_all:-false}"
+NOW=$(date +%s)
 
 # Get open PRs with review info
-PRS=$(gh pr list --state open --json number,title,author,createdAt,reviewDecision,reviews,additions,deletions --jq '
+PRS=$(gh pr list --state open --json number,title,author,createdAt,updatedAt,reviewDecision,reviews,additions,deletions --jq '
   sort_by(.createdAt) | .[] | {
     number,
     title,
     author: .author.login,
-    created: (.createdAt | split("T")[0]),
-    changes: (.additions + .deletions),
+    createdAt,
+    updatedAt,
+    additions,
+    deletions,
     reviewDecision,
     reviewCount: (.reviews | length)
   }
@@ -26,17 +29,56 @@ fi
 echo "Open PRs (oldest first):"
 echo ""
 
-echo "$PRS" | jq -r '
-  if .reviewDecision == "APPROVED" then
-    "  #\(.number)\t✓ approved\t+\(.changes)\t\(.title)"
-  elif .reviewDecision == "CHANGES_REQUESTED" then
-    "  #\(.number)\t⚠ changes\t+\(.changes)\t\(.title)"
-  elif .reviewCount > 0 then
-    "  #\(.number)\t◐ reviewed\t+\(.changes)\t\(.title)"
+echo "$PRS" | while read -r pr; do
+  NUMBER=$(echo "$pr" | jq -r '.number')
+  TITLE=$(echo "$pr" | jq -r '.title')
+  ADDITIONS=$(echo "$pr" | jq -r '.additions')
+  DELETIONS=$(echo "$pr" | jq -r '.deletions')
+  REVIEW_DECISION=$(echo "$pr" | jq -r '.reviewDecision')
+  REVIEW_COUNT=$(echo "$pr" | jq -r '.reviewCount')
+  CREATED_AT=$(echo "$pr" | jq -r '.createdAt')
+  UPDATED_AT=$(echo "$pr" | jq -r '.updatedAt')
+
+  # Calculate days since created and last update
+  CREATED_TS=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%s 2>/dev/null || date -d "$CREATED_AT" +%s)
+  UPDATED_TS=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$UPDATED_AT" +%s 2>/dev/null || date -d "$UPDATED_AT" +%s)
+  DAYS_OLD=$(( (NOW - CREATED_TS) / 86400 ))
+  DAYS_STALE=$(( (NOW - UPDATED_TS) / 86400 ))
+
+  # Format age
+  if [[ $DAYS_OLD -eq 0 ]]; then
+    AGE="today"
+  elif [[ $DAYS_OLD -eq 1 ]]; then
+    AGE="1d"
   else
-    "  #\(.number)\t○ needs review\t+\(.changes)\t\(.title)"
-  end
-' | column -t -s $'\t'
+    AGE="${DAYS_OLD}d"
+  fi
+
+  # Format staleness (days since last update)
+  if [[ $DAYS_STALE -eq 0 ]]; then
+    STALE=""
+  elif [[ $DAYS_STALE -ge 3 ]]; then
+    STALE=" (stale ${DAYS_STALE}d)"
+  else
+    STALE=""
+  fi
+
+  # Format review status
+  if [[ "$REVIEW_DECISION" == "APPROVED" ]]; then
+    STATUS="✓ approved"
+  elif [[ "$REVIEW_DECISION" == "CHANGES_REQUESTED" ]]; then
+    STATUS="⚠ changes"
+  elif [[ $REVIEW_COUNT -gt 0 ]]; then
+    STATUS="◐ reviewed"
+  else
+    STATUS="○ needs review"
+  fi
+
+  # Format changes
+  CHANGES="+${ADDITIONS}/-${DELETIONS}"
+
+  printf "  #%-4s  %-14s  %-12s  %4s  %s%s\n" "$NUMBER" "$STATUS" "$CHANGES" "$AGE" "$TITLE" "$STALE"
+done
 
 echo ""
 TOTAL=$(echo "$PRS" | jq -s 'length')

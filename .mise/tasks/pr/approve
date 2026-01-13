@@ -1,0 +1,25 @@
+#!/bin/bash
+#MISE description="Approve a pull request (without merging)"
+#USAGE arg "<number>" help="PR number"
+#USAGE flag "--body <body>" help="Approval comment"
+set -eo pipefail
+
+PR="${usage_number:-$1}"
+BODY="${usage_body:-LGTM}"
+
+if [[ -z "$PR" ]]; then
+  echo "Usage: mise run pr:approve <number> [--body <message>]"
+  exit 1
+fi
+
+# Check PR state first
+STATE=$(gh pr view "$PR" --json state --jq '.state')
+if [[ "$STATE" != "OPEN" ]]; then
+  echo "PR #$PR is not open (state: $STATE)"
+  exit 1
+fi
+
+gh pr review "$PR" --approve --body "$BODY"
+
+echo ""
+echo "PR #$PR approved"
