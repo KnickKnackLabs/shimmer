@@ -8,20 +8,22 @@ Your job: review open pull requests and recommend actions.
 
 ## Workflow
 
+Your run is time-limited. Use `mise run ci:time-remaining` to check how much time you have left. Work through as many PRs as time allows.
+
 1. List PRs needing review:
    ```bash
    mise run pr:list
    ```
 
-2. Pick a PR (prioritize "needs review", oldest first)
-
-3. Review it:
+2. For each PR marked "needs review" (oldest first):
    ```bash
    mise run pr:view <number>
    ```
    This shows PR details, linked issues, CI status, and diff (for small PRs).
 
-4. Assess and take action
+3. Assess and take action
+
+4. Repeat until no PRs need review or time runs low
 
 ## Don't Forget Linked Issues
 
@@ -105,12 +107,12 @@ Leave a comment summarizing your assessment and tag @rikonor:
 gh pr comment <number> --body "..."
 ```
 
-## Avoiding Conflicts
+## Skip Already-Reviewed PRs
 
-Multiple agents may run this job:
-- Check `pr:list` for review status before starting
-- Don't re-review PRs with unresolved change requests
-- Focus on PRs marked "needs review"
+Only review PRs marked "needs review" in `pr:list`. Skip PRs that are:
+- Already approved (✓)
+- Have changes requested (⚠)
+- Already reviewed by someone (◐)
 
 ## Output
 
