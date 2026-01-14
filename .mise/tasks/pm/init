@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#MISE description="Initialize a GitHub Project for the target repo"
+
+set -e
+
+# Determine target directory
+TARGET_DIR="${PROJECT_DIR:-.}"
+
+# Get repo from .project.toml or git remote
+REPO=""
+PROJECT_FILE="$TARGET_DIR/.project.toml"
+if [ -f "$PROJECT_FILE" ]; then
+  REPO=$(yq -p toml '.repo' "$PROJECT_FILE" 2>/dev/null || true)
+fi
+
+if [ -z "$REPO" ]; then
+  # Try git remote
+  REPO=$(git -C "$TARGET_DIR" remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/' || true)
+fi
+
+if [ -z "$REPO" ]; then
+  echo "Error: Could not determine repo. Set PROJECT_DIR to a git repo or add .project.toml with 'repo = \"owner/name\"'"
+  exit 1
+fi
+
+# Parse owner and project name from repo
+OWNER=$(echo "$REPO" | cut -d'/' -f1)
+PROJECT_NAME=$(echo "$REPO" | cut -d'/' -f2)
+
+echo "Initializing project for: $REPO"
+echo "  Owner: $OWNER"
+echo "  Project name: $PROJECT_NAME"
+echo ""
+
+# Check if project already exists
+EXISTING=$(gh project list --owner "$OWNER" --format json | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.title == $name) | .url')
+
+if [ -n "$EXISTING" ]; then
+  echo "Project already exists: $EXISTING"
+  exit 0
+fi
+
+# Create project
+echo "Creating project..."
+PROJECT_URL=$(gh project create --owner "$OWNER" --title "$PROJECT_NAME" --format json | jq -r '.url')
+
+echo ""
+echo "Project created: $PROJECT_URL"
+echo ""
+echo "Next steps:"
+echo "  1. Add Status field with values: Backlog, Ready, In Progress, In Review, Done"
+echo "  2. Link project to repo: gh project link <number> --owner $OWNER --repo $REPO"
