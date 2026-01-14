@@ -1,211 +1,77 @@
 # Agent Matrix Setup
 
-Agents can use Matrix for real-time communication with humans and other agents.
+Agents use Matrix for real-time communication with humans and other agents.
 
-## Quick Reference (mise tasks)
+## Room
+
+All agent communication happens in `#agents:ricon.family`. This is the default room configured during setup.
+
+## Usage
+
+Use the mise matrix tasks:
 
 ```bash
-# Login (one-time setup, prompts for password)
-mise run matrix:login <username>
+# Poll for new messages (returns empty if none)
+mise run matrix:poll <your-name>
 
 # Send a message
-mise run matrix:send <username> "Hello"
+mise run matrix:send <your-name> "Your message here"
 
-# Poll for new messages
-mise run matrix:poll <username>
+# Send with markdown (for links)
+mise run matrix:send <your-name> "Check [PR #123](https://github.com/...)" --markdown
 
-# Get last 5 messages from a room
-mise run matrix:tail <username> 5 -r '!roomid:ricon.family'
+# Get recent messages
+mise run matrix:tail <your-name> 10
 
-# List rooms
-mise run matrix:rooms <username>
+# List rooms you're in
+mise run matrix:rooms <your-name>
 
-# Accept pending invites
-mise run matrix:invites <username>
-
-# Run any matrix-commander command
-mise run matrix:cmd <username> -- --room-list
+# Accept pending room invites
+mise run matrix:invites <your-name>
 ```
 
-All tasks use Docker under the hood, so no native installation needed. Credentials are stored per-user in `~/.config/matrix-commander/<username>/` to support multiple agents on the same machine.
+All tasks use Docker under the hood. Credentials are stored per-user in `~/.config/matrix-commander/<username>/`.
 
 ## Local Setup
 
 ```bash
 # Login (creates credentials for your user)
-mise run matrix:login quick
+mise run matrix:login <your-name>
 
 # Test it works
-mise run matrix:send quick "Hello from local"
+mise run matrix:send <your-name> "Hello from local"
 
 # Accept any pending room invites
-mise run matrix:invites quick
+mise run matrix:invites <your-name>
 ```
 
-## Setup (in workflows)
+## CI Setup
 
-Matrix is configured using the `setup-matrix.sh` script. Add these steps to your workflow:
+Matrix is configured automatically in CI workflows via `mise run matrix:login`. No additional setup needed.
 
-```yaml
-- name: Install libolm
-  run: sudo apt-get update && sudo apt-get install -y libolm-dev
+## Waiting for Human Input
 
-- name: Setup Matrix
-  env:
-    MATRIX_PASSWORD: ${{ secrets.QUICK_MATRIX_PASSWORD }}  # Use your agent's secret
-  run: ./scripts/setup-matrix.sh quick  # Use your agent name
-
-- name: Accept room invites
-  run: matrix-commander --room-invites LIST+JOIN || true
-```
-
-The secret naming convention is `<AGENT_NAME>_MATRIX_PASSWORD` (uppercase).
-
-## Using Matrix
-
-After setup, use `matrix-commander` to communicate:
-
-### Send a message
+When you need a human reply, poll in a loop:
 
 ```bash
-# Send to default room (#agents, set during login)
-matrix-commander -m "Your message here"
+# Send your question
+mise run matrix:send <your-name> "Can I proceed with X?"
 
-# Send to a specific room
-matrix-commander -m "Hello" --room "!roomid:ricon.family"
+# Poll for reply
+REPLY=$(mise run matrix:poll <your-name>)
 
-# Send with markdown formatting (use -z flag)
-matrix-commander -z -m "Check out [PR #123](https://github.com/ricon-family/shimmer/pull/123)"
+# If empty, wait and try again
 ```
-
-Use `-z` (markdown) when including links - they render as clickable text instead of raw URLs.
-
-### Poll for messages
-
-Use `--listen ONCE` to check for new messages. Use `-o JSON` with `jq` to extract just what you need:
-
-```bash
-# Get message body only
-matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty'
-
-# Get sender and body
-matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '"\(.sender_nick): \(.source.content.body)"'
-```
-
-Returns empty if no new messages. Use in a loop to poll (see "Polling Pattern" below).
-
-### Get messages from a specific room
-
-Use `--tail` with `-r` to get messages from a specific room:
-
-```bash
-# Get last message from a specific room
-matrix-commander --tail 1 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '.source.content.body'
-
-# Get last 5 messages with sender
-matrix-commander --tail 5 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '"\(.sender_nick): \(.source.content.body)"'
-```
-
-**Note:** `--listen ONCE` listens to ALL rooms you're in. Use `--tail -r` when you need room-specific messages.
-
-### List your rooms
-
-```bash
-matrix-commander --room-list
-```
-
-### Direct Messages
-
-Create a DM room with another user (use `--plain` to disable encryption):
-
-```bash
-# Create unencrypted DM room
-matrix-commander --room-dm-create '@user:ricon.family' --name "my-dm-name" --plain
-
-# Send to the DM room
-matrix-commander -m "Hello!" --room '!dmroomid:ricon.family'
-```
-
-The room ID is returned when you create the DM. You can also find it with `--room-list`.
 
 ## Server Details
 
 - Homeserver: matrix.ricon.family
 - User format: @<agent>:ricon.family
-- Agents room: #agents:ricon.family (preferred for agent communication)
-- Welcome room: !vkxFpCzDfFAFHjipPU:ricon.family
-
-## Use Cases
-
-1. **Real-time approval requests** - Ask humans for decisions during runs
-2. **Agent-to-agent collaboration** - Discuss without waiting for async issue comments
-3. **Quick clarifications** - Get answers without creating formal issues
-4. **Status updates** - Report progress on long-running tasks
-
-## Waiting for Human Input
-
-When you need a human reply, just poll in a simple loop. Don't overthink it:
-
-```bash
-# Send your question
-matrix-commander -m "Can I proceed with X? Reply 'yes' or 'no'"
-
-# Poll for reply - just run this repeatedly until you get a response
-# Each call checks for new messages and returns immediately
-REPLY=$(matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty')
-
-# If empty, sleep and try again
-sleep 2
-
-# Repeat until REPLY is non-empty or you've waited long enough
-```
-
-**Simple inline polling** (copy-paste ready):
-
-```bash
-# Wait up to 60 seconds for a reply
-for i in {1..30}; do
-  REPLY=$(matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty')
-  [ -n "$REPLY" ] && break
-  sleep 2
-done
-echo "Got: $REPLY"  # Empty if timeout
-```
-
-That's it. No need for elaborate scripts - just poll, sleep, repeat.
-
-## Message Formatting
-
-Matrix rendering differs from GitHub. Keep these in mind:
-
-**Links work with markdown** - Use `-z` flag:
-```bash
-matrix-commander -z -m "Check out [PR #123](https://github.com/ricon-family/shimmer/pull/123)"
-```
-
-**Code blocks need HTML** - Markdown triple backticks don't render as code blocks in Matrix. Use HTML instead:
-```bash
-# Single line code
-matrix-commander -m "Run <code>mise run code:check</code> before pushing"
-
-# Multi-line code blocks
-matrix-commander -m "Here's the diff:
-<pre>
-- old line
-+ new line
-</pre>"
-```
-
-**Avoid `#` at start of lines** - Matrix interprets `#123` at the start as a heading. Put text before it or use inline code.
+- Default room: #agents:ricon.family
 
 ## Tips
 
-- Use `-z` (markdown) when including links: `[PR #123](https://github.com/...)`
-- Use HTML `<code>` and `<pre>` for code (markdown backticks don't render properly)
-- Use descriptive messages so recipients understand context
-- Set reasonable timeouts to avoid blocking runs indefinitely
-- Accept room invites at the start of your workflow
-- Always use `-o JSON` with `jq` to extract only what you need - keeps context clean
-- Avoid `!` in messages - matrix-commander escapes it to `\!` (known quirk)
-- Use `--tail N` to read recent messages (not `--listen ONCE` which only catches new ones since last sync)
-- Use `--listen-self` when you need to see your own messages (Matrix hides them by default)
+- Use `--markdown` flag when including links
+- Use `matrix:poll` to check for new messages (returns empty if none)
+- Use `matrix:tail` to read recent history
+- The default room is #agents:ricon.family - you don't need to specify it

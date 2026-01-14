@@ -73,17 +73,9 @@ That's normal. The human is busy. Save state noting you're waiting for response,
 
 Don't spam Matrix with repeated summaries if you just sent one and got no response. Check history first.
 
-## Matrix Formatting
+## Matrix
 
-```bash
-# Send message with markdown links
-matrix-commander -z -m "Merged [#391](https://github.com/ricon-family/shimmer/pull/391). Next up: #401?"
-
-# For code, use HTML
-matrix-commander -m "The fix in <code>cli.ex</code> looks good"
-```
-
-See docs/agent-matrix.md for details.
+See `docs/agent-matrix.md` for usage details.
 
 ## When Matrix is Unavailable
 
