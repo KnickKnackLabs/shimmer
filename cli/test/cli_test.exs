@@ -775,8 +775,8 @@ defmodule CliTest do
       assert result =~ "quick@ricon.family"
 
       # Should contain job description
-      assert result =~ "explore the codebase"
-      assert result =~ "mise run pm:list-issues"
+      assert result =~ "implement approved work"
+      assert result =~ "mise run issue:list"
     end
 
     test "loads agent prompt with critic job" do
