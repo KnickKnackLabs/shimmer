@@ -1,6 +1,6 @@
 #!/bin/bash
-#MISE description="Edit options for a single select field in a project"
-#USAGE arg "<field_name>" help="Name of the field to edit (e.g., Status, Priority)"
+#MISE description="Set options for a single select field (Status, Priority, etc.)"
+#USAGE arg "<field_name>" help="Name of the field (e.g., Status, Priority)"
 #USAGE arg "<options>" help="Comma-separated options (e.g., 'Backlog,Ready,Done')"
 #USAGE arg "[colors]" help="Comma-separated colors (GRAY,RED,ORANGE,YELLOW,GREEN,BLUE,PURPLE,PINK)"
 set -eo pipefail
@@ -10,11 +10,14 @@ OPTIONS="${usage_options:-$2}"
 COLORS="${usage_colors:-$3}"
 
 if [[ -z "$FIELD_NAME" ]] || [[ -z "$OPTIONS" ]]; then
-  echo "Usage: mise run pm:field-edit <field_name> <options> [colors]"
+  echo "Usage: mise run pm:field-options <field_name> <options> [colors]"
   echo ""
   echo "Examples:"
-  echo "  mise run pm:field-edit Status 'Backlog,Ready,In Progress,Done'"
-  echo "  mise run pm:field-edit Priority 'High,Medium,Low' 'RED,YELLOW,GREEN'"
+  echo "  mise run pm:field-options Status 'Backlog,Ready,In Progress,Done'"
+  echo "  mise run pm:field-options Priority 'High,Medium,Low' 'RED,YELLOW,GREEN'"
+  echo ""
+  echo "Standard Status setup:"
+  echo "  mise run pm:field-options Status 'Backlog,Ready,In Progress,In Review,Done' 'GRAY,GREEN,YELLOW,PURPLE,BLUE'"
   exit 1
 fi
 
@@ -51,20 +54,43 @@ if [[ -z "$PROJECT_NUM" ]]; then
   exit 1
 fi
 
-# Get field ID
+# Check if field exists
 FIELD_ID=$(gh project field-list "$PROJECT_NUM" --owner "$OWNER" --format json | jq -r --arg name "$FIELD_NAME" '.fields[] | select(.name == $name) | .id')
 
+# Parse options into array for display
+IFS=',' read -ra OPT_ARRAY <<< "$OPTIONS"
+
 if [[ -z "$FIELD_ID" ]]; then
-  echo "Error: Field '$FIELD_NAME' not found in project #$PROJECT_NUM"
-  exit 1
+  # Field doesn't exist - create it
+  echo "Creating field '$FIELD_NAME' in project #$PROJECT_NUM ($PROJECT_NAME)"
+  echo ""
+
+  gh project field-create "$PROJECT_NUM" --owner "$OWNER" \
+    --name "$FIELD_NAME" \
+    --data-type SINGLE_SELECT \
+    --single-select-options "$OPTIONS" > /dev/null
+
+  echo "Field '$FIELD_NAME' created with options:"
+  for opt in "${OPT_ARRAY[@]}"; do
+    echo "  - $opt"
+  done
+
+  # If colors were specified, we need to update via GraphQL since field-create doesn't support colors
+  if [[ -n "$COLORS" ]]; then
+    echo ""
+    echo "Applying colors..."
+    # Get the newly created field ID
+    FIELD_ID=$(gh project field-list "$PROJECT_NUM" --owner "$OWNER" --format json | jq -r --arg name "$FIELD_NAME" '.fields[] | select(.name == $name) | .id')
+  else
+    exit 0
+  fi
 fi
 
-echo "Editing field '$FIELD_NAME' in project #$PROJECT_NUM ($PROJECT_NAME)"
+echo "Updating field '$FIELD_NAME' in project #$PROJECT_NUM ($PROJECT_NAME)"
 echo "  Field ID: $FIELD_ID"
 echo ""
 
-# Parse options and colors
-IFS=',' read -ra OPT_ARRAY <<< "$OPTIONS"
+# Parse colors
 if [[ -n "$COLORS" ]]; then
   IFS=',' read -ra COLOR_ARRAY <<< "$COLORS"
 else

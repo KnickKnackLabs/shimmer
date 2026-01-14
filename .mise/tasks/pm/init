@@ -52,7 +52,7 @@ echo ""
 # Configure Status field with standard options
 echo "Configuring Status field..."
 SCRIPT_DIR="$(dirname "$0")"
-PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/setup-status" "$PROJECT_NUM"
+PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Status" "Backlog,Ready,In Progress,In Review,Done" "GRAY,GREEN,YELLOW,PURPLE,BLUE"
 
 echo ""
 echo "Project ready! View at: $PROJECT_URL"
