@@ -20,3 +20,7 @@ jobs:
     agents:
       rho:
         schedule: "0 14-22 * * *"
+  documentarian:
+    agents:
+      rho:
+        schedule: "0 14 * * 1,4"
