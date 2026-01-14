@@ -1,0 +1,26 @@
+#!/bin/bash
+#MISE description="List sub-issues of a parent issue"
+#USAGE arg "<parent>" help="Parent issue number"
+set -eo pipefail
+
+PARENT="${usage_parent:-$1}"
+
+if [[ -z "$PARENT" ]]; then
+  echo "Usage: mise run issue:sub-list <parent-issue>"
+  exit 1
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+
+# Ensure extension is installed
+if ! gh extension list | grep -q "sub-issue"; then
+  echo "Installing gh-sub-issue extension..."
+  gh extension install yahsan2/gh-sub-issue
+fi
+
+echo "Sub-issues of #$PARENT ($REPO):"
+echo ""
+gh sub-issue list "$PARENT" --repo "$REPO"

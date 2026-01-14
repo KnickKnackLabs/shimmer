@@ -1,0 +1,27 @@
+#!/bin/bash
+#MISE description="Link an existing issue as sub-issue to a parent"
+#USAGE arg "<parent>" help="Parent issue number"
+#USAGE arg "<child>" help="Child issue number to link"
+set -eo pipefail
+
+PARENT="${usage_parent:-$1}"
+CHILD="${usage_child:-$2}"
+
+if [[ -z "$PARENT" ]] || [[ -z "$CHILD" ]]; then
+  echo "Usage: mise run issue:sub-add <parent-issue> <child-issue>"
+  exit 1
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+
+# Ensure extension is installed
+if ! gh extension list | grep -q "sub-issue"; then
+  echo "Installing gh-sub-issue extension..."
+  gh extension install yahsan2/gh-sub-issue
+fi
+
+gh sub-issue add "$PARENT" "$CHILD" --repo "$REPO"
+echo "Linked #$CHILD as sub-issue of #$PARENT ($REPO)"
