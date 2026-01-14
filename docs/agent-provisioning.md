@@ -100,7 +100,10 @@ rikonor@gmail.com (personal)
 - name: Setup Matrix
   env:
     MATRIX_PASSWORD: ${{ secrets.<AGENT>_MATRIX_PASSWORD }}
-  run: ./scripts/setup-matrix.sh <agent>
+  run: mise run matrix:login <agent>
+
+- name: Accept Matrix room invites
+  run: mise run matrix:invites <agent>
 ```
 
 ## Current Agents
