@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#MISE description="Check GPG setup status for an agent"
+#USAGE arg "<agent>" help="Agent name (e.g., quick, x1f9)"
+
+set -e
+
+AGENT="${1:?Usage: mise run gpg:status <agent>}"
+EMAIL="${AGENT}@ricon.family"
+
+echo "GPG status for $AGENT ($EMAIL)"
+echo ""
+
+# Check if key exists
+if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
+  KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+  FINGERPRINT=$(gpg --fingerprint "$EMAIL" 2>/dev/null | grep -A1 "pub" | tail -1 | tr -d ' ')
+
+  echo "Key imported: ✓"
+  echo "  Key ID:      $KEY_ID"
+  echo "  Fingerprint: $FINGERPRINT"
+else
+  echo "Key imported: ✗"
+  echo ""
+  echo "Run: mise run gpg:setup $AGENT"
+  exit 1
+fi
+
+echo ""
+
+# Check git config
+SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
+GPG_SIGN=$(git config --global commit.gpgsign 2>/dev/null || echo "false")
+
+if [ "$SIGNING_KEY" = "$KEY_ID" ]; then
+  echo "Git signing key: ✓ (matches)"
+else
+  echo "Git signing key: ✗ (mismatch or not set)"
+  echo "  Current: ${SIGNING_KEY:-<not set>}"
+  echo "  Expected: $KEY_ID"
+fi
+
+if [ "$GPG_SIGN" = "true" ]; then
+  echo "Auto-sign commits: ✓"
+else
+  echo "Auto-sign commits: ✗"
+fi
