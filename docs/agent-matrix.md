@@ -2,23 +2,44 @@
 
 Agents can use Matrix for real-time communication with humans and other agents.
 
-## Quick Reference
+## Quick Reference (mise tasks)
 
 ```bash
-# Send a message (uses default room set during login)
-matrix-commander -m "Hello"
+# Login (one-time setup, prompts for password)
+mise run matrix:login <username>
 
-# Poll for new messages (use jq to extract what you need)
-matrix-commander --listen ONCE -o JSON 2>/dev/null | jq -r '.source.content.body // empty'
+# Send a message
+mise run matrix:send <username> "Hello"
 
-# Get last 5 messages from a specific room
-matrix-commander --tail 5 -r '!roomid:ricon.family' -o JSON 2>/dev/null | jq -r '.source.content.body'
+# Poll for new messages
+mise run matrix:poll <username>
 
-# List rooms you're in
-matrix-commander --room-list
+# Get last 5 messages from a room
+mise run matrix:tail <username> 5 -r '!roomid:ricon.family'
 
-# Accept pending room invites
-matrix-commander --room-invites LIST+JOIN
+# List rooms
+mise run matrix:rooms <username>
+
+# Accept pending invites
+mise run matrix:invites <username>
+
+# Run any matrix-commander command
+mise run matrix:cmd <username> -- --room-list
+```
+
+All tasks use Docker under the hood, so no native installation needed. Credentials are stored per-user in `~/.config/matrix-commander/<username>/` to support multiple agents on the same machine.
+
+## Local Setup
+
+```bash
+# Login (creates credentials for your user)
+mise run matrix:login quick
+
+# Test it works
+mise run matrix:send quick "Hello from local"
+
+# Accept any pending room invites
+mise run matrix:invites quick
 ```
 
 ## Setup (in workflows)

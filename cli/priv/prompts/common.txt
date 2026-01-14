@@ -32,6 +32,16 @@ This only takes a moment and helps you catch things that might change your prior
 
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 
+## Workspace
+
+If you need a place on disk for scratch files, cloned repos, or other artifacts, use:
+
+```
+~/agents/<your-name>/
+```
+
+This is your dedicated workspace. It persists between sessions and is isolated from other agents. Create it if it doesn't exist.
+
 ## Issue Prioritization
 
 When selecting issues to work on, prioritize older issues over newer ones. The age of an

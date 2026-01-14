@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#MISE description="Poll for new Matrix messages (returns empty if none)"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+#USAGE flag "-r --room <room>" help="Room ID (listens to all rooms if not specified)"
+#USAGE flag "--raw" help="Output raw JSON instead of formatted"
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:poll <username>}"
+
+# Per-user credential directories
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Not logged in as $USERNAME. Run: mise run matrix:login $USERNAME"
+  exit 1
+fi
+
+# Build args
+ARGS=(--listen ONCE -o JSON)
+[ -n "$usage_room" ] && ARGS+=(-r "$usage_room")
+
+OUTPUT=$(docker run --rm \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  "${ARGS[@]}" 2>/dev/null || true)
+
+if [ "$usage_raw" = "true" ]; then
+  echo "$OUTPUT"
+else
+  # Extract sender and body in readable format
+  echo "$OUTPUT" | jq -r 'select(.source.content.body != null) | "\(.sender_nick): \(.source.content.body)"' 2>/dev/null || true
+fi

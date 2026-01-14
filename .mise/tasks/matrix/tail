@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#MISE description="Get recent Matrix messages from a room"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+#USAGE arg "[count]" help="Number of messages (default: 5)"
+#USAGE flag "-r --room <room>" help="Room ID (required)"
+#USAGE flag "--raw" help="Output raw JSON instead of formatted"
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:tail <username> [count] -r <room>}"
+COUNT="${2:-5}"
+
+if [ -z "$usage_room" ]; then
+  echo "Room required. Use -r <room_id>"
+  echo "List rooms with: mise run matrix:rooms $USERNAME"
+  exit 1
+fi
+
+# Per-user credential directories
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Not logged in as $USERNAME. Run: mise run matrix:login $USERNAME"
+  exit 1
+fi
+
+OUTPUT=$(docker run --rm \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  --tail "$COUNT" -r "$usage_room" -o JSON 2>/dev/null || true)
+
+if [ "$usage_raw" = "true" ]; then
+  echo "$OUTPUT"
+else
+  # Extract sender and body in readable format
+  echo "$OUTPUT" | jq -r 'select(.source.content.body != null) | "\(.sender_nick): \(.source.content.body)"' 2>/dev/null || true
+fi

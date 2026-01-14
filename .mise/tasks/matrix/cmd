@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#MISE description="Run matrix-commander via Docker (pass args after --)"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+#USAGE arg "[args...]" help="Arguments to pass to matrix-commander"
+
+# Run matrix-commander in Docker with per-user credentials
+# Usage: mise run matrix:cmd quick -- -m "Hello"
+#        mise run matrix:cmd rho -- --room-list
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:cmd <username> -- [args...]}"
+shift
+
+# Per-user credential directories (supports multiple agents on same machine)
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+
+# Check if logged in
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Not logged in as $USERNAME. Run: mise run matrix:login $USERNAME"
+  exit 1
+fi
+
+# Run matrix-commander in Docker
+# -t for TTY (better output formatting)
+# --rm to clean up container after
+docker run --rm -t \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  "$@"

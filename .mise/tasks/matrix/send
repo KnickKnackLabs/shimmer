@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#MISE description="Send a Matrix message"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+#USAGE arg "<message>" help="Message to send"
+#USAGE flag "-r --room <room>" help="Room ID (uses default if not specified)"
+#USAGE flag "-z --markdown" help="Enable markdown formatting (for links)"
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:send <username> <message>}"
+MESSAGE="${2:?Usage: mise run matrix:send <username> <message>}"
+
+# Per-user credential directories
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Not logged in as $USERNAME. Run: mise run matrix:login $USERNAME"
+  exit 1
+fi
+
+# Build args
+ARGS=(-m "$MESSAGE")
+[ -n "$usage_room" ] && ARGS+=(--room "$usage_room")
+[ "$usage_markdown" = "true" ] && ARGS+=(-z)
+
+docker run --rm -t \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  "${ARGS[@]}"

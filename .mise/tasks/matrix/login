@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#MISE description="Login to Matrix (creates local credentials for a user)"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:login <username>}"
+
+DOMAIN="ricon.family"
+HOMESERVER="https://matrix.ricon.family"
+DEFAULT_ROOM="!WfzLggpoXbILqDDvBa:ricon.family"  # #agents room
+
+# Per-user credential directories (supports multiple agents on same machine)
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+STORE_DIR="$STORE_PARENT/store"
+
+# Ensure directories exist (but NOT store - matrix-commander creates it)
+mkdir -p "$CREDS_DIR" "$STORE_PARENT"
+
+# Check for existing credentials
+if [ -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Credentials already exist for $USERNAME at:"
+  echo "  $CREDS_DIR/credentials.json"
+  echo ""
+  echo "Delete to re-login:"
+  echo "  rm -rf $CREDS_DIR $STORE_DIR"
+  exit 1
+fi
+
+# Get password: env var > 1Password > interactive prompt
+if [ -z "$MATRIX_PASSWORD" ]; then
+  # Try 1Password
+  if command -v op &> /dev/null && op account get &> /dev/null; then
+    MATRIX_PASSWORD=$(op item get "${USERNAME} - Matrix" --vault Agents --fields password --reveal 2>/dev/null || true)
+    [ -n "$MATRIX_PASSWORD" ] && echo "Using password from 1Password"
+  fi
+fi
+
+if [ -z "$MATRIX_PASSWORD" ]; then
+  # Fall back to interactive prompt
+  echo -n "Matrix password for @${USERNAME}:${DOMAIN}: "
+  read -s MATRIX_PASSWORD
+  echo
+fi
+
+# Remove store if it exists (login fails if store already exists)
+rm -rf "$STORE_DIR"
+
+echo "Logging in as @${USERNAME}:${DOMAIN}..."
+
+# Mount parent dir for store - matrix-commander will create /store-parent/store
+docker run --rm -t \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --login password \
+  --homeserver "$HOMESERVER" \
+  --user-login "@${USERNAME}:${DOMAIN}" \
+  --password "$MATRIX_PASSWORD" \
+  --device "LOCAL_DOCKER" \
+  --room-default "$DEFAULT_ROOM" \
+  --credentials /data/credentials.json \
+  --store /store-parent/store
+
+echo ""
+echo "Logged in as @${USERNAME}:${DOMAIN}"
+echo "Credentials stored at: $CREDS_DIR/"
+echo ""
+echo "Test with: mise run matrix:send $USERNAME 'Hello from local'"

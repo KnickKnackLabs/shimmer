@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="Accept pending Matrix room invites"
+#USAGE arg "<username>" help="Matrix username (without @domain)"
+
+set -e
+
+USERNAME="${1:?Usage: mise run matrix:invites <username>}"
+
+# Per-user credential directories
+CREDS_DIR="$HOME/.config/matrix-commander/$USERNAME"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$USERNAME"
+
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Not logged in as $USERNAME. Run: mise run matrix:login $USERNAME"
+  exit 1
+fi
+
+docker run --rm -t \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  --room-invites LIST+JOIN
