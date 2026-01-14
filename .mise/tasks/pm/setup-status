@@ -1,83 +1,15 @@
 #!/bin/bash
 #MISE description="Configure Status field with standard workflow options"
-#USAGE arg "[project_number]" help="Project number (defaults to auto-detect from repo)"
+#USAGE arg "[project_number]" help="Project number (defaults to auto-detect)"
 set -eo pipefail
 
-# Determine target directory
-TARGET_DIR="${PROJECT_DIR:-.}"
+# This is a convenience wrapper around pm:field-edit for our standard Status values
+# Usage: PROJECT_DIR=/path/to/repo mise run pm:setup-status
 
-# Get repo from .project.toml or git remote
-REPO=""
-PROJECT_FILE="$TARGET_DIR/.project.toml"
-if [[ -f "$PROJECT_FILE" ]]; then
-  REPO=$(yq -p toml '.repo' "$PROJECT_FILE" 2>/dev/null || true)
-fi
+SCRIPT_DIR="$(dirname "$0")"
+PROJECT_NUM="${1:-}"
 
-if [[ -z "$REPO" ]]; then
-  REPO=$(git -C "$TARGET_DIR" remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/' || true)
-fi
-
-if [[ -z "$REPO" ]]; then
-  echo "Error: Could not determine repo"
-  exit 1
-fi
-
-OWNER=$(echo "$REPO" | cut -d'/' -f1)
-PROJECT_NAME=$(echo "$REPO" | cut -d'/' -f2)
-
-# Get project number from arg or find by name
-PROJECT_NUM="${usage_project_number:-$1}"
-if [[ -z "$PROJECT_NUM" ]]; then
-  PROJECT_NUM=$(gh project list --owner "$OWNER" --format json | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.title == $name) | .number')
-fi
-
-if [[ -z "$PROJECT_NUM" ]]; then
-  echo "Error: Could not find project for $REPO"
-  echo "Run: mise run pm:init"
-  exit 1
-fi
-
-echo "Configuring Status field for project #$PROJECT_NUM ($PROJECT_NAME)"
-
-# Get Status field ID
-STATUS_FIELD_ID=$(gh project field-list "$PROJECT_NUM" --owner "$OWNER" --format json | jq -r '.fields[] | select(.name == "Status") | .id')
-
-if [[ -z "$STATUS_FIELD_ID" ]]; then
-  echo "Error: Status field not found"
-  exit 1
-fi
-
-echo "  Field ID: $STATUS_FIELD_ID"
+echo "Setting up standard Status field..."
 echo ""
 
-# Update Status field with our standard options
-# Colors: GRAY, RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PINK
-gh api graphql -f query="
-mutation {
-  updateProjectV2Field(input: {
-    fieldId: \"$STATUS_FIELD_ID\"
-    singleSelectOptions: [
-      {name: \"Backlog\", color: GRAY, description: \"Triaged but not yet approved for work\"},
-      {name: \"Ready\", color: GREEN, description: \"Available to claim\"},
-      {name: \"In Progress\", color: YELLOW, description: \"Being worked on\"},
-      {name: \"In Review\", color: PURPLE, description: \"PR submitted, awaiting review\"},
-      {name: \"Done\", color: BLUE, description: \"Closed or merged\"}
-    ]
-  }) {
-    projectV2Field {
-      ... on ProjectV2SingleSelectField {
-        name
-        options {
-          name
-        }
-      }
-    }
-  }
-}" > /dev/null
-
-echo "Status field configured with:"
-echo "  - Backlog (gray)"
-echo "  - Ready (green)"
-echo "  - In Progress (yellow)"
-echo "  - In Review (purple)"
-echo "  - Done (blue)"
+PROJECT_DIR="${PROJECT_DIR:-.}" "$SCRIPT_DIR/field-edit" "Status" "Backlog,Ready,In Progress,In Review,Done" "GRAY,GREEN,YELLOW,PURPLE,BLUE"

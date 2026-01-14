@@ -1,0 +1,111 @@
+#!/bin/bash
+#MISE description="Edit options for a single select field in a project"
+#USAGE arg "<field_name>" help="Name of the field to edit (e.g., Status, Priority)"
+#USAGE arg "<options>" help="Comma-separated options (e.g., 'Backlog,Ready,Done')"
+#USAGE arg "[colors]" help="Comma-separated colors (GRAY,RED,ORANGE,YELLOW,GREEN,BLUE,PURPLE,PINK)"
+set -eo pipefail
+
+FIELD_NAME="${usage_field_name:-$1}"
+OPTIONS="${usage_options:-$2}"
+COLORS="${usage_colors:-$3}"
+
+if [[ -z "$FIELD_NAME" ]] || [[ -z "$OPTIONS" ]]; then
+  echo "Usage: mise run pm:field-edit <field_name> <options> [colors]"
+  echo ""
+  echo "Examples:"
+  echo "  mise run pm:field-edit Status 'Backlog,Ready,In Progress,Done'"
+  echo "  mise run pm:field-edit Priority 'High,Medium,Low' 'RED,YELLOW,GREEN'"
+  exit 1
+fi
+
+# Determine target directory
+TARGET_DIR="${PROJECT_DIR:-.}"
+
+# Get repo from .project.toml or git remote
+REPO=""
+PROJECT_FILE="$TARGET_DIR/.project.toml"
+if [[ -f "$PROJECT_FILE" ]]; then
+  REPO=$(yq -p toml '.repo' "$PROJECT_FILE" 2>/dev/null || true)
+fi
+
+if [[ -z "$REPO" ]]; then
+  REPO=$(git -C "$TARGET_DIR" remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]\(.*\)\.git/\1/' | sed 's/.*github.com[:/]\(.*\)/\1/' || true)
+fi
+
+if [[ -z "$REPO" ]]; then
+  echo "Error: Could not determine repo"
+  exit 1
+fi
+
+OWNER=$(echo "$REPO" | cut -d'/' -f1)
+PROJECT_NAME=$(echo "$REPO" | cut -d'/' -f2)
+
+# Get project number (auto-detect from repo name)
+PROJECT_NUM=""
+if [[ -z "$PROJECT_NUM" ]]; then
+  PROJECT_NUM=$(gh project list --owner "$OWNER" --format json | jq -r --arg name "$PROJECT_NAME" '.projects[] | select(.title == $name) | .number')
+fi
+
+if [[ -z "$PROJECT_NUM" ]]; then
+  echo "Error: Could not find project for $REPO"
+  exit 1
+fi
+
+# Get field ID
+FIELD_ID=$(gh project field-list "$PROJECT_NUM" --owner "$OWNER" --format json | jq -r --arg name "$FIELD_NAME" '.fields[] | select(.name == $name) | .id')
+
+if [[ -z "$FIELD_ID" ]]; then
+  echo "Error: Field '$FIELD_NAME' not found in project #$PROJECT_NUM"
+  exit 1
+fi
+
+echo "Editing field '$FIELD_NAME' in project #$PROJECT_NUM ($PROJECT_NAME)"
+echo "  Field ID: $FIELD_ID"
+echo ""
+
+# Parse options and colors
+IFS=',' read -ra OPT_ARRAY <<< "$OPTIONS"
+if [[ -n "$COLORS" ]]; then
+  IFS=',' read -ra COLOR_ARRAY <<< "$COLORS"
+else
+  # Default all to GRAY
+  COLOR_ARRAY=()
+  for _ in "${OPT_ARRAY[@]}"; do
+    COLOR_ARRAY+=("GRAY")
+  done
+fi
+
+# Build GraphQL options array
+OPTIONS_JSON="["
+for i in "${!OPT_ARRAY[@]}"; do
+  OPT_NAME="${OPT_ARRAY[$i]}"
+  OPT_COLOR="${COLOR_ARRAY[$i]:-GRAY}"
+  if [[ $i -gt 0 ]]; then
+    OPTIONS_JSON+=","
+  fi
+  OPTIONS_JSON+="{name: \"$OPT_NAME\", color: $OPT_COLOR, description: \"\"}"
+done
+OPTIONS_JSON+="]"
+
+# Execute mutation
+gh api graphql -f query="
+mutation {
+  updateProjectV2Field(input: {
+    fieldId: \"$FIELD_ID\"
+    singleSelectOptions: $OPTIONS_JSON
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        name
+        options {
+          name
+        }
+      }
+    }
+  }
+}" > /dev/null
+
+echo "Field '$FIELD_NAME' updated with options:"
+for opt in "${OPT_ARRAY[@]}"; do
+  echo "  - $opt"
+done
