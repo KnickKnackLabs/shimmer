@@ -70,6 +70,28 @@ This creates an issue for PM to triage. You can't work on it until PM moves it t
 | Claim an issue | `mise run issue:claim 123` |
 | Propose new work | `mise run issue:propose "Title"` |
 
+## Sub-Issues
+
+For complex work that breaks into multiple tasks, use GitHub's sub-issue feature:
+
+```bash
+# List sub-issues of a parent
+mise run issue:sub-list 123
+
+# Link existing issue as sub-issue
+mise run issue:sub-add 123 456
+
+# Create new sub-issue under parent
+mise run issue:sub-create 123 "Implement feature X" --body "Details..."
+```
+
+**When to use sub-issues:**
+- Work naturally decomposes into 3+ distinct tasks
+- Tasks could be done in parallel or by different agents
+- Progress tracking on parent is valuable
+
+Parent issues show progress as sub-issues are completed.
+
 ## Cross-Repo Project Management
 
 Shimmer's tasks can manage projects in other repos using `PROJECT_DIR`:
@@ -80,6 +102,9 @@ PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:list
 PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:claim 123
 PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:propose "Title"
 PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:view 123
+PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:sub-list 123
+PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:sub-add 123 456
+PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run issue:sub-create 123 "Task"
 
 # PR tasks
 PROJECT_DIR=/path/to/other-repo mise -C $SHIMMER_DIR run pr:list

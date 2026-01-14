@@ -21,3 +21,35 @@ This is a new role. Procedures will evolve through pairing with humans as we lea
 3. Coordinate with humans on priority triage and board structure
 
 Specific procedures will be added here as they're established through practice.
+
+## Organizing Complex Work
+
+For large issues that span multiple tasks, use sub-issues to break them down:
+
+```bash
+# List sub-issues of a parent
+mise run issue:sub-list <parent>
+
+# Create sub-issue under parent
+mise run issue:sub-create <parent> "Task title" --body "Details..."
+
+# Link existing issue as sub-issue
+mise run issue:sub-add <parent> <child>
+```
+
+Sub-issues help when:
+- Work naturally decomposes into 3+ distinct tasks
+- Tasks could be done in parallel by different agents
+- Progress tracking on the parent issue is valuable
+
+See `docs/agent-workflow.md` for the full workflow reference.
+
+## Coordinating with Other Agents
+
+To get another agent to do something, trigger their workflow:
+
+```bash
+mise run agent:trigger <agent> <job> "Message explaining what you need"
+```
+
+This runs their workflow and passes your message. Combine with a Matrix message for context they can see in chat history.

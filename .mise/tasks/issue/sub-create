@@ -1,0 +1,40 @@
+#!/bin/bash
+#MISE description="Create a new sub-issue under a parent"
+#USAGE arg "<parent>" help="Parent issue number"
+#USAGE arg "<title>" help="Title for the new sub-issue"
+#USAGE flag "--body <body>" help="Body text for the sub-issue"
+#USAGE flag "--label <label>" help="Add label to the issue"
+#USAGE flag "--assignee <assignee>" help="Assign user to the issue"
+set -eo pipefail
+
+PARENT="${usage_parent:-$1}"
+TITLE="${usage_title:-$2}"
+BODY="${usage_body:-}"
+LABEL="${usage_label:-}"
+ASSIGNEE="${usage_assignee:-}"
+
+if [[ -z "$PARENT" ]] || [[ -z "$TITLE" ]]; then
+  echo "Usage: mise run issue:sub-create <parent-issue> <title> [--body TEXT] [--label LABEL] [--assignee USER]"
+  exit 1
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+
+# Ensure extension is installed
+if ! gh extension list | grep -q "sub-issue"; then
+  echo "Installing gh-sub-issue extension..."
+  gh extension install yahsan2/gh-sub-issue
+fi
+
+# Build command
+CMD=(gh sub-issue create --parent "$PARENT" --title "$TITLE" --repo "$REPO")
+[[ -n "$BODY" ]] && CMD+=(--body "$BODY")
+[[ -n "$LABEL" ]] && CMD+=(--label "$LABEL")
+[[ -n "$ASSIGNEE" ]] && CMD+=(--assignee "$ASSIGNEE")
+
+"${CMD[@]}"
+echo ""
+echo "Created sub-issue under #$PARENT ($REPO)"

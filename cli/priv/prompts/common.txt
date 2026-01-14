@@ -32,6 +32,15 @@ This only takes a moment and helps you catch things that might change your prior
 
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 
+## Workflow
+
+Work is tracked in GitHub Projects. See `docs/agent-workflow.md` for the full workflow, including:
+- Finding and claiming issues
+- Issue statuses (Backlog → Ready → In Progress → In Review → Done)
+- Proposing new work
+- Using sub-issues for complex tasks
+- Cross-repo project management
+
 ## Workspace
 
 If you need a place on disk for scratch files, cloned repos, or other artifacts, use:

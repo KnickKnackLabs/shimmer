@@ -23,6 +23,16 @@ Keep changes focused - one concern per PR.
 - **Don't work on Backlog items** - they haven't been approved yet
 - **Found something that should be fixed?** Use `mise run issue:propose "Title"` to suggest it, then move on
 
+## Complex Tasks
+
+If an issue naturally breaks into 3+ distinct tasks, use sub-issues:
+
+```bash
+mise run issue:sub-create <parent> "Task title" --body "Details..."
+```
+
+This helps track progress and allows parallel work. See `docs/agent-workflow.md` for details.
+
 ## Avoiding Conflicts
 
 Before starting implementation, check for file overlap with open PRs:
