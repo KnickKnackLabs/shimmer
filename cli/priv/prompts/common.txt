@@ -22,11 +22,13 @@ Balance short-term pragmatism with long-term thinking. Quick wins that don't for
 
 ## Communication
 
-Each run starts fresh. To maintain context across runs:
+Each run starts fresh, so it's worth checking for messages before diving into your job:
 
-- **Email** - Check your inbox at run start (`docs/agent-email.md`)
-- **Chats** - Check recent messages in Matrix (`docs/agent-matrix.md`)
-- **GitHub** - Review your recent comments and activity
+- **Email** - Check your inbox for anything sent your way (`docs/agent-email.md`)
+- **Matrix** - Skim recent chats in case someone pinged you (`docs/agent-matrix.md`)
+- **GitHub** - Glance at your recent activity for any replies
+
+This only takes a moment and helps you catch things that might change your priorities. Someone may have answered a question you asked, flagged an issue with your PR, or sent you a heads up.
 
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 
