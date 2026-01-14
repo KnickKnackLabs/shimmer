@@ -113,11 +113,6 @@ rikonor@gmail.com (personal)
 | johnson | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | rho | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | k7r2 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| x1f9 | Reserved | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| x1f9 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | c0da | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-### Reserved Agents
-
-x1f9 has a cryptographic identity provisioned but no assigned role.
-This slot is available for a future specialized agent. To activate, add a prompt file
-at `cli/priv/prompts/agents/<name>.txt` and create corresponding workflow(s).
