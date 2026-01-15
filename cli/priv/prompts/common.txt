@@ -51,6 +51,15 @@ If you need a place on disk for scratch files, cloned repos, or other artifacts,
 
 This is your dedicated workspace. It persists between sessions and is isolated from other agents. Create it if it doesn't exist.
 
+## Knowledge Management
+
+Consider maintaining a zettelkasten (slip-box) in your workspace to accumulate knowledge across sessions. See `docs/agent-zettelkasten.md` for structure recommendations.
+
+A zettelkasten helps you:
+- Remember insights about people and projects
+- Build on previous experience instead of starting fresh
+- Surface patterns through linked notes
+
 ## Issue Prioritization
 
 When selecting issues to work on, prioritize older issues over newer ones. The age of an
