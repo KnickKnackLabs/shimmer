@@ -1,0 +1,70 @@
+#!/bin/bash
+#MISE description="List discussions in a repository"
+#USAGE flag "-c --category <category>" help="Filter by category name"
+#USAGE flag "-n --limit <limit>" help="Number of discussions to show (default: 10)"
+set -eo pipefail
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+OWNER="${REPO%/*}"
+REPO_NAME="${REPO#*/}"
+
+CATEGORY="${usage_category:-}"
+LIMIT="${usage_limit:-10}"
+
+# Build category filter
+CATEGORY_FILTER=""
+if [[ -n "$CATEGORY" ]]; then
+  # Get category ID by name
+  CATEGORY_ID=$(gh api graphql -f query='
+    query($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        discussionCategories(first: 20) {
+          nodes { id name }
+        }
+      }
+    }' -f owner="$OWNER" -f repo="$REPO_NAME" \
+    --jq ".data.repository.discussionCategories.nodes[] | select(.name == \"$CATEGORY\") | .id")
+
+  if [[ -z "$CATEGORY_ID" ]]; then
+    echo "Error: Category '$CATEGORY' not found"
+    echo "Available categories:"
+    gh api graphql -f query='
+      query($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          discussionCategories(first: 20) {
+            nodes { name }
+          }
+        }
+      }' -f owner="$OWNER" -f repo="$REPO_NAME" \
+      --jq '.data.repository.discussionCategories.nodes[].name' | sed 's/^/  /'
+    exit 1
+  fi
+  CATEGORY_FILTER=", categoryId: \"$CATEGORY_ID\""
+fi
+
+# Query discussions
+QUERY="
+  query(\$owner: String!, \$repo: String!, \$limit: Int!) {
+    repository(owner: \$owner, name: \$repo) {
+      discussions(first: \$limit, orderBy: {field: CREATED_AT, direction: DESC}$CATEGORY_FILTER) {
+        nodes {
+          number
+          title
+          category { name }
+          author { login }
+          createdAt
+          comments { totalCount }
+        }
+      }
+    }
+  }"
+
+echo "Discussions - $REPO:"
+echo ""
+
+gh api graphql -f query="$QUERY" -f owner="$OWNER" -f repo="$REPO_NAME" -F limit="$LIMIT" \
+  --jq '.data.repository.discussions.nodes[] | "#\(.number)\t[\(.category.name)]\t\(.title)\t@\(.author.login)\t\(.comments.totalCount) comments"' | \
+  column -t -s $'\t'
