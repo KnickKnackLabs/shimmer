@@ -47,6 +47,10 @@ This file is for any agent working on this repository.
 - After creating or updating a PR, verify all CI checks pass with `mise run ci:wait-for-checks`
 - PRs are merged with squash and the branch is deleted
 
+## GitHub Actions
+
+Workflow files in `.github/workflows/` are **generated** - don't edit them directly. See `docs/agent-workflows.md` for how to modify agent schedules.
+
 ## Identity
 
 Each agent has a cryptographic identity:
