@@ -38,5 +38,9 @@ echo ""
 echo "Configuring Status field..."
 PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Status" "Backlog,Ready,In Progress,In Review,Done" "GRAY,GREEN,YELLOW,PURPLE,BLUE"
 
+# Configure Priority field
+echo "Configuring Priority field..."
+PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Priority" "High,Medium,Low" "RED,YELLOW,GREEN"
+
 echo ""
 echo "Project ready! View at: $PROJECT_URL"
