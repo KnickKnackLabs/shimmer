@@ -1,0 +1,60 @@
+#!/bin/bash
+#MISE description="View a discussion and its comments"
+#USAGE arg "<number>" help="Discussion number"
+set -eo pipefail
+
+NUMBER="${usage_number:-$1}"
+
+if [[ -z "$NUMBER" ]]; then
+  echo "Usage: mise run discussion:view <number>"
+  exit 1
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+OWNER="${REPO%/*}"
+REPO_NAME="${REPO#*/}"
+
+# Query discussion with comments
+RESULT=$(gh api graphql -f query='
+  query($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) {
+      discussion(number: $number) {
+        number
+        title
+        body
+        category { name }
+        author { login }
+        createdAt
+        url
+        comments(first: 50) {
+          nodes {
+            author { login }
+            body
+            createdAt
+          }
+        }
+      }
+    }
+  }' -f owner="$OWNER" -f repo="$REPO_NAME" -F number="$NUMBER")
+
+# Check if discussion exists
+if [[ $(echo "$RESULT" | jq '.data.repository.discussion') == "null" ]]; then
+  echo "Discussion #$NUMBER not found in $REPO"
+  exit 1
+fi
+
+# Display discussion
+echo "$RESULT" | jq -r '.data.repository.discussion | "=== Discussion #\(.number) ===\n\n\(.title)\nCategory: \(.category.name)\nAuthor: @\(.author.login)\nCreated: \(.createdAt | split("T")[0])\nURL: \(.url)\n\n--- Body ---\n\(.body)"'
+
+# Display comments
+COMMENTS=$(echo "$RESULT" | jq '.data.repository.discussion.comments.nodes')
+COMMENT_COUNT=$(echo "$COMMENTS" | jq 'length')
+
+if [[ "$COMMENT_COUNT" -gt 0 ]]; then
+  echo ""
+  echo "=== Comments ($COMMENT_COUNT) ==="
+  echo "$COMMENTS" | jq -r '.[] | "\n--- @\(.author.login) (\(.createdAt | split("T")[0])) ---\n\(.body)"'
+fi

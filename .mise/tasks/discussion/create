@@ -1,0 +1,93 @@
+#!/bin/bash
+#MISE description="Create a new discussion"
+#USAGE arg "<title>" help="Discussion title"
+#USAGE flag "-c --category <category>" help="Category name (required)"
+#USAGE flag "-b --body <body>" help="Discussion body (or reads from stdin)"
+set -eo pipefail
+
+TITLE="${usage_title:-$1}"
+CATEGORY="${usage_category:-}"
+BODY="${usage_body:-}"
+
+if [[ -z "$TITLE" ]] || [[ -z "$CATEGORY" ]]; then
+  echo "Usage: mise run discussion:create <title> --category <category> [--body <body>]"
+  echo ""
+  echo "Example:"
+  echo "  mise run discussion:create 'RFC: New feature' --category Ideas --body 'Description here'"
+  echo ""
+  echo "Or pipe body from stdin:"
+  echo "  cat rfc.md | mise run discussion:create 'RFC: New feature' --category Ideas"
+  exit 1
+fi
+
+# Read body from stdin if not provided
+if [[ -z "$BODY" ]]; then
+  if [[ ! -t 0 ]]; then
+    BODY=$(cat)
+  else
+    echo "Error: --body required or pipe content via stdin"
+    exit 1
+  fi
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+OWNER="${REPO%/*}"
+REPO_NAME="${REPO#*/}"
+
+# Get repository ID
+REPO_ID=$(gh api graphql -f query='
+  query($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) { id }
+  }' -f owner="$OWNER" -f repo="$REPO_NAME" --jq '.data.repository.id')
+
+# Get category ID
+CATEGORY_ID=$(gh api graphql -f query='
+  query($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+      discussionCategories(first: 20) {
+        nodes { id name }
+      }
+    }
+  }' -f owner="$OWNER" -f repo="$REPO_NAME" \
+  --jq ".data.repository.discussionCategories.nodes[] | select(.name == \"$CATEGORY\") | .id")
+
+if [[ -z "$CATEGORY_ID" ]]; then
+  echo "Error: Category '$CATEGORY' not found"
+  echo "Available categories:"
+  gh api graphql -f query='
+    query($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        discussionCategories(first: 20) {
+          nodes { name }
+        }
+      }
+    }' -f owner="$OWNER" -f repo="$REPO_NAME" \
+    --jq '.data.repository.discussionCategories.nodes[].name' | sed 's/^/  /'
+  exit 1
+fi
+
+# Create discussion
+RESULT=$(gh api graphql -f query='
+  mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+    createDiscussion(input: {
+      repositoryId: $repoId
+      categoryId: $categoryId
+      title: $title
+      body: $body
+    }) {
+      discussion {
+        number
+        url
+      }
+    }
+  }' -f repoId="$REPO_ID" -f categoryId="$CATEGORY_ID" -f title="$TITLE" -f body="$BODY")
+
+# Output result
+NUMBER=$(echo "$RESULT" | jq -r '.data.createDiscussion.discussion.number')
+URL=$(echo "$RESULT" | jq -r '.data.createDiscussion.discussion.url')
+
+echo "Created discussion #$NUMBER: $TITLE"
+echo "$URL"

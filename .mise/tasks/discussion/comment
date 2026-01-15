@@ -1,0 +1,64 @@
+#!/bin/bash
+#MISE description="Add a comment to a discussion"
+#USAGE arg "<number>" help="Discussion number"
+#USAGE flag "-b --body <body>" help="Comment body (or reads from stdin)"
+set -eo pipefail
+
+NUMBER="${usage_number:-$1}"
+BODY="${usage_body:-}"
+
+if [[ -z "$NUMBER" ]]; then
+  echo "Usage: mise run discussion:comment <number> --body <body>"
+  echo ""
+  echo "Or pipe body from stdin:"
+  echo "  echo 'My comment' | mise run discussion:comment 123"
+  exit 1
+fi
+
+# Read body from stdin if not provided
+if [[ -z "$BODY" ]]; then
+  if [[ ! -t 0 ]]; then
+    BODY=$(cat)
+  else
+    echo "Error: --body required or pipe content via stdin"
+    exit 1
+  fi
+fi
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-.}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+OWNER="${REPO%/*}"
+REPO_NAME="${REPO#*/}"
+
+# Get discussion ID
+DISCUSSION_ID=$(gh api graphql -f query='
+  query($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) {
+      discussion(number: $number) { id }
+    }
+  }' -f owner="$OWNER" -f repo="$REPO_NAME" -F number="$NUMBER" \
+  --jq '.data.repository.discussion.id')
+
+if [[ -z "$DISCUSSION_ID" ]] || [[ "$DISCUSSION_ID" == "null" ]]; then
+  echo "Error: Discussion #$NUMBER not found in $REPO"
+  exit 1
+fi
+
+# Add comment
+RESULT=$(gh api graphql -f query='
+  mutation($discussionId: ID!, $body: String!) {
+    addDiscussionComment(input: {
+      discussionId: $discussionId
+      body: $body
+    }) {
+      comment {
+        url
+      }
+    }
+  }' -f discussionId="$DISCUSSION_ID" -f body="$BODY")
+
+URL=$(echo "$RESULT" | jq -r '.data.addDiscussionComment.comment.url')
+echo "Comment added to discussion #$NUMBER"
+echo "$URL"
