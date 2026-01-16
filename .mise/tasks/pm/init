@@ -47,11 +47,8 @@ echo ""
 echo "Cleaning up redundant labels..."
 for LABEL in "bug" "enhancement"; do
   if gh label list --repo "$REPO" --json name --jq '.[].name' | grep -qx "$LABEL"; then
-    if gh label delete "$LABEL" --repo "$REPO" --yes 2>/dev/null; then
-      echo "  Deleted: $LABEL"
-    else
-      echo "  Skipped: $LABEL (no permission)"
-    fi
+    gh label delete "$LABEL" --repo "$REPO" --yes
+    echo "  Deleted: $LABEL"
   fi
 done
 
