@@ -516,7 +516,7 @@ defmodule Cli do
       {:error, _} ->
         extracted = extract_partial_text(buffer)
         # Only output text beyond what was already flushed (issue #392)
-        new_text = text_beyond_flushed(extracted, state.flushed_text)
+        new_text = text_beyond_flushed(extracted, state.flushed_chars)
         if new_text != "", do: IO.write(new_text)
 
         {abort_seen, recent_text, had_newline} = check_abort_signal(extracted, state)
@@ -711,7 +711,7 @@ defmodule Cli do
     text
   end
 
-  def text_beyond_flushed(text, flushed_chars) do
+  def text_beyond_flushed(text, flushed_chars) when is_integer(flushed_chars) do
     if String.length(text) > flushed_chars do
       String.slice(text, flushed_chars..-1//1)
     else

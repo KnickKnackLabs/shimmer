@@ -745,6 +745,13 @@ defmodule CliTest do
       assert Cli.text_beyond_flushed("", 0) == ""
       assert Cli.text_beyond_flushed("", 5) == ""
     end
+
+    test "raises on nil flushed_chars (type safety)" do
+      # Passing nil should fail loudly, not silently drop content.
+      assert_raise FunctionClauseError, fn ->
+        Cli.text_beyond_flushed("hello world", nil)
+      end
+    end
   end
 
   describe "load_system_prompt/1" do
