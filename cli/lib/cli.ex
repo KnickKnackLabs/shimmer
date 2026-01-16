@@ -515,7 +515,9 @@ defmodule Cli do
 
       {:error, _} ->
         extracted = extract_partial_text(buffer)
-        if extracted != "", do: IO.write(extracted)
+        # Only output text beyond what was already flushed (issue #392)
+        new_text = text_beyond_flushed(extracted, state.flushed_text)
+        if new_text != "", do: IO.write(new_text)
 
         {abort_seen, recent_text, had_newline} = check_abort_signal(extracted, state)
 
