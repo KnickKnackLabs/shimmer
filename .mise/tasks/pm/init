@@ -42,5 +42,18 @@ PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Status" "Backlog,Ready,In
 echo "Configuring Priority field..."
 PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Priority" "High,Medium,Low" "RED,YELLOW,GREEN"
 
+# Clean up redundant default labels
+echo ""
+echo "Cleaning up redundant labels..."
+for LABEL in "bug" "enhancement"; do
+  if gh label list --repo "$REPO" --json name --jq '.[].name' | grep -qx "$LABEL"; then
+    if gh label delete "$LABEL" --repo "$REPO" --yes 2>/dev/null; then
+      echo "  Deleted: $LABEL"
+    else
+      echo "  Skipped: $LABEL (no permission)"
+    fi
+  fi
+done
+
 echo ""
 echo "Project ready! View at: $PROJECT_URL"
