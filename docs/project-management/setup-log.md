@@ -133,16 +133,23 @@ mutation {
 
 ### 4. Workflows and Views (Web UI required)
 
-**Date**: 2026-01-10
+**Date**: 2026-01-10, updated 2026-01-15
 
 These cannot be configured via CLI/API - must use web UI at:
 https://github.com/orgs/ricon-family/projects/4/settings
 
 **Workflows enabled:**
-- [x] Item closed (issues only) → Set Status to "Done"
-- [x] Pull request merged → Set Status to "Done"
-- [x] Auto-archive items: `is:issue,pr is:closed updated:<@today-14d`
-- [x] Auto-add from repository: ricon-family/shimmer (`is:issue is:open`)
+
+| Trigger | Action | Rationale |
+|---------|--------|-----------|
+| Item added to project | Status → Backlog | New issues need triage before work |
+| Item closed | Status → Done | Completed work |
+| Item reopened | Status → Ready | Available to pick up again |
+| Pull request merged | Status → Done | Completed work |
+| Code changes requested | Status → In Progress | PR needs updates, still actively worked |
+| Pull request linked to issue | Status → In Review | PR submitted for review |
+| Auto-archive | `is:closed updated:<@today-14d` | Clean up old closed items after 2 weeks |
+| Auto-add | ricon-family/shimmer `is:issue is:open` | Auto-add open issues from this repo |
 
 **Views created:**
 - [x] Backlog (table, group by Priority, columns: Title, Assignees, Status, Iteration)
