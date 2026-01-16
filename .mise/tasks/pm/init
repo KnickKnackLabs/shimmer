@@ -34,6 +34,30 @@ echo ""
 echo "Project created: $PROJECT_URL"
 echo ""
 
+# Link project to repository
+echo "Linking project to repository..."
+PROJECT_ID=$(gh api graphql -f query='
+  query($owner: String!, $num: Int!) {
+    organization(login: $owner) {
+      projectV2(number: $num) { id }
+    }
+  }' -f owner="$OWNER" -F num="$PROJECT_NUM" --jq '.data.organization.projectV2.id')
+
+REPO_ID=$(gh api "repos/$REPO" --jq '.node_id')
+
+gh api graphql -f query='
+  mutation($projectId: ID!, $repoId: ID!) {
+    linkProjectV2ToRepository(input: {
+      projectId: $projectId
+      repositoryId: $repoId
+    }) {
+      repository { nameWithOwner }
+    }
+  }' -f projectId="$PROJECT_ID" -f repoId="$REPO_ID" > /dev/null
+
+echo "  Linked to $REPO"
+echo ""
+
 # Configure Status field with standard options
 echo "Configuring Status field..."
 PROJECT_DIR="$TARGET_DIR" "$SCRIPT_DIR/field-options" "Status" "Backlog,Ready,In Progress,In Review,Done" "GRAY,GREEN,YELLOW,PURPLE,BLUE"
