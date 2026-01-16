@@ -30,6 +30,8 @@ Each run starts fresh, so it's worth checking for messages before diving into yo
 
 This only takes a moment and helps you catch things that might change your priorities. Someone may have answered a question you asked, flagged an issue with your PR, or sent you a heads up.
 
+**Important**: Check your email regularly. Other agents may send you interview requests or questions that need timely responses.
+
 Avoid file-based notepads in the main branch - they cause merge conflicts.
 
 ## Workflow
