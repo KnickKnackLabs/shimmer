@@ -312,7 +312,7 @@ defmodule Cli do
         usage: nil,
         abort_seen: false,
         recent_text: "",
-        flushed_text: "",
+        flushed_chars: 0,
         # Track if the last char trimmed from recent_text was a newline (for abort detection)
         had_newline_before_window: true
       })
@@ -492,14 +492,14 @@ defmodule Cli do
             extracted = extract_partial_text(partial)
 
             # Only output the new text beyond what was already flushed
-            new_text = text_beyond_flushed(extracted, state.flushed_text)
+            new_text = text_beyond_flushed(extracted, state.flushed_chars)
 
             if new_text != "" do
               IO.write(new_text)
             end
 
-            # Track all text we've shown from this buffer
-            stream_output(port, %{state | flushed_text: extracted})
+            # Track character count we've shown (fixes #415: escape sequence mismatch)
+            stream_output(port, %{state | flushed_chars: String.length(extracted)})
         end
     end
   end
@@ -574,7 +574,7 @@ defmodule Cli do
            usage: map() | nil,
            abort_seen: boolean(),
            recent_text: String.t(),
-           flushed_text: String.t(),
+           flushed_chars: non_neg_integer(),
            had_newline_before_window: boolean()
          }
 
@@ -619,7 +619,7 @@ defmodule Cli do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
         # Write text, skipping any prefix already shown via partial flush (issue #338)
-        text_to_write = text_beyond_flushed(text, state.flushed_text)
+        text_to_write = text_beyond_flushed(text, state.flushed_chars)
 
         if text_to_write != "" do
           IO.write(text_to_write)
@@ -632,7 +632,7 @@ defmodule Cli do
           state
           | abort_seen: abort_seen,
             recent_text: recent_text,
-            flushed_text: "",
+            flushed_chars: 0,
             had_newline_before_window: had_newline
         }
 
@@ -680,37 +680,40 @@ defmodule Cli do
   end
 
   @doc """
-  Returns the portion of `text` that extends beyond `flushed_text`.
+  Returns the portion of `text` that extends beyond the already flushed characters.
 
   When text has been partially flushed (shown to the user during timeout),
   this extracts only the new portion to avoid duplicate output.
 
+  Uses character count instead of text comparison to handle cases where
+  escape sequences decode differently between partial and complete JSON
+  (see issue #415).
+
   ## Examples
 
-      iex> Cli.text_beyond_flushed("hello world", "hello")
+      iex> Cli.text_beyond_flushed("hello world", 5)
       " world"
 
-      iex> Cli.text_beyond_flushed("hello", "hello")
+      iex> Cli.text_beyond_flushed("hello", 5)
       ""
 
-      iex> Cli.text_beyond_flushed("hello", "")
+      iex> Cli.text_beyond_flushed("hello", 0)
       "hello"
 
-      iex> Cli.text_beyond_flushed("different", "hello")
-      "different"
+      iex> Cli.text_beyond_flushed("hi", 10)
+      ""
 
   """
-  @spec text_beyond_flushed(String.t(), String.t()) :: String.t()
-  def text_beyond_flushed(text, "") do
+  @spec text_beyond_flushed(String.t(), non_neg_integer()) :: String.t()
+  def text_beyond_flushed(text, 0) do
     text
   end
 
-  def text_beyond_flushed(text, flushed_text) do
-    if String.starts_with?(text, flushed_text) do
-      String.slice(text, String.length(flushed_text)..-1//1)
+  def text_beyond_flushed(text, flushed_chars) do
+    if String.length(text) > flushed_chars do
+      String.slice(text, flushed_chars..-1//1)
     else
-      # Flushed text doesn't match prefix - shouldn't happen, but return everything
-      text
+      ""
     end
   end
 
