@@ -88,11 +88,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Context:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  Current dir: $(pwd)"
+
+# Use caller's directory if available (set by shimmer alias), otherwise pwd
+CURRENT_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+
+echo "  Current dir: $CURRENT_DIR"
 echo "  Shimmer:     $SHIMMER_DIR"
 
 # Check if we're in shimmer
-if [ "$(pwd)" = "$SHIMMER_DIR" ] || [[ "$(pwd)" == "$SHIMMER_DIR"/* ]]; then
+if [ "$CURRENT_DIR" = "$SHIMMER_DIR" ] || [[ "$CURRENT_DIR" == "$SHIMMER_DIR"/* ]]; then
   echo ""
   echo "  You're inside the shimmer repo."
 else
