@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#MISE description="Check Matrix setup status for an agent"
+#USAGE arg "<agent>" help="Agent name (e.g., quick, brownie)"
+
+set -e
+
+AGENT="${1:?Usage: mise run matrix:status <agent>}"
+MATRIX_USER="@${AGENT}:ricon.family"
+CREDS_DIR="$HOME/.config/matrix-commander/$AGENT"
+CREDS_FILE="$CREDS_DIR/credentials.json"
+
+echo "Matrix status for $AGENT ($MATRIX_USER)"
+echo ""
+
+# Check if docker is available (matrix-commander runs in docker)
+if ! command -v docker &> /dev/null; then
+  echo "Docker installed: ✗"
+  echo ""
+  echo "Matrix commands require Docker"
+  exit 1
+fi
+echo "Docker installed: ✓"
+
+# Check if credentials exist
+if [ ! -f "$CREDS_FILE" ]; then
+  echo "Credentials exist: ✗"
+  echo ""
+  echo "Run: mise run matrix:login $AGENT"
+  exit 1
+fi
+echo "Credentials exist: ✓"
+echo "  Path: $CREDS_FILE"
+
+# Check if we can parse the credentials
+if command -v jq &> /dev/null && [ -f "$CREDS_FILE" ]; then
+  DEVICE=$(jq -r '.device_id // empty' "$CREDS_FILE" 2>/dev/null || true)
+  if [ -n "$DEVICE" ]; then
+    echo "  Device: $DEVICE"
+  fi
+fi
+
+echo ""
+echo "Test with: mise run matrix:send $AGENT 'Hello!'"

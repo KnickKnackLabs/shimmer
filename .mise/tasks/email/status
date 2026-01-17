@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#MISE description="Check email (himalaya) setup status for an agent"
+#USAGE arg "<agent>" help="Agent name (e.g., quick, brownie)"
+
+set -e
+
+AGENT="${1:?Usage: mise run email:status <agent>}"
+EMAIL="${AGENT}@ricon.family"
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+
+echo "Email status for $AGENT ($EMAIL)"
+echo ""
+
+# Check if himalaya is available
+if ! command -v himalaya &> /dev/null; then
+  echo "Himalaya installed: ✗"
+  echo ""
+  echo "Run: mise install"
+  exit 1
+fi
+echo "Himalaya installed: ✓"
+
+# Check if config exists
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Config exists: ✗"
+  echo ""
+  echo "Run: mise run email:setup $AGENT"
+  exit 1
+fi
+echo "Config exists: ✓"
+
+# Check if agent account is configured
+if ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Account configured: ✗"
+  echo ""
+  echo "Run: mise run email:setup $AGENT"
+  exit 1
+fi
+echo "Account configured: ✓"
+
+# Try to connect (quick check)
+echo ""
+echo "Testing connection..."
+if himalaya envelope list --max-width 0 2>/dev/null | head -1 > /dev/null; then
+  echo "Connection: ✓"
+else
+  echo "Connection: ✗ (check credentials)"
+  exit 1
+fi

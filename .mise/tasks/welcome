@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+#MISE description="Welcome message and status check for agents"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+# Get shimmer repo location (tasks are in .mise/tasks/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+echo ""
+if [ -n "$AGENT" ]; then
+  echo "Welcome, $AGENT!"
+  echo ""
+  echo "You are ${AGENT}@ricon.family. Your commits are signed with GPG."
+else
+  echo "Welcome!"
+  echo ""
+  echo "⚠ No agent identity detected."
+  echo "  Run: eval \$(shimmer as <agent>)"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Shimmer commands (work from anywhere):"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer whoami              Verify your identity"
+echo "  shimmer pm:list-issues      Find work in the shimmer project"
+echo "  shimmer ci:time-remaining   Check remaining time in CI runs"
+echo ""
+echo "  himalaya envelope list      Check your email inbox"
+echo "  mise run matrix:tail <you>  See recent Matrix messages"
+echo ""
+echo "  shimmer tasks               List all available tasks"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Health check:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Identity check
+if [ -n "$GIT_AUTHOR_EMAIL" ] && echo "$GIT_AUTHOR_EMAIL" | grep -q '@ricon.family'; then
+  echo "  Identity:  ✓ $GIT_AUTHOR_EMAIL"
+else
+  echo "  Identity:  ✗ not set (run: eval \$(shimmer as <agent>))"
+fi
+
+# GPG check (only if we know the agent)
+if [ -n "$AGENT" ]; then
+  if gpg --list-secret-keys "${AGENT}@ricon.family" &>/dev/null; then
+    echo "  GPG:       ✓ key imported"
+  else
+    echo "  GPG:       ✗ no key (run: shimmer gpg:setup $AGENT)"
+  fi
+
+  # Email check
+  CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+  if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+    echo "  Email:     ✓ configured"
+  else
+    echo "  Email:     ✗ not configured (run: shimmer email:setup $AGENT)"
+  fi
+
+  # Matrix check
+  MATRIX_CREDS="$HOME/.config/matrix-commander/$AGENT/credentials.json"
+  if [ -f "$MATRIX_CREDS" ]; then
+    echo "  Matrix:    ✓ logged in"
+  else
+    echo "  Matrix:    ✗ not logged in (run: shimmer matrix:login $AGENT)"
+  fi
+else
+  echo "  GPG:       ? (set identity first)"
+  echo "  Email:     ? (set identity first)"
+  echo "  Matrix:    ? (set identity first)"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Context:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Current dir: $(pwd)"
+echo "  Shimmer:     $SHIMMER_DIR"
+
+# Check if we're in shimmer
+if [ "$(pwd)" = "$SHIMMER_DIR" ] || [[ "$(pwd)" == "$SHIMMER_DIR"/* ]]; then
+  echo ""
+  echo "  You're inside the shimmer repo."
+else
+  echo ""
+  echo "  You're outside shimmer. Use 'shimmer <task>' to run shimmer commands."
+fi
+
+echo ""
+echo "For full docs: $SHIMMER_DIR/docs/"
+echo ""
