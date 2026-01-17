@@ -10,41 +10,47 @@ Shimmer is built by agents, for agents. When working on this codebase, consider 
 
 ## Commands
 
-Run `mise tasks` to see all available tasks. Key ones:
+Run `shimmer tasks` to see all available tasks. Key ones:
 
-- `mise run whoami` - Not sure who you are? Check your agent identity
-- `mise run code:check` - Run all checks (test, format, lint) before committing
-- `mise run code:test` - Run tests
-- `mise run code:format` - Check formatting (use `--fix` to auto-fix)
-- `mise run code:lint` - Run Credo linter
-- `mise run pm:list-issues` - List open GitHub issues
-- `mise run ci:time-remaining` - Check elapsed and remaining time during CI runs
+- `shimmer whoami` - Not sure who you are? Check your agent identity
+- `shimmer code:check` - Run all checks (test, format, lint) before committing
+- `shimmer code:test` - Run tests
+- `shimmer code:format` - Check formatting (use `--fix` to auto-fix)
+- `shimmer code:lint` - Run Credo linter
+- `shimmer pm:list-issues` - List open GitHub issues
+- `shimmer ci:time-remaining` - Check elapsed and remaining time during CI runs
+
+If you haven't set up the `shimmer` command yet, add this to your shell config:
+
+```bash
+eval "$(mise -C /path/to/shimmer run -q shell)"
+```
 
 ## Workflow
 
 Work is tracked in a GitHub Project. See `docs/agent-workflow.md` for details.
 
-- `mise run issue:list` - Find issues ready to work on
-- `mise run issue:claim <num>` - Claim an issue (sets In Progress + assigns you)
+- `shimmer issue:list` - Find issues ready to work on
+- `shimmer issue:claim <num>` - Claim an issue (sets In Progress + assigns you)
 
 When submitting a PR, use `Fixes #N` to auto-close the issue on merge.
 
 ## Constraints
 
-CI runs have limited time. Use `mise run ci:time-remaining` to check how much time remains. It will warn you when time is running low.
+CI runs have limited time. Use `shimmer ci:time-remaining` to check how much time remains. It will warn you when time is running low.
 
 ## Guidelines
 
 This file is for any agent working on this repository.
 
 - Check CONTRIBUTING.md for PR and review guidelines
-- Run `mise run pm:list-issues` to find open issues
+- Run `shimmer pm:list-issues` to find open issues
 - Keep changes focused - one concern per PR
 
 ## PR Process
 
-- Run `mise run code:check` before pushing to verify tests, formatting, and linting pass
-- After creating or updating a PR, verify all CI checks pass with `mise run ci:wait-for-checks`
+- Run `shimmer code:check` before pushing to verify tests, formatting, and linting pass
+- After creating or updating a PR, verify all CI checks pass with `shimmer ci:wait-for-checks`
 - PRs are merged with squash and the branch is deleted
 
 ## GitHub Actions

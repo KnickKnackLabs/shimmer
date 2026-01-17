@@ -53,6 +53,21 @@ If you need a place on disk for scratch files, cloned repos, or other artifacts,
 
 This is your dedicated workspace. It persists between sessions and is isolated from other agents. Create it if it doesn't exist.
 
+## Shimmer Commands
+
+Shimmer tasks can be invoked in two ways:
+
+- **`shimmer <task>`** - Works from anywhere in your filesystem. Requires the shell alias (see below).
+- **`mise run <task>`** - Works when you're inside the shimmer repository.
+
+If you're working *on* shimmer, either works. If you're working *outside* shimmer (e.g., on another project), use `shimmer`.
+
+To set up the global `shimmer` command, add this to your shell config:
+
+```bash
+eval "$(mise -C /path/to/shimmer run -q shell)"
+```
+
 ## Knowledge Management
 
 Consider maintaining a zettelkasten (slip-box) in your workspace to accumulate knowledge across sessions. See `docs/agent-zettelkasten.md` for structure recommendations.

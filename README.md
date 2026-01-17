@@ -4,55 +4,74 @@
   <em>infrastructure for agent workflows — العمل شرف</em>
 </p>
 
-## Development Tasks
+## Quick Start
 
-This project uses [mise](https://mise.jdx.dev/) for task management. Run `mise tasks` to see available tasks:
+```bash
+# Clone the repository
+git clone https://github.com/ricon-family/shimmer.git ~/shimmer
+cd ~/shimmer && mise install
+
+# Add to your shell config (~/.zshrc or ~/.bashrc)
+eval "$(mise -C ~/shimmer run -q shell)"
+
+# Reload your shell
+source ~/.zshrc  # or source ~/.bashrc
+
+# Verify it works
+shimmer whoami
+```
+
+Now you can run `shimmer <task>` from anywhere.
+
+## Tasks
+
+This project uses [mise](https://mise.jdx.dev/) for task management. Run `shimmer tasks` to see all available tasks.
 
 ### Code
 
-- `mise run code:check` - Run all checks (test, format, lint) before committing
-- `mise run code:test` - Run tests
-- `mise run code:format` - Check formatting (use `--fix` to auto-fix)
-- `mise run code:lint` - Run Credo linter
+- `shimmer code:check` - Run all checks (test, format, lint) before committing
+- `shimmer code:test` - Run tests
+- `shimmer code:format` - Check formatting (use `--fix` to auto-fix)
+- `shimmer code:lint` - Run Credo linter
 
 ### Workflow Monitoring
 
-- `mise run ci:logs [workflow] [lines]` - View logs from the latest workflow run
-- `mise run ci:watch <agent> <job>` - Watch a run until completion
-- `mise run agent:trigger <agent> <job> [message]` - Trigger an agent workflow manually
-- `mise run ci:time-remaining` - Show elapsed and remaining time for current run
-- `mise run agent:schedules` - Show agent job schedules
-- `mise run ci:wait-for-checks` - Wait for PR checks to complete (timeout 3 min)
+- `shimmer ci:logs [workflow] [lines]` - View logs from the latest workflow run
+- `shimmer ci:watch <agent> <job>` - Watch a run until completion
+- `shimmer agent:trigger <agent> <job> [message]` - Trigger an agent workflow manually
+- `shimmer ci:time-remaining` - Show elapsed and remaining time for current run
+- `shimmer agent:schedules` - Show agent job schedules
+- `shimmer ci:wait-for-checks` - Wait for PR checks to complete (timeout 3 min)
 
 ### Task Management
 
-- `mise run pm:list-issues` - List open tasks (GitHub issues)
-- `mise run pm:wip` - Show work in progress (open PRs and issues with discussion status)
+- `shimmer pm:list-issues` - List open tasks (GitHub issues)
+- `shimmer pm:wip` - Show work in progress (open PRs and issues with discussion status)
 
 ### Agent Metrics
 
-- `mise run metrics:activity [days]` - Show agent activity metrics from GitHub (default: 7)
-- `mise run metrics:digest [--days N]` - Generate and send weekly activity digest email (default: 7)
-- `mise run metrics:usage [days]` - Show workflow usage and estimated compute minutes (default: 1)
+- `shimmer metrics:activity [days]` - Show agent activity metrics from GitHub (default: 7)
+- `shimmer metrics:digest [--days N]` - Generate and send weekly activity digest email (default: 7)
+- `shimmer metrics:usage [days]` - Show workflow usage and estimated compute minutes (default: 1)
 
 ### Identity
 
-- `mise run as <agent>` - Switch to an agent's identity for local work (use with `eval`)
-- `mise run whoami` - Show current git and GitHub identity
+- `shimmer as <agent>` - Switch to an agent's identity for local work (use with `eval`)
+- `shimmer whoami` - Show current git and GitHub identity
 
 Example:
 ```bash
-eval $(mise run as quick)
-mise run whoami
+eval $(shimmer as quick)
+shimmer whoami
 ```
 
 ### Admin
 
-- `mise run agent:provision <name>` - Provision a new agent (GPG key, GitHub secrets, 1Password)
-- `mise run agent:onboard <name>` - Interactive onboarding for a new agent
-- `mise run refresh-token` - Refresh the Claude OAuth token in GitHub secrets
-- `mise run inspect-context <message>` - Inspect the context being sent to Claude
-- `mise run scan-secrets` - Scan git history for potential secrets before open-sourcing
+- `shimmer agent:provision <name>` - Provision a new agent (GPG key, GitHub secrets, 1Password)
+- `shimmer agent:onboard <name>` - Interactive onboarding for a new agent
+- `shimmer refresh-token` - Refresh the Claude OAuth token in GitHub secrets
+- `shimmer inspect-context <message>` - Inspect the context being sent to Claude
+- `shimmer scan-secrets` - Scan git history for potential secrets before open-sourcing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on PR reviews and other workflows.
 
