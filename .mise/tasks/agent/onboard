@@ -92,7 +92,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  ./scripts/setup-email.sh "$AGENT" > /dev/null 2>&1
+  mise run email:setup "$AGENT" > /dev/null 2>&1
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""

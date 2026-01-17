@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+#MISE description="Setup email (himalaya) for an agent (one-time local setup)"
+#USAGE arg "<agent>" help="Agent name (e.g., quick, brownie)"
+
+set -e
+
+AGENT="${1:?Usage: mise run email:setup <agent>}"
+EMAIL="${AGENT}@ricon.family"
+DOMAIN="ricon.family"
+MAIL_SERVER="mail.ricon.family"
+
+CONFIG_DIR="${HOME}/.config/himalaya"
+CONFIG_FILE="${CONFIG_DIR}/config.toml"
+
+# Check if himalaya is available
+if ! command -v himalaya &> /dev/null; then
+  echo "ERROR: himalaya command not found."
+  echo "Install with: mise install (himalaya is managed by mise)"
+  exit 1
+fi
+
+# Check if already configured
+if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Email already configured for $EMAIL"
+  echo "Config: $CONFIG_FILE"
+  echo ""
+  echo "To reconfigure, delete or edit the config file:"
+  echo "  rm $CONFIG_FILE"
+  echo "  \$EDITOR $CONFIG_FILE"
+  exit 0
+fi
+
+# Get password: env var > 1Password > error
+if [ -z "$EMAIL_PASSWORD" ]; then
+  if command -v op &> /dev/null && op account get &> /dev/null; then
+    echo "Fetching email password from 1Password..."
+    EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault Agents --fields password --reveal 2>/dev/null || true)
+    if [ -n "$EMAIL_PASSWORD" ]; then
+      echo "Using password from 1Password"
+    fi
+  fi
+fi
+
+if [ -z "$EMAIL_PASSWORD" ]; then
+  echo "ERROR: Could not get email password for $AGENT"
+  echo ""
+  echo "Options:"
+  echo "  1. Sign into 1Password: op signin"
+  echo "  2. Set EMAIL_PASSWORD env var manually"
+  exit 1
+fi
+
+mkdir -p "$CONFIG_DIR"
+
+# Escape password for TOML basic string: backslash first, then quotes
+ESCAPED_PASSWORD=$(printf '%s' "$EMAIL_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+# Write config
+{
+  printf '[accounts.%s]\n' "$AGENT"
+  printf 'default = true\n'
+  printf 'email = "%s"\n' "$EMAIL"
+  printf 'display-name = "%s"\n' "$AGENT"
+  printf '\n'
+  printf 'backend.type = "imap"\n'
+  printf 'backend.host = "%s"\n' "$MAIL_SERVER"
+  printf 'backend.port = 993\n'
+  printf 'backend.encryption.type = "tls"\n'
+  printf 'backend.login = "%s"\n' "$EMAIL"
+  printf 'backend.auth.type = "password"\n'
+  printf 'backend.auth.raw = "%s"\n' "$ESCAPED_PASSWORD"
+  printf '\n'
+  printf 'message.send.backend.type = "smtp"\n'
+  printf 'message.send.backend.host = "%s"\n' "$MAIL_SERVER"
+  printf 'message.send.backend.port = 465\n'
+  printf 'message.send.backend.encryption.type = "tls"\n'
+  printf 'message.send.backend.login = "%s"\n' "$EMAIL"
+  printf 'message.send.backend.auth.type = "password"\n'
+  printf 'message.send.backend.auth.raw = "%s"\n' "$ESCAPED_PASSWORD"
+  printf '\n'
+  printf '# GPG signing (requires gpg:setup first)\n'
+  printf 'pgp.type = "commands"\n'
+  printf 'pgp.sign-cmd = "gpg --sign --quiet --armor"\n'
+  printf 'pgp.decrypt-cmd = "gpg --decrypt --quiet"\n'
+  printf 'pgp.verify-cmd = "gpg --verify --quiet"\n'
+} > "$CONFIG_FILE"
+
+echo ""
+echo "Email configured for $EMAIL"
+echo "  Config: $CONFIG_FILE"
+echo "  GPG signing: enabled (run gpg:setup first if not done)"
+echo ""
+echo "Test with: himalaya envelope list"

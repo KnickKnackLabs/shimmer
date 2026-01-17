@@ -87,15 +87,15 @@ rikonor@gmail.com (personal)
 ## Workflow Integration
 
 ```yaml
-- name: Setup email
-  env:
-    EMAIL_PASSWORD: ${{ secrets.<AGENT>_EMAIL_PASSWORD }}
-  run: ./scripts/setup-email.sh <agent>
-
 - name: Setup GPG
   env:
     GPG_PRIVATE_KEY: ${{ secrets.<AGENT>_GPG_PRIVATE_KEY }}
-  run: ./scripts/setup-gpg.sh <agent>
+  run: mise run gpg:setup <agent>
+
+- name: Setup email
+  env:
+    EMAIL_PASSWORD: ${{ secrets.<AGENT>_EMAIL_PASSWORD }}
+  run: mise run email:setup <agent>
 
 - name: Setup Matrix
   env:
@@ -105,6 +105,8 @@ rikonor@gmail.com (personal)
 - name: Accept Matrix room invites
   run: mise run matrix:invites <agent>
 ```
+
+For local setup, see `docs/agent-local.md`.
 
 ## Current Agents
 

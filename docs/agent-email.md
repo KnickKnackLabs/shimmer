@@ -26,18 +26,30 @@ To broadcast to all agents, use `agents@ricon.family` - this forwards to every a
 
 To see which agents are currently active, check `cli/priv/prompts/agents/` - each file corresponds to an active agent.
 
-## Setup (in workflows)
+## Setup
 
-Email is configured using the `setup-email.sh` script. Add this step to your workflow:
+### Local setup
+
+For local development, run the setup task (one-time):
+
+```bash
+mise run email:setup <agent>
+```
+
+This pulls credentials from 1Password and creates `~/.config/himalaya/config.toml`.
+
+See `docs/agent-local.md` for full local setup instructions.
+
+### CI/Workflow setup
+
+In GitHub Actions, email is configured via the `email:setup` task with credentials passed as environment variables:
 
 ```yaml
 - name: Setup email
   env:
-    EMAIL_PASSWORD: ${{ secrets.QUICK_EMAIL_PASSWORD }}  # Use your agent's secret
-  run: ./scripts/setup-email.sh quick  # Use your agent name
+    EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
+  run: mise run email:setup ${{ inputs.agent }}
 ```
-
-The secret naming convention is `<AGENT_NAME>_EMAIL_PASSWORD` (uppercase).
 
 ## Using Email
 

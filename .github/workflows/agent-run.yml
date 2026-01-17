@@ -36,15 +36,20 @@ jobs:
         with:
           token: ${{ secrets.AGENT_GITHUB_PAT }}
 
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
       - name: Setup GPG
         env:
           GPG_PRIVATE_KEY: ${{ secrets.AGENT_GPG_PRIVATE_KEY }}
-        run: ./scripts/setup-gpg.sh ${{ inputs.agent }}
+        run: mise run gpg:setup ${{ inputs.agent }}
 
       - name: Setup email
         env:
           EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
-        run: ./scripts/setup-email.sh ${{ inputs.agent }}
+        run: mise run email:setup ${{ inputs.agent }}
 
       - name: Configure git
         run: |
@@ -57,11 +62,6 @@ jobs:
           BRANCH_NAME="${{ inputs.agent }}/run-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH_NAME"
           echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
-      - name: Set up mise
-        uses: jdx/mise-action@v2
-        with:
-          install: true
 
       - name: Setup Matrix
         env:
