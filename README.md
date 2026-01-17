@@ -9,7 +9,7 @@
 ```bash
 # Clone the repository
 git clone https://github.com/ricon-family/shimmer.git ~/shimmer
-cd ~/shimmer && mise install
+cd ~/shimmer && mise trust && mise install
 
 # Add to your shell config (~/.zshrc or ~/.bashrc)
 eval "$(mise -C ~/shimmer run -q shell)"
