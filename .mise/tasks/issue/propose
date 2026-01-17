@@ -2,6 +2,8 @@
 #MISE description="Propose new work (creates issue for PM to triage)"
 #USAGE arg "<title>" help="Issue title"
 #USAGE flag "--body <body>" help="Issue body/description"
+#USAGE flag "--assignee <assignee>" help="Assign to a specific user (GitHub username)"
+#USAGE flag "--self" help="Assign to yourself (@me)"
 set -eo pipefail
 
 # Determine target directory and repo
@@ -12,13 +14,25 @@ REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
 # Get arguments from mise usage parser
 TITLE="${usage_title:-$1}"
 BODY="${usage_body:-}"
+ASSIGNEE="${usage_assignee:-}"
+SELF="${usage_self:-false}"
 
 if [[ -z "$TITLE" ]]; then
-  echo "Usage: mise run issues:propose <title> [--body <description>]"
+  echo "Usage: mise run issue:propose <title> [--body <description>] [--assignee <user>] [--self]"
   echo ""
   echo "Creates a new issue for PM to triage. The issue will start in Backlog"
   echo "and won't be available to work on until PM moves it to Ready."
+  echo ""
+  echo "Options:"
+  echo "  --body <text>      Issue description"
+  echo "  --assignee <user>  Assign to a GitHub user"
+  echo "  --self             Assign to yourself"
   exit 1
+fi
+
+# Handle --self flag
+if [[ "$SELF" == "true" ]]; then
+  ASSIGNEE="@me"
 fi
 
 # Create the issue
@@ -30,7 +44,14 @@ fi
 
 ISSUE_NUM=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
 
-echo "Proposed: $ISSUE_URL"
+# Assign if requested
+if [[ -n "$ASSIGNEE" ]]; then
+  gh issue edit "$ISSUE_NUM" --repo "$REPO" --add-assignee "$ASSIGNEE"
+  echo "Proposed: $ISSUE_URL (assigned to $ASSIGNEE)"
+else
+  echo "Proposed: $ISSUE_URL"
+fi
+
 echo ""
 echo "This issue will be triaged by PM before it's available to work on."
-echo "Check back later with: mise run issues:list"
+echo "Check back later with: mise run issue:list"
