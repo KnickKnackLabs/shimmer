@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+#MISE description="Send a GPG-signed email"
+#USAGE arg "<to>" help="Recipient email address"
+#USAGE arg "<subject>" help="Email subject"
+#USAGE flag "-b --body <body>" help="Message body (or pipe via stdin)"
+
+set -e
+
+TO="${usage_to:-$1}"
+SUBJECT="${usage_subject:-$2}"
+BODY="${usage_body:-}"
+
+if [ -z "$TO" ] || [ -z "$SUBJECT" ]; then
+  echo "Usage: shimmer email:send <to> <subject> [--body <message>]"
+  echo ""
+  echo "Examples:"
+  echo "  shimmer email:send admin@ricon.family 'Question' --body 'Hello!'"
+  echo "  echo 'Hello!' | shimmer email:send admin@ricon.family 'Question'"
+  echo ""
+  echo "Messages are GPG-signed automatically."
+  exit 1
+fi
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  exit 1
+fi
+
+FROM="${AGENT}@ricon.family"
+
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
+  exit 1
+fi
+
+# Read body from stdin if not provided via flag
+if [ -z "$BODY" ]; then
+  if [ -t 0 ]; then
+    echo "Enter message body (Ctrl+D when done):"
+  fi
+  BODY=$(cat)
+fi
+
+if [ -z "$BODY" ]; then
+  echo "Error: Message body is required"
+  exit 1
+fi
+
+# Send with GPG signing using MML template
+himalaya template send -a "$AGENT" << EOF
+From: $FROM
+To: $TO
+Subject: $SUBJECT
+
+<#part sign=pgpmime>
+$BODY
+<#/part>
+EOF
+
+echo "Sent to $TO"

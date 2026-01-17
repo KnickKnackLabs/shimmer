@@ -37,8 +37,8 @@ echo "  shimmer whoami              Verify your identity"
 echo "  shimmer pm:list-issues      Find work in the shimmer project"
 echo "  shimmer ci:time-remaining   Check remaining time in CI runs"
 echo ""
-echo "  himalaya envelope list      Check your email inbox"
-echo "  mise run matrix:tail <you>  See recent Matrix messages"
+echo "  shimmer email:list          Check your email inbox"
+echo "  shimmer matrix:tail <you>  See recent Matrix messages"
 echo ""
 echo "  shimmer tasks               List all available tasks"
 echo ""
@@ -65,7 +65,7 @@ if [ -n "$AGENT" ]; then
   # Email check
   CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
   if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-    echo "  Email:     ✓ configured"
+    echo "  Email:     ✓ configured       → shimmer email:welcome"
   else
     echo "  Email:     ✗ not configured (run: shimmer email:setup $AGENT)"
   fi
@@ -73,7 +73,7 @@ if [ -n "$AGENT" ]; then
   # Matrix check
   MATRIX_CREDS="$HOME/.config/matrix-commander/$AGENT/credentials.json"
   if [ -f "$MATRIX_CREDS" ]; then
-    echo "  Matrix:    ✓ logged in"
+    echo "  Matrix:    ✓ logged in        → shimmer matrix:welcome"
   else
     echo "  Matrix:    ✗ not logged in (run: shimmer matrix:login $AGENT)"
   fi

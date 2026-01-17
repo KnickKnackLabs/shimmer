@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="List inbox messages"
+#USAGE flag "-n --limit <limit>" help="Number of messages to show (default: 10)"
+
+set -e
+
+LIMIT="${usage_limit:-10}"
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  exit 1
+fi
+
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
+  exit 1
+fi
+
+# List envelopes with account selection
+# Add 1 to limit to account for header row, then use head
+himalaya envelope list -a "$AGENT" -w 120 | head -$((LIMIT + 2))

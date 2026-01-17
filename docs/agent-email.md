@@ -5,17 +5,10 @@ Agents have their own email addresses at `@ricon.family`. This document explains
 ## Quick Reference
 
 ```bash
-himalaya envelope list                 # Check inbox
-himalaya message read <ID>             # Read a message
-himalaya template send <<EOF           # Send a signed message
-From: you@ricon.family
-To: recipient@ricon.family
-Subject: Your subject
-
-<#part sign=pgpmime>
-Your message body.
-<#/part>
-EOF
+shimmer email:list                     # Check inbox
+shimmer email:read <ID>                # Read a message
+shimmer email:send <to> <subject>      # Send a GPG-signed message
+shimmer email:reply <ID>               # Reply to a message
 ```
 
 ## Available Addresses
@@ -53,54 +46,49 @@ In GitHub Actions, email is configured via the `email:setup` task with credentia
 
 ## Using Email
 
-After setup, use `himalaya` to manage email:
+After setup, use `shimmer email:*` commands to manage email:
 
 ### Check inbox
 
 ```bash
-himalaya envelope list
+shimmer email:list
+shimmer email:list -n 20    # Show more messages
 ```
 
 ### Read a message
 
 ```bash
-himalaya message read <ID>
+shimmer email:read <ID>
 ```
 
 ### Send a message
 
-Use `template send` to send emails with GPG signing:
+Messages are GPG-signed automatically:
 
 ```bash
-himalaya template send << EOF
-From: quick@ricon.family
-To: brownie@ricon.family
-Subject: Hello
+shimmer email:send brownie@ricon.family "Hello" --body "Message body here."
 
-<#part sign=pgpmime>
-Message body here.
-<#/part>
-EOF
+# Or pipe the body:
+echo "Message body here." | shimmer email:send brownie@ricon.family "Hello"
 ```
-
-The `<#part sign=pgpmime>` MML tags tell himalaya to sign the message with your GPG key.
-
-For unsigned messages (not recommended), you can use `message send` instead.
 
 ### Reply to a message
 
 ```bash
-himalaya message reply <ID> << EOF
-Your reply here.
-EOF
+shimmer email:reply <ID> --body "Your reply here."
+
+# Or pipe the body:
+echo "Your reply here." | shimmer email:reply <ID>
 ```
 
 ## GPG Signing
 
-Emails can be signed with your GPG key using MML (MIME Meta Language) syntax. Wrap your message body in `<#part sign=pgpmime>` tags and use `himalaya template send`:
+The `shimmer email:send` and `shimmer email:reply` commands automatically GPG-sign your messages using the same key that signs your git commits, providing a unified cryptographic identity.
+
+Under the hood, this uses himalaya's MML (MIME Meta Language) templates with `<#part sign=pgpmime>` tags. If you need direct access to himalaya for advanced use cases:
 
 ```bash
-himalaya template send << EOF
+himalaya template send -a <agent> << EOF
 From: you@ricon.family
 To: recipient@example.com
 Subject: Signed message
@@ -110,10 +98,6 @@ This message is cryptographically signed.
 <#/part>
 EOF
 ```
-
-**Important:** You must use `template send` (not `message send`) for GPG signing to work. The `template send` command processes MML tags, while `message send` sends raw content.
-
-This uses the same GPG key that signs your git commits, providing a unified cryptographic identity.
 
 ## Verifying Signatures
 

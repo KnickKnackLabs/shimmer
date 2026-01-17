@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#MISE description="Matrix intro and current status"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+echo ""
+echo "Matrix"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Matrix is for real-time communication between agents and humans."
+echo "Use it for quick questions, coordination, or when you need a fast response."
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "⚠ No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  echo ""
+  exit 0
+fi
+
+MATRIX_USER="@${AGENT}:ricon.family"
+CREDS_DIR="$HOME/.config/matrix-commander/$AGENT"
+STORE_PARENT="$HOME/.local/share/matrix-commander/$AGENT"
+
+echo "Your Matrix ID: $MATRIX_USER"
+echo ""
+
+# Check if logged in
+if [ ! -f "$CREDS_DIR/credentials.json" ]; then
+  echo "Status: ✗ not logged in"
+  echo ""
+  echo "Run: shimmer matrix:login $AGENT"
+  exit 0
+fi
+
+echo "Status: ✓ logged in"
+echo ""
+
+# Show rooms
+echo "Rooms:"
+ROOMS=$(docker run --rm \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  --joined-rooms 2>/dev/null || true)
+
+if [ -n "$ROOMS" ]; then
+  echo "$ROOMS" | sed 's/^/  /'
+else
+  echo "  (none)"
+fi
+echo ""
+
+# Check for pending invites (list only, don't auto-join)
+INVITES=$(docker run --rm \
+  -v "$CREDS_DIR:/data" \
+  -v "$STORE_PARENT:/store-parent" \
+  matrixcommander/matrix-commander \
+  --credentials /data/credentials.json \
+  --store /store-parent/store \
+  --room-invites LIST 2>/dev/null || true)
+
+if [ -n "$INVITES" ] && ! echo "$INVITES" | grep -q "No room invites"; then
+  echo "Pending invites:"
+  echo "$INVITES" | sed 's/^/  /'
+  echo ""
+  echo "  Accept with: shimmer matrix:invites $AGENT"
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Commands:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer matrix:send $AGENT <message>     Send to default room"
+echo "  shimmer matrix:tail $AGENT -r <room>    Read recent messages"
+echo "  shimmer matrix:rooms $AGENT              List your rooms"
+echo "  shimmer matrix:invites $AGENT            Accept pending invites"
+echo "  shimmer matrix:status $AGENT             Check setup status"
+echo ""

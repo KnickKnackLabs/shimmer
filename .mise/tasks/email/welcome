@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#MISE description="Email intro and current status"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+echo ""
+echo "Email"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Email is for async communication - messages to humans, other agents,"
+echo "or external services. Check regularly for interview requests or questions."
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "⚠ No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  echo ""
+  exit 0
+fi
+
+EMAIL="${AGENT}@ricon.family"
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+
+echo "Your email: $EMAIL"
+echo ""
+
+# Check if configured
+if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Status: ✗ not configured"
+  echo ""
+  echo "Run: shimmer email:setup $AGENT"
+  exit 0
+fi
+
+echo "Status: ✓ configured"
+echo ""
+
+# Show recent messages
+echo "Recent messages:"
+if command -v himalaya &> /dev/null; then
+  # Get recent emails, show first 5
+  EMAILS=$(himalaya envelope list -a "$AGENT" -w 100 2>/dev/null | head -7 || true)
+  if [ -n "$EMAILS" ]; then
+    echo "$EMAILS" | sed 's/^/  /'
+  else
+    echo "  (could not fetch - check connection)"
+  fi
+else
+  echo "  (himalaya not installed)"
+fi
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Commands:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer email:list              List inbox"
+echo "  shimmer email:read <id>         Read a message"
+echo "  shimmer email:send <to> <subj>  Send a GPG-signed message"
+echo "  shimmer email:reply <id>        Reply to a message"
+echo ""
+echo "  shimmer email:setup $AGENT      Reconfigure email"
+echo "  shimmer email:status $AGENT     Check setup status"
+echo ""

@@ -55,35 +55,47 @@ mkdir -p "$CONFIG_DIR"
 # Escape password for TOML basic string: backslash first, then quotes
 ESCAPED_PASSWORD=$(printf '%s' "$EMAIL_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
-# Write config
-{
-  printf '[accounts.%s]\n' "$AGENT"
-  printf 'default = true\n'
-  printf 'email = "%s"\n' "$EMAIL"
-  printf 'display-name = "%s"\n' "$AGENT"
-  printf '\n'
-  printf 'backend.type = "imap"\n'
-  printf 'backend.host = "%s"\n' "$MAIL_SERVER"
-  printf 'backend.port = 993\n'
-  printf 'backend.encryption.type = "tls"\n'
-  printf 'backend.login = "%s"\n' "$EMAIL"
-  printf 'backend.auth.type = "password"\n'
-  printf 'backend.auth.raw = "%s"\n' "$ESCAPED_PASSWORD"
-  printf '\n'
-  printf 'message.send.backend.type = "smtp"\n'
-  printf 'message.send.backend.host = "%s"\n' "$MAIL_SERVER"
-  printf 'message.send.backend.port = 465\n'
-  printf 'message.send.backend.encryption.type = "tls"\n'
-  printf 'message.send.backend.login = "%s"\n' "$EMAIL"
-  printf 'message.send.backend.auth.type = "password"\n'
-  printf 'message.send.backend.auth.raw = "%s"\n' "$ESCAPED_PASSWORD"
-  printf '\n'
-  printf '# GPG signing (requires gpg:setup first)\n'
-  printf 'pgp.type = "commands"\n'
-  printf 'pgp.sign-cmd = "gpg --sign --quiet --armor"\n'
-  printf 'pgp.decrypt-cmd = "gpg --decrypt --quiet"\n'
-  printf 'pgp.verify-cmd = "gpg --verify --quiet"\n'
-} > "$CONFIG_FILE"
+# Build the account config block
+ACCOUNT_CONFIG=$(cat <<ACCOUNT_EOF
+[accounts.$AGENT]
+default = true
+email = "$EMAIL"
+display-name = "$AGENT"
+
+backend.type = "imap"
+backend.host = "$MAIL_SERVER"
+backend.port = 993
+backend.encryption.type = "tls"
+backend.login = "$EMAIL"
+backend.auth.type = "password"
+backend.auth.raw = "$ESCAPED_PASSWORD"
+
+message.send.backend.type = "smtp"
+message.send.backend.host = "$MAIL_SERVER"
+message.send.backend.port = 465
+message.send.backend.encryption.type = "tls"
+message.send.backend.login = "$EMAIL"
+message.send.backend.auth.type = "password"
+message.send.backend.auth.raw = "$ESCAPED_PASSWORD"
+
+# GPG signing (requires gpg:setup first)
+pgp.type = "commands"
+pgp.sign-cmd = "gpg --sign --quiet --armor"
+pgp.decrypt-cmd = "gpg --decrypt --quiet"
+pgp.verify-cmd = "gpg --verify --quiet"
+ACCOUNT_EOF
+)
+
+# Write or append config
+if [ -f "$CONFIG_FILE" ]; then
+  # Config exists - remove default=true from other accounts and append new one
+  sed -i.bak 's/^default = true$/default = false/' "$CONFIG_FILE"
+  rm -f "${CONFIG_FILE}.bak"
+  printf '\n%s\n' "$ACCOUNT_CONFIG" >> "$CONFIG_FILE"
+else
+  # Fresh config
+  printf '%s\n' "$ACCOUNT_CONFIG" > "$CONFIG_FILE"
+fi
 
 echo ""
 echo "Email configured for $EMAIL"

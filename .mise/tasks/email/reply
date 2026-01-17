@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#MISE description="Reply to an email message"
+#USAGE arg "<id>" help="Message ID to reply to"
+#USAGE flag "-b --body <body>" help="Reply body (or pipe via stdin)"
+
+set -e
+
+ID="${usage_id:-$1}"
+BODY="${usage_body:-}"
+
+if [ -z "$ID" ]; then
+  echo "Usage: shimmer email:reply <id> [--body <message>]"
+  echo ""
+  echo "Examples:"
+  echo "  shimmer email:reply 42 --body 'Thanks for the info!'"
+  echo "  echo 'Thanks!' | shimmer email:reply 42"
+  echo ""
+  echo "Find message IDs with: shimmer email:list"
+  exit 1
+fi
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  exit 1
+fi
+
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
+  exit 1
+fi
+
+# Read body from stdin if not provided via flag
+if [ -z "$BODY" ]; then
+  if [ -t 0 ]; then
+    echo "Enter reply body (Ctrl+D when done):"
+  fi
+  BODY=$(cat)
+fi
+
+if [ -z "$BODY" ]; then
+  echo "Error: Reply body is required"
+  exit 1
+fi
+
+himalaya message reply -a "$AGENT" "$ID" << EOF
+$BODY
+EOF
+
+echo "Reply sent"
