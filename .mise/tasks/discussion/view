@@ -11,7 +11,7 @@ if [[ -z "$NUMBER" ]]; then
 fi
 
 # Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-.}"
+TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
 REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
 OWNER="${REPO%/*}"
