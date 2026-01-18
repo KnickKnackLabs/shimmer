@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="Store a GitHub PAT in 1Password"
+#USAGE arg "<agent>" help="Agent name (e.g., k7r2, brownie)"
+#USAGE arg "<token>" help="The GitHub PAT to store"
+
+set -e
+
+AGENT="${usage_agent:?Usage: shimmer token:store <agent> <token>}"
+TOKEN="${usage_token:?Usage: shimmer token:store <agent> <token>}"
+VAULT="Agents"
+ITEM="${AGENT} - GitHub"
+
+# Check 1Password CLI
+if ! command -v op &> /dev/null; then
+  echo "ERROR: 1Password CLI (op) not found." >&2
+  exit 1
+fi
+
+if ! op account get &> /dev/null; then
+  echo "ERROR: Not signed in to 1Password. Run: op signin" >&2
+  exit 1
+fi
+
+# Update the PAT field
+op item edit "$ITEM" --vault "$VAULT" "PAT=$TOKEN" > /dev/null
+
+echo "Stored PAT for $AGENT in 1Password"

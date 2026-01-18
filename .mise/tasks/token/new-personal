@@ -5,25 +5,58 @@
 set -e
 
 AGENT="${usage_agent:?Usage: shimmer token:new-personal <agent>}"
+VAULT="Agents"
+ITEM="${AGENT} - GitHub"
+
+# Check 1Password CLI
+if ! command -v op &> /dev/null; then
+  echo "ERROR: 1Password CLI (op) not found." >&2
+  exit 1
+fi
+
+if ! op account get &> /dev/null; then
+  echo "ERROR: Not signed in to 1Password. Run: op signin" >&2
+  exit 1
+fi
+
+# Fetch credentials from 1Password
+USERNAME=$(op item get "$ITEM" --vault "$VAULT" --fields username 2>/dev/null || true)
+PASSWORD=$(op item get "$ITEM" --vault "$VAULT" --fields password --reveal 2>/dev/null || true)
+
+if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+  echo "ERROR: Could not fetch credentials from 1Password item '$ITEM'" >&2
+  exit 1
+fi
 
 # All scopes for full personal access
 SCOPES="repo,workflow,admin:org,admin:public_key,admin:gpg_key,admin:ssh_signing_key,admin:repo_hook,admin:org_hook,gist,notifications,user,delete_repo,write:packages,delete:packages,write:discussion,project,codespace"
 
-URL="https://github.com/settings/tokens/new?scopes=${SCOPES}&description=${AGENT}"
+# Build token creation path and URL-encode it for return_to
+TOKEN_PATH="/settings/tokens/new?scopes=${SCOPES}&description=${AGENT}"
+ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$TOKEN_PATH', safe=''))")
 
-echo "Opening browser to create personal token for: $AGENT"
+LOGIN_URL="https://github.com/login?return_to=${ENCODED_PATH}"
+
+echo "=== Create Personal Token for: $AGENT ==="
 echo ""
-echo "Scopes: all (full personal access)"
+echo "Credentials:"
+echo "  Username: $USERNAME"
+echo "  Password: $PASSWORD"
+echo ""
+echo "After logging in, you'll be redirected to the token creation page."
+echo "All scopes will be pre-selected."
 echo ""
 echo "After creating the token:"
 echo "  1. Copy the token value"
 echo "  2. Store in 1Password: Agents vault → '$AGENT - GitHub' → PAT field"
 echo ""
 
-# Open browser (macOS)
-if command -v open &> /dev/null; then
-  open "$URL"
+# Open incognito browser (macOS)
+if [ -d "/Applications/Google Chrome.app" ]; then
+  open -na "Google Chrome" --args --incognito "$LOGIN_URL"
+elif [ -d "/Applications/Firefox.app" ]; then
+  open -na "Firefox" --args -private-window "$LOGIN_URL"
 else
-  echo "Open this URL in your browser:"
-  echo "$URL"
+  echo "Open this URL in an incognito/private window:"
+  echo "$LOGIN_URL"
 fi
