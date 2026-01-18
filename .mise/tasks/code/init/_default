@@ -4,6 +4,11 @@
 #MISE usage="code:init <path> [--name <name>]"
 set -eo pipefail
 
+# Find shimmer directory (for template)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+TEMPLATE_FILE="$SHIMMER_DIR/templates/CLAUDE.md"
+
 # Parse arguments
 PATH_ARG=""
 NAME_ARG=""
@@ -87,10 +92,15 @@ mkdir -p "$TARGET_PATH"
 # Initialize git
 git -C "$TARGET_PATH" init --quiet
 
-# Write CLAUDE.md
-cat > "$TARGET_PATH/CLAUDE.md" << EOF
-$SEED_CONTENT
-EOF
+# Write CLAUDE.md using template
+if [[ -f "$TEMPLATE_FILE" ]]; then
+  export PROJECT_NAME="$NAME_ARG"
+  export PROJECT_DESCRIPTION="$SEED_CONTENT"
+  envsubst '${PROJECT_NAME} ${PROJECT_DESCRIPTION}' < "$TEMPLATE_FILE" > "$TARGET_PATH/CLAUDE.md"
+else
+  # Fallback: just use seed content directly
+  printf '%s\n' "$SEED_CONTENT" > "$TARGET_PATH/CLAUDE.md"
+fi
 
 echo "  Created: CLAUDE.md"
 
