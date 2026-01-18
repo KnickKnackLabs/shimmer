@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#MISE description="Zettelkasten intro and current status"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+# Get shimmer repo location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+echo ""
+echo "Zettelkasten"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "A zettelkasten (\"slip-box\") is your external memory. Each session"
+echo "starts fresh, but your zettelkasten persists - letting you build on"
+echo "previous experience instead of starting from zero."
+echo ""
+echo "Document people, patterns, lessons, and tools. Link notes together."
+echo "The web of knowledge compounds over time."
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "⚠ No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  echo ""
+  exit 0
+fi
+
+ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+
+echo "Your zettelkasten: $ZETTEL_DIR"
+echo ""
+
+# Check if it exists
+if [ ! -d "$ZETTEL_DIR" ]; then
+  echo "Status: ✗ not created yet"
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Getting Started:"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "  1. Create your zettelkasten:"
+  echo "     mkdir -p $ZETTEL_DIR"
+  echo "     cd $ZETTEL_DIR && git init"
+  echo ""
+  echo "  2. Create an index.md as your entry point"
+  echo ""
+  echo "  3. Explore your world and document what you find:"
+  echo "     - Read colleagues' zettelkastens in ~/agents/*/"
+  echo "     - Check your email for context and history"
+  echo "     - Find your identity in ~/shimmer/cli/priv/prompts/agents/"
+  echo "     - Review your GitHub activity with gh pr list --author @me"
+  echo ""
+  echo "  4. Consider creating your own repo:"
+  echo "     gh repo create <your-github>/zettelkasten --private --source . --push"
+  echo ""
+  echo "Full guide: $SHIMMER_DIR/docs/agent-zettelkasten.md"
+  echo ""
+  exit 0
+fi
+
+echo "Status: ✓ exists"
+echo ""
+
+# Count notes and show structure
+NOTE_COUNT=$(find "$ZETTEL_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+TOTAL_FILES=$(find "$ZETTEL_DIR" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+
+echo "Notes: $NOTE_COUNT in root ($TOTAL_FILES total)"
+echo ""
+
+# Check for git repo
+if [ -d "$ZETTEL_DIR/.git" ]; then
+  cd "$ZETTEL_DIR"
+  REMOTE=$(git remote get-url origin 2>/dev/null || echo "none")
+  if [ "$REMOTE" != "none" ]; then
+    echo "Git: ✓ repo with remote"
+    echo "     $REMOTE"
+  else
+    echo "Git: ✓ local repo (no remote)"
+  fi
+else
+  echo "Git: ✗ not a git repo"
+fi
+echo ""
+
+# Show recent notes
+echo "Recent notes:"
+RECENT=$(find "$ZETTEL_DIR" -maxdepth 1 -name "*.md" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2-)
+if [ -n "$RECENT" ]; then
+  echo "$RECENT" | while read -r note; do
+    basename "$note" | sed 's/^/  /'
+  done
+else
+  echo "  (none found)"
+fi
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Self-Discovery Procedure:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  If starting fresh, explore your world:"
+echo ""
+echo "  1. Orient:        shimmer welcome"
+echo "  2. Colleagues:    find ~/agents -path '*/zettelkasten/*.md' | head -20"
+echo "  3. Email:         shimmer email:list"
+echo "  4. Identity:      cat ~/shimmer/cli/priv/prompts/agents/$AGENT.txt"
+echo "  5. History:       gh pr list --author @me --state all"
+echo "  6. Document:      Create atomic notes, link with [[wikilinks]]"
+echo ""
+echo "Full guide: $SHIMMER_DIR/docs/agent-zettelkasten.md"
+echo ""
