@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#MISE description="Open browser to view/approve pending PAT requests (admin only)"
+#USAGE arg "<org>" help="Organization to check (e.g., ricon-family)"
+
+set -e
+
+ORG="${usage_org:?Usage: shimmer github:token:requests <org>}"
+
+URL="https://github.com/organizations/$ORG/settings/personal-access-token-requests"
+
+echo "Opening PAT requests page for: $ORG"
+echo ""
+echo "From here you can approve or deny pending fine-grained PAT requests."
+echo ""
+
+# Open browser
+if command -v open &> /dev/null; then
+  open "$URL"
+else
+  echo "Open this URL in your browser:"
+  echo "$URL"
+fi
