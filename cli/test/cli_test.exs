@@ -763,22 +763,16 @@ defmodule CliTest do
       assert Cli.load_system_prompt("") == nil
     end
 
-    test "loads brownie agent prompt with common prompt" do
+    test "loads brownie agent prompt" do
       result = Cli.load_system_prompt("brownie")
-
-      # Should contain common prompt
-      assert result =~ "verify current documentation"
-      assert result =~ "critical thinking"
 
       # Should contain agent-specific prompt
       assert result =~ "You are brownie"
+      assert result =~ "brownie@ricon.family"
     end
 
     test "loads agent prompt with job" do
       result = Cli.load_system_prompt("quick", "probe")
-
-      # Should contain common prompt
-      assert result =~ "verify current documentation"
 
       # Should contain agent identity
       assert result =~ "You are quick"
@@ -800,7 +794,7 @@ defmodule CliTest do
       assert result =~ "GitHub issue"
     end
 
-    test "returns common prompt only for non-existent agent with warning" do
+    test "returns nil for non-existent agent with warning" do
       import ExUnit.CaptureIO
 
       {result, output} =
@@ -808,28 +802,12 @@ defmodule CliTest do
           Cli.load_system_prompt("non-existent-agent")
         end)
 
-      # Should have common prompt content
-      assert result =~ "verify current documentation"
-
-      # Should not have agent-specific content
-      refute result =~ "You are non-existent-agent"
+      # Should return nil when agent doesn't exist (no common.txt fallback)
+      assert result == nil
 
       # Should warn about missing agent prompt with available agents listed
       assert output =~ "WARNING: Agent prompt not found: non-existent-agent.txt"
       assert output =~ "Available: brownie"
-    end
-
-    test "concatenates common and agent prompts" do
-      result = Cli.load_system_prompt("brownie")
-
-      # Both prompts should be present (separated by newlines)
-      assert result =~ "uncertain."
-      assert result =~ "You are brownie"
-
-      # Common should come before agent
-      common_pos = :binary.match(result, "uncertain.") |> elem(0)
-      agent_pos = :binary.match(result, "You are brownie") |> elem(0)
-      assert common_pos < agent_pos
     end
 
     test "warns on non-existent job prompt" do

@@ -184,9 +184,11 @@ defmodule Cli do
   Loads the system prompt for a given agent and optional job.
 
   Combines prompts in this order:
-  1. Common prompt from `priv/prompts/common.txt`
-  2. Agent identity from `priv/prompts/agents/{agent_name}.txt`
-  3. Job description from `priv/prompts/jobs/{job_name}.txt` (if provided)
+  1. Agent identity from `priv/prompts/agents/{agent_name}.txt`
+  2. Job description from `priv/prompts/jobs/{job_name}.txt` (if provided)
+
+  Common instructions are now in the repo's CLAUDE.md, which Claude Code
+  reads automatically.
 
   Returns `nil` if `agent_name` is `nil` or empty. Returns the combined
   prompt content if at least one file exists, or `nil` if all are missing.
@@ -212,7 +214,6 @@ defmodule Cli do
 
     parts =
       [
-        read_prompt_file(Path.join([dir, "common.txt"])),
         read_prompt_file(agent_path),
         if(job_path, do: read_prompt_file(job_path), else: "")
       ]

@@ -25,13 +25,14 @@ mix shimmer --agent brownie --job critic --timeout 540 --log-context "Find somet
 
 ## Agent Prompt System
 
-System prompts are composed from three optional files:
+System prompts are composed from two optional files:
 
-1. `priv/prompts/common.txt` - Shared instructions for all agents
-2. `priv/prompts/agents/<name>.txt` - Agent-specific identity
-3. `priv/prompts/jobs/<job>.txt` - Job-specific instructions (via `--job` flag)
+1. `priv/prompts/agents/<name>.txt` - Agent-specific identity
+2. `priv/prompts/jobs/<job>.txt` - Job-specific instructions (via `--job` flag)
 
 When an agent runs, available files are concatenated to form the system prompt.
+
+Common instructions (workspace, communication, workflow, etc.) are in the repo's `CLAUDE.md`, which Claude Code reads automatically.
 
 ### Available Jobs
 
