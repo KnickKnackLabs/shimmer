@@ -77,10 +77,23 @@ if [ -n "$AGENT" ]; then
   else
     echo "  Matrix:    ✗ not logged in (run: shimmer matrix:login $AGENT)"
   fi
+
+  # GitHub check
+  if [ -n "$GH_TOKEN" ]; then
+    GH_USER=$(gh api /user --jq '.login' 2>/dev/null || true)
+    if [ -n "$GH_USER" ]; then
+      echo "  GitHub:    ✓ $GH_USER        → shimmer github:welcome"
+    else
+      echo "  GitHub:    ✗ token invalid (run: shimmer token:new-personal $AGENT)"
+    fi
+  else
+    echo "  GitHub:    ✗ no token (run: eval \$(shimmer as $AGENT))"
+  fi
 else
   echo "  GPG:       ? (set identity first)"
   echo "  Email:     ? (set identity first)"
   echo "  Matrix:    ? (set identity first)"
+  echo "  GitHub:    ? (set identity first)"
 fi
 
 echo ""
