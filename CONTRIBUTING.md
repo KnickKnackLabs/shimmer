@@ -34,23 +34,32 @@ Tasks are tracked as GitHub issues. Use these commands:
 - **Check for existing work first** - Before starting a task, make sure it hasn't already been done or isn't already in progress. Run `mise run pm:wip` to see open PRs and issues.
 - **Test locally first when possible** - Before pushing changes to trigger CI, test them locally to catch issues early
 
-## Deriving New Projects
+## Starting New Projects
 
-This repository can serve as a foundation for new projects. To derive a new project:
+Use `shimmer code:init` to bootstrap a new codebase with context already in place.
 
-1. Create the new repository from this template:
-   ```bash
-   gh repo create ricon-family/<project-name> --template ricon-family/shimmer --private
-   gh repo clone ricon-family/<project-name>
-   cd <project-name>
-   ```
+### Workflow
 
-2. Update `CLAUDE.md` to describe the new project's purpose
+1. **Plan together** - Discuss the project with Claude: purpose, architecture, key decisions
+2. **Initialize** - Claude runs `shimmer code:init` with a seed capturing the planning context
+3. **Continue** - Start a fresh Claude session in the new directory and pick up where you left off
 
-3. Optionally, create new agent prompts in `cli/priv/prompts/agents/` if the project needs agents with different roles (see `cli/README.md` for details)
+### Quick Start
 
-4. Create GitHub issues to define initial work for agents
+```bash
+shimmer code:init ~/projects/my-thing --name "My Thing" <<'EOF'
+# My Thing
 
-5. Agents will begin working on the next scheduled workflow run
+A project that does X.
 
-The derived project inherits the full agent infrastructure (CLI, workflows, mise tasks) and can evolve independently while tracing its lineage back to shimmer.
+## Overview
+
+Key decisions from planning:
+- Decision 1
+- Decision 2
+EOF
+```
+
+Run `shimmer code:init:welcome` for more details and to see existing projects.
+
+See `docs/new-project.md` for the full workflow.

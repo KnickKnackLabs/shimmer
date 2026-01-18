@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#MISE description="Learn about starting new projects and see existing codebases"
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Starting New Projects"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Use shimmer to bootstrap new codebases with context:"
+echo ""
+echo "  1. Plan together  - Discuss the project with Claude"
+echo "  2. Initialize     - Run: shimmer code:init <path> --name \"Name\""
+echo "  3. Continue       - Start a fresh session in the new directory"
+echo ""
+echo "The seed you provide becomes CLAUDE.md, so the next session"
+echo "picks up where you left off."
+echo ""
+echo "Example:"
+echo ""
+echo "  shimmer code:init ~/projects/my-thing --name \"My Thing\" <<'EOF'"
+echo "  # My Thing"
+echo "  "
+echo "  A project that does X."
+echo "  "
+echo "  ## Decisions"
+echo "  - We chose Y because Z"
+echo "  EOF"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Existing Projects"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# List repos from ricon-family org
+if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+  REPOS=$(gh repo list ricon-family --limit 20 --json name,description --jq '.[] | "  \(.name)\t\(.description // "-")"' 2>/dev/null || true)
+  if [ -n "$REPOS" ]; then
+    echo "$REPOS" | column -t -s $'\t'
+  else
+    echo "  (couldn't fetch repos - check gh auth)"
+  fi
+else
+  echo "  (gh CLI not authenticated - run: gh auth login)"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Full documentation: $SHIMMER_DIR/docs/new-project.md"
+echo "List agents:        shimmer agent:list"
+echo ""

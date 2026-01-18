@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+#MISE description="Initialize a new codebase with CLAUDE.md seed"
+#MISE alias="code:init"
+#MISE usage="code:init <path> [--name <name>]"
+set -eo pipefail
+
+# Parse arguments
+PATH_ARG=""
+NAME_ARG=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --name)
+      NAME_ARG="$2"
+      shift 2
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      if [[ -z "$PATH_ARG" ]]; then
+        PATH_ARG="$1"
+      else
+        echo "Unexpected argument: $1" >&2
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$PATH_ARG" ]]; then
+  echo "Usage: shimmer code:init <path> [--name <name>]" >&2
+  echo "" >&2
+  echo "Initialize a new codebase with a CLAUDE.md seed." >&2
+  echo "Reads seed content from stdin." >&2
+  echo "" >&2
+  echo "Example:" >&2
+  echo "  shimmer code:init ~/projects/my-thing --name \"My Thing\" <<'EOF'" >&2
+  echo "  # My Thing" >&2
+  echo "  " >&2
+  echo "  A project that does something cool." >&2
+  echo "  EOF" >&2
+  exit 1
+fi
+
+# Expand path
+TARGET_PATH="${PATH_ARG/#\~/$HOME}"
+
+# Derive name from path if not provided
+if [[ -z "$NAME_ARG" ]]; then
+  NAME_ARG="$(basename "$TARGET_PATH")"
+fi
+
+# Check if directory already exists
+if [[ -d "$TARGET_PATH" ]]; then
+  echo "Error: Directory already exists: $TARGET_PATH" >&2
+  exit 1
+fi
+
+# Read seed content from stdin
+SEED_CONTENT=""
+if [[ ! -t 0 ]]; then
+  SEED_CONTENT="$(cat)"
+fi
+
+if [[ -z "$SEED_CONTENT" ]]; then
+  echo "Error: No seed content provided. Pipe content to stdin." >&2
+  echo "" >&2
+  echo "Example:" >&2
+  echo "  shimmer code:init ~/projects/my-thing <<'EOF'" >&2
+  echo "  # My Thing" >&2
+  echo "  " >&2
+  echo "  A project that does something cool." >&2
+  echo "  EOF" >&2
+  exit 1
+fi
+
+echo "Initializing codebase: $NAME_ARG"
+echo "  Path: $TARGET_PATH"
+echo ""
+
+# Create directory
+mkdir -p "$TARGET_PATH"
+
+# Initialize git
+git -C "$TARGET_PATH" init --quiet
+
+# Write CLAUDE.md
+cat > "$TARGET_PATH/CLAUDE.md" << EOF
+$SEED_CONTENT
+EOF
+
+echo "  Created: CLAUDE.md"
+
+# Write README.md
+cat > "$TARGET_PATH/README.md" << EOF
+# $NAME_ARG
+
+## Development
+
+This project uses [shimmer](https://github.com/ricon-family/shimmer) for agent workflows.
+
+To set up shimmer:
+
+1. Clone shimmer to your workspace:
+   \`\`\`bash
+   git clone https://github.com/ricon-family/shimmer.git ~/shimmer
+   cd ~/shimmer && mise trust && mise install
+   \`\`\`
+
+2. Add to your shell config (\`~/.zshrc\` or \`~/.bashrc\`):
+   \`\`\`bash
+   eval "\$(mise -C ~/shimmer run -q shell)"
+   \`\`\`
+
+3. Reload your shell and run \`shimmer welcome\` to verify.
+EOF
+
+echo "  Created: README.md"
+
+# Initial commit
+git -C "$TARGET_PATH" add -A
+git -C "$TARGET_PATH" commit --quiet -m "Initial commit
+
+Seeded with shimmer code:init"
+
+echo ""
+echo "Done! Codebase initialized at: $TARGET_PATH"
+echo ""
+echo "Next steps:"
+echo "  cd $TARGET_PATH"
+echo "  # Start a new Claude Code session"
