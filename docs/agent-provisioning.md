@@ -28,8 +28,9 @@ Agents use two types of GitHub tokens:
 Full-access token for account management. Created once during onboarding.
 
 ```bash
-# Opens browser with all scopes pre-selected
-shimmer token:new-personal <agent>
+shimmer token:new-personal <agent>  # Opens browser with all scopes pre-selected
+shimmer token:store <agent> <token> # Store token in 1Password
+shimmer token:scopes                # Check current token's scopes
 ```
 
 Capabilities:
@@ -84,7 +85,7 @@ Interactive walkthrough for full agent setup:
 4. **Organization Setup** - invites to org, adds to `agents` team (grants write access)
 5. **Upload GPG Key** - shows public key to copy
 6. **Create PAT** - run `shimmer token:new-personal <agent>` to open browser with all scopes
-7. **Store PAT** - save in 1Password and GitHub secrets
+7. **Store PAT** - run `shimmer token:store <agent> <token>` to save in 1Password
 8. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
 9. **Verify** - triggers test workflow to confirm signed commits work
 
