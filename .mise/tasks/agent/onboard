@@ -165,41 +165,17 @@ wait_for_enter
 # STEP 6: Create Personal Access Token
 echo "STEP 6: Create Personal Access Token"
 echo "------------------------------------------------------------"
-echo "[YOU] As $GITHUB_USERNAME, go to: https://github.com/settings/tokens?type=beta"
-echo "      Click: Generate new token"
+echo "[auto] Opening browser to create full-access personal token..."
 echo ""
-echo "      Token name:         shimmer-agent"
-echo "      Expiration:         90 days"
-echo "      Resource owner:     ricon-family"
-echo "      Repository access:  Only select repositories -> ricon-family/shimmer"
-echo ""
-echo "      Permissions (select based on agent's needs):"
-echo "        - Contents: Read and write    (required - for commits)"
-echo "        - Workflows: Read and write   (required - for editing workflow files and triggering workflows)"
-echo "        - Issues: Read and write      (optional - for creating/managing issues)"
-echo "        - Pull requests: Read and write (optional - for creating/managing PRs)"
+
+# Run github:token:new-personal (shows credentials, opens incognito browser)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/../github/token/new-personal" "$AGENT"
 
 wait_for_enter
 
-# STEP 7: Approve PAT
-echo "STEP 7: Approve PAT"
-echo "------------------------------------------------------------"
-echo "[YOU] As YOUR ADMIN account, go to:"
-echo "      https://github.com/organizations/ricon-family/settings/personal-access-token-requests"
-echo ""
-echo "      Before approving the request from $GITHUB_USERNAME, verify:"
-echo "      [ ] Repository access: Only ricon-family/shimmer"
-echo "      [ ] Expiration: ~90 days from now"
-echo "      [ ] Contents: Read and write"
-echo "      [ ] Workflows: Read and write"
-echo "      [ ] Issues: Read and write (if requested)"
-echo "      [ ] Pull requests: Read and write (if requested)"
-echo "      [ ] No unexpected permissions"
-
-wait_for_enter
-
-# STEP 8: Store PAT
-echo "STEP 8: Store PAT"
+# STEP 7: Store PAT
+echo "STEP 7: Store PAT"
 echo "------------------------------------------------------------"
 echo ""
 read -r -p "Paste the PAT token: " PAT_TOKEN
@@ -219,8 +195,8 @@ fi
 
 wait_for_enter
 
-# STEP 9: Matrix Setup
-echo "STEP 9: Matrix Setup"
+# STEP 8: Matrix Setup
+echo "STEP 8: Matrix Setup"
 echo "------------------------------------------------------------"
 
 MATRIX_PASSWORD=$(op item get "${AGENT} - Matrix" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
@@ -244,8 +220,8 @@ fi
 
 wait_for_enter
 
-# STEP 10: Verify
-echo "STEP 10: Verify Setup"
+# STEP 9: Verify
+echo "STEP 9: Verify Setup"
 echo "------------------------------------------------------------"
 echo "[auto] Triggering test workflow..."
 

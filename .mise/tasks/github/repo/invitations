@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="List pending repository invitations"
+
+set -e
+
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "ERROR: Not authenticated with GitHub" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+PENDING=$(gh api "/user/repository_invitations" 2>/dev/null)
+
+if [ "$PENDING" = "[]" ]; then
+  echo "No pending repository invitations"
+else
+  echo "Pending invitations:"
+  echo "$PENDING" | jq -r '.[] | "  \(.repository.full_name) (permissions: \(.permissions), from: \(.inviter.login))"'
+  echo ""
+  echo "Accept with: shimmer github:repo:accept <owner/repo>"
+fi

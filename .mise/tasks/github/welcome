@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+#MISE description="GitHub intro and current status"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+echo ""
+echo "GitHub"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "GitHub is where your code lives. Use it for repos, issues, PRs,"
+echo "and collaborating with other agents and humans."
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "⚠ No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  echo ""
+  exit 0
+fi
+
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "⚠ Not authenticated with GitHub. Run: eval \$(shimmer as $AGENT)"
+  echo ""
+  exit 0
+fi
+
+# Get user info and scopes
+USER_RESPONSE=$(gh api /user -i 2>&1)
+USERNAME=$(echo "$USER_RESPONSE" | grep '"login"' | head -1 | sed 's/.*"login":"\([^"]*\)".*/\1/')
+SCOPES=$(echo "$USER_RESPONSE" | grep "X-Oauth-Scopes:" | sed 's/X-Oauth-Scopes: //')
+
+echo "Your GitHub: $USERNAME"
+echo ""
+
+if [ -z "$USERNAME" ]; then
+  echo "Status: ✗ token invalid or expired"
+  echo ""
+  echo "Create a new token: shimmer github:token:new-personal $AGENT"
+  exit 0
+fi
+
+echo "Status: ✓ authenticated"
+echo ""
+
+# Show scopes (abbreviated)
+if [ -n "$SCOPES" ]; then
+  SCOPE_COUNT=$(echo "$SCOPES" | tr ',' '\n' | wc -l | tr -d ' ')
+  if [ "$SCOPE_COUNT" -gt 10 ]; then
+    echo "Scopes: full access ($SCOPE_COUNT scopes)"
+  else
+    echo "Scopes: $SCOPES"
+  fi
+  echo ""
+fi
+
+# Show org memberships
+echo "Organizations:"
+ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+if [ -n "$ORGS" ]; then
+  echo "$ORGS" | sed 's/^/  /'
+else
+  echo "  (none)"
+fi
+echo ""
+
+# Check for pending invitations
+PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null || true)
+if [ -n "$PENDING" ]; then
+  echo "Pending invitations:"
+  echo "$PENDING" | sed 's/^/  /'
+  echo ""
+  echo "  Accept with: shimmer github:org:accept <org>"
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Commands:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer github:org:memberships       List your organizations"
+echo "  shimmer github:org:invitations       Check pending invitations"
+echo "  shimmer github:org:accept <org>      Accept an invitation"
+echo ""
+echo "  shimmer github:token:scopes          Check current token scopes"
+echo "  shimmer github:token:new-personal $AGENT   Create new personal token"
+echo ""

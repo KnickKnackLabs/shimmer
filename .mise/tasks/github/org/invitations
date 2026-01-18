@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="List pending organization invitations"
+
+set -e
+
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "ERROR: Not authenticated with GitHub" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+PENDING=$(gh api "/user/memberships/orgs?state=pending" 2>/dev/null)
+
+if [ "$PENDING" = "[]" ]; then
+  echo "No pending organization invitations"
+else
+  echo "Pending invitations:"
+  echo "$PENDING" | jq -r '.[] | "  \(.organization.login) (role: \(.role))"'
+  echo ""
+  echo "Accept with: shimmer github:org:accept <org-name>"
+fi

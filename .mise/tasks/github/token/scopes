@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Show the scopes of the current GitHub token"
+
+set -e
+
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "ERROR: Not authenticated with GitHub" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+SCOPES=$(gh api /user -i 2>&1 | grep "X-Oauth-Scopes:" | sed 's/X-Oauth-Scopes: //')
+
+if [ -z "$SCOPES" ]; then
+  echo "No scopes found (might be a fine-grained PAT)"
+else
+  echo "Token scopes:"
+  echo "$SCOPES" | tr ',' '\n' | sed 's/^ */  /'
+fi

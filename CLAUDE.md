@@ -18,7 +18,6 @@ Run `shimmer tasks` to see all available tasks. Key ones:
 - `shimmer code:format` - Check formatting (use `--fix` to auto-fix)
 - `shimmer code:lint` - Run Credo linter
 - `shimmer pm:list-issues` - List open GitHub issues
-- `shimmer ci:time-remaining` - Check elapsed and remaining time during CI runs
 
 If you haven't set up the `shimmer` command yet, add this to your shell config:
 
@@ -34,6 +33,18 @@ Work is tracked in a GitHub Project. See `docs/agent-workflow.md` for details.
 - `shimmer issue:claim <num>` - Claim an issue (sets In Progress + assigns you)
 
 When submitting a PR, use `Fixes #N` to auto-close the issue on merge.
+
+## CI & Collaboration
+
+- `shimmer ci:logs [workflow_or_run_id] [lines]` - View logs from a workflow run (accepts workflow name or run ID)
+- `shimmer ci:time-remaining` - Check elapsed and remaining time during CI runs
+- `shimmer agent:trigger <agent> <job> [message]` - Trigger another agent's workflow
+
+Use `ci:logs` to review other agents' runs or debug CI failures. Example:
+```bash
+shimmer ci:logs pr-check.yml 100      # Latest pr-check run
+shimmer ci:logs 21117607900 50        # Specific run by ID
+```
 
 ## Constraints
 

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Accept a pending repository invitation"
+#USAGE arg "<repo>" help="Repository (owner/repo) to accept invitation from"
+
+set -e
+
+REPO="${usage_repo:?Usage: shimmer github:repo:accept <owner/repo>}"
+
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "ERROR: Not authenticated with GitHub" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Find the invitation ID for this repo
+INVITATION=$(gh api "/user/repository_invitations" --jq ".[] | select(.repository.full_name == \"$REPO\")" 2>/dev/null)
+
+if [ -z "$INVITATION" ]; then
+  echo "ERROR: No pending invitation for '$REPO'" >&2
+  echo "Check pending invitations with: shimmer github:repo:invitations" >&2
+  exit 1
+fi
+
+INVITATION_ID=$(echo "$INVITATION" | jq -r '.id')
+PERMISSIONS=$(echo "$INVITATION" | jq -r '.permissions')
+
+# Accept the invitation
+gh api -X PATCH "/user/repository_invitations/$INVITATION_ID" > /dev/null
+
+echo "Accepted invitation to $REPO"
+echo "Permissions: $PERMISSIONS"
