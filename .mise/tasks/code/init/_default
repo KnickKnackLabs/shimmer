@@ -50,8 +50,15 @@ if [[ -z "$PATH_ARG" ]]; then
   exit 1
 fi
 
-# Expand path
-TARGET_PATH="${PATH_ARG/#\~/$HOME}"
+# Resolve path - relative paths use caller's directory (not shimmer's)
+if [[ "$PATH_ARG" == /* ]] || [[ "$PATH_ARG" == ~* ]]; then
+  # Absolute or home-relative path
+  TARGET_PATH="${PATH_ARG/#\~/$HOME}"
+else
+  # Relative path - resolve against caller's directory
+  CALLER_DIR="${SHIMMER_CALLER_PWD:-.}"
+  TARGET_PATH="$CALLER_DIR/$PATH_ARG"
+fi
 
 # Derive name from path if not provided
 if [[ -z "$NAME_ARG" ]]; then
