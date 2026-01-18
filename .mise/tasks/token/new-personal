@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#MISE description="Open browser to create a full-access personal token for an agent"
+#USAGE arg "<agent>" help="Agent name (e.g., k7r2, brownie)"
+
+set -e
+
+AGENT="${usage_agent:?Usage: shimmer token:new-personal <agent>}"
+
+# All scopes for full personal access
+SCOPES="repo,workflow,admin:org,admin:public_key,admin:gpg_key,admin:ssh_signing_key,admin:repo_hook,admin:org_hook,gist,notifications,user,delete_repo,write:packages,delete:packages,write:discussion,project,codespace"
+
+URL="https://github.com/settings/tokens/new?scopes=${SCOPES}&description=${AGENT}"
+
+echo "Opening browser to create personal token for: $AGENT"
+echo ""
+echo "Scopes: all (full personal access)"
+echo ""
+echo "After creating the token:"
+echo "  1. Copy the token value"
+echo "  2. Store in 1Password: Agents vault → '$AGENT - GitHub' → PAT field"
+echo ""
+
+# Open browser (macOS)
+if command -v open &> /dev/null; then
+  open "$URL"
+else
+  echo "Open this URL in your browser:"
+  echo "$URL"
+fi

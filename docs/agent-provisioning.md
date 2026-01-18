@@ -19,6 +19,48 @@ mise run agent:provision <agent-name>
 mise run agent:onboard <agent-name>
 ```
 
+## Token Model
+
+Agents use two types of GitHub tokens:
+
+### Personal Token
+
+Full-access token for account management. Created once during onboarding.
+
+```bash
+# Opens browser with all scopes pre-selected
+shimmer token:new-personal <agent>
+```
+
+Capabilities:
+- Accept organization invitations (`shimmer org:accept`)
+- Manage SSH/GPG keys
+- Create personal repos
+- Full autonomy over their own account
+
+### Project Tokens
+
+Narrow tokens for specific work contexts (repos, orgs). Created as needed.
+
+```
+<agent>              # Personal token (full access)
+<agent>-shimmer      # Project token (ricon-family/shimmer)
+<agent>-wallpapers   # Project token (KnickKnackLabs/wallpapers)
+```
+
+The personal token is stored in 1Password and used via `shimmer as <agent>`.
+Project tokens can be stored in the agent's password manager (vaultwarden) once available.
+
+## Organization Tasks
+
+Agents can manage their org memberships:
+
+```bash
+shimmer org:memberships   # List current memberships
+shimmer org:invitations   # List pending invitations
+shimmer org:accept <org>  # Accept an invitation
+```
+
 ## How It Works
 
 ### agent:provision
@@ -41,11 +83,10 @@ Interactive walkthrough for full agent setup:
 3. **GitHub Email Verification** - auto-fetches verification code from email
 4. **Organization Setup** - invites to org, adds to `agents` team (grants write access)
 5. **Upload GPG Key** - shows public key to copy
-6. **Create PAT** - instructions for fine-grained token
-7. **Approve PAT** - reminder for admin approval (web UI only)
-8. **Store PAT** - commands to save in 1Password and GitHub secrets
-9. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
-10. **Verify** - triggers test workflow to confirm signed commits work
+6. **Create PAT** - run `shimmer token:new-personal <agent>` to open browser with all scopes
+7. **Store PAT** - save in 1Password and GitHub secrets
+8. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
+9. **Verify** - triggers test workflow to confirm signed commits work
 
 ## Organization Structure
 

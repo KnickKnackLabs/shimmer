@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Accept a pending organization invitation"
+#USAGE arg "<org>" help="Organization name to accept invitation from"
+
+set -e
+
+ORG="${usage_org:?Usage: shimmer org:accept <org>}"
+
+if [ -z "$GH_TOKEN" ]; then
+  echo "ERROR: GH_TOKEN not set" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Check if there's a pending invitation
+PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq ".[].organization.login" 2>/dev/null)
+
+if ! echo "$PENDING" | grep -qx "$ORG"; then
+  echo "ERROR: No pending invitation from '$ORG'" >&2
+  echo "Check pending invitations with: shimmer org:invitations" >&2
+  exit 1
+fi
+
+# Accept the invitation
+gh api -X PATCH "/user/memberships/orgs/$ORG" -f state=active > /dev/null
+
+echo "Accepted invitation to $ORG"
+
+# Show current membership
+MEMBERSHIP=$(gh api "/user/memberships/orgs/$ORG" --jq '{role: .role, state: .state}' 2>/dev/null)
+echo "Membership: $(echo "$MEMBERSHIP" | jq -r '"\(.role), \(.state)"')"

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="List current organization memberships"
+
+set -e
+
+if [ -z "$GH_TOKEN" ]; then
+  echo "ERROR: GH_TOKEN not set" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+MEMBERSHIPS=$(gh api "/user/memberships/orgs?state=active" 2>/dev/null)
+
+if [ "$MEMBERSHIPS" = "[]" ]; then
+  echo "Not a member of any organizations"
+else
+  echo "Organization memberships:"
+  echo "$MEMBERSHIPS" | jq -r '.[] | "  \(.organization.login) (\(.role))"'
+fi
