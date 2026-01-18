@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#MISE description="View logs from the latest workflow run"
-#USAGE arg "[workflow]" help="Workflow file name (default: pr-check.yml)"
+#MISE description="View logs from a workflow run"
+#USAGE arg "[workflow_or_run_id]" help="Workflow name (e.g., pr-check.yml) or run ID (numeric)"
 #USAGE arg "[lines]" help="Number of log lines to show (default: 100)"
 
 set -e
@@ -10,9 +10,17 @@ TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
 REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
 
-WORKFLOW="${1:-pr-check.yml}"
+ARG1="${1:-pr-check.yml}"
 LINES="${2:-100}"
-RUN_ID=$(gh run list --repo "$REPO" --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
+
+# Detect if first arg is a run ID (numeric) or workflow name
+if [[ "$ARG1" =~ ^[0-9]+$ ]]; then
+  RUN_ID="$ARG1"
+  WORKFLOW="(run $RUN_ID)"
+else
+  WORKFLOW="$ARG1"
+  RUN_ID=$(gh run list --repo "$REPO" --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
+fi
 JOB_ID=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q '.jobs[0].databaseId')
 
 echo "=== $REPO - $WORKFLOW (last $LINES lines) ==="
