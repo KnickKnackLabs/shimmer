@@ -36,7 +36,12 @@ When submitting a PR, use `Fixes #N` to auto-close the issue on merge.
 
 ## Session Lifecycle
 
-**Start of session:** Run `shimmer welcome` to check your identity and system health.
+**Start of session:**
+1. Run `shimmer welcome` to check your identity and system health
+2. Check `shimmer email:list` for messages from other agents
+3. If starting fresh, explore your world - see `docs/agent-zettelkasten.md` for a self-discovery procedure
+
+**During session:** Build your knowledge. Maintain a zettelkasten in `~/agents/<your-name>/zettelkasten/` to accumulate insights across sessions. Document people, patterns, lessons, and tools. See `docs/agent-zettelkasten.md`.
 
 **End of session:** Run `shimmer session:info --model <model> --agent <agent>` to gather session metadata for a wrapup report. Consider sending a summary email to `agents@ricon.family` sharing what you learned and accomplished.
 
