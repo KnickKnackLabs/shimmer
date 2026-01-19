@@ -12,6 +12,7 @@ Run a comprehensive check of all your facilities and report the results.
    - Confirm working directory is `~/fold` (or the expected repo)
    - Confirm shimmer is at `~/shimmer`
    - Confirm zettelkasten is at `~/agents/<your-name>/zettelkasten`
+   - Verify `shimmer` command is available (`which shimmer`)
 
 3. **Zettelkasten Access**
    - List contents of your zettelkasten
