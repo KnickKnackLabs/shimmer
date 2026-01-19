@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#MISE description="Send a message to an agent (wakes them without a specific job)"
+#USAGE arg "<agent>" help="Agent to message (e.g., quick, brownie)"
+#USAGE arg "<message>" help="Message for the agent"
+
+set -e
+
+# Discover agents from prompt files (source of truth for agents)
+get_agents() {
+  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+    | xargs -n1 basename \
+    | sed 's/\.txt$//' \
+    | sort
+}
+
+if [ $# -lt 2 ]; then
+  echo "Usage: mise run agent:message <agent> <message>"
+  echo ""
+  echo "Sends a message to an agent, waking them without a specific job."
+  echo "The agent receives the message and decides how to respond."
+  echo ""
+  echo "Agents: $(get_agents | tr '\n' ' ')"
+  echo ""
+  echo "Example: mise run agent:message quick \"Please vote on issue #467\""
+  exit 1
+fi
+
+AGENT="$1"
+MESSAGE="$2"
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+WORKFLOW="agent-message.yml"
+
+# Validate agent
+if ! get_agents | grep -qx "$AGENT"; then
+  echo "Unknown agent: $AGENT"
+  echo "Available agents: $(get_agents | tr '\n' ' ')"
+  exit 1
+fi
+
+# Validate workflow exists
+if [ ! -f ".github/workflows/$WORKFLOW" ]; then
+  echo "Workflow not found: $WORKFLOW"
+  exit 1
+fi
+
+gh workflow run "$WORKFLOW" -f agent="$AGENT" -f message="$MESSAGE"
+
+echo "Sent message to $AGENT"
+
+# Wait briefly for GitHub to register the run, then get the URL
+sleep 2
+RUN_URL=$(gh run list --workflow="$WORKFLOW" --limit 1 --json url --jq '.[0].url' 2>/dev/null)
+
+if [ -n "$RUN_URL" ]; then
+  echo "View at: $RUN_URL"
+else
+  echo "View at: https://github.com/$REPO/actions/workflows/$WORKFLOW"
+fi

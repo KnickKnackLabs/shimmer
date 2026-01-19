@@ -8,11 +8,11 @@ on:
         required: true
         type: string
       job:
-        description: 'Job to run (e.g., probe, critic)'
-        required: true
+        description: 'Job to run (e.g., probe, critic). Optional if message is provided.'
+        required: false
         type: string
       message:
-        description: 'Optional message to pass to the agent'
+        description: 'Message to pass to the agent. Required if no job is specified.'
         required: false
         type: string
     secrets:
@@ -32,6 +32,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Validate inputs
+        run: |
+          if [ -z "${{ inputs.job }}" ] && [ -z "${{ inputs.message }}" ]; then
+            echo "Error: Either job or message must be provided"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.AGENT_GITHUB_PAT }}
@@ -110,4 +117,8 @@ jobs:
           RUN_TIMEOUT: 540
         run: |
           export RUN_START_TIME=$(date +%s)
-          cd cli && mix shimmer --agent ${{ inputs.agent }} --job ${{ inputs.job }} --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"
+          JOB_FLAG=""
+          if [ -n "${{ inputs.job }}" ]; then
+            JOB_FLAG="--job ${{ inputs.job }}"
+          fi
+          cd cli && mix shimmer --agent ${{ inputs.agent }} $JOB_FLAG --timeout $RUN_TIMEOUT "${{ steps.message.outputs.msg }}"

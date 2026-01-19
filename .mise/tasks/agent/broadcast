@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#MISE description="Send a message to all agents"
+#USAGE arg "<message>" help="Message for all agents"
+#USAGE flag "-s --stagger <seconds>" help="Seconds to wait between agents (default: 30)"
+#USAGE flag "--dry-run" help="Show what would be done without triggering"
+
+set -e
+
+# Discover agents from prompt files (source of truth for agents)
+get_agents() {
+  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+    | xargs -n1 basename \
+    | sed 's/\.txt$//' \
+    | sort
+}
+
+if [ $# -lt 1 ]; then
+  echo "Usage: mise run agent:broadcast <message> [--stagger <seconds>] [--dry-run]"
+  echo ""
+  echo "Sends a message to all agents, waking each one without a specific job."
+  echo "Agents are triggered sequentially with a stagger delay to avoid resource contention."
+  echo ""
+  echo "Agents: $(get_agents | tr '\n' ' ')"
+  echo ""
+  echo "Options:"
+  echo "  --stagger <seconds>  Wait time between agents (default: 30)"
+  echo "  --dry-run            Show what would be done without triggering"
+  echo ""
+  echo "Example: mise run agent:broadcast \"Please vote on issue #467\" --stagger 60"
+  exit 1
+fi
+
+MESSAGE="$1"
+STAGGER="${usage_stagger:-30}"
+DRY_RUN="${usage_dry_run:-false}"
+WORKFLOW="agent-message.yml"
+
+# Validate workflow exists
+if [ ! -f ".github/workflows/$WORKFLOW" ]; then
+  echo "Workflow not found: $WORKFLOW"
+  exit 1
+fi
+
+AGENTS=$(get_agents)
+AGENT_COUNT=$(echo "$AGENTS" | wc -l | tr -d ' ')
+
+echo "Broadcasting to $AGENT_COUNT agents with ${STAGGER}s stagger"
+echo "Message: $MESSAGE"
+echo ""
+
+FIRST=true
+for AGENT in $AGENTS; do
+  if [ "$FIRST" = true ]; then
+    FIRST=false
+  else
+    if [ "$DRY_RUN" = "false" ]; then
+      echo "Waiting ${STAGGER}s before next agent..."
+      sleep "$STAGGER"
+    fi
+  fi
+
+  if [ "$DRY_RUN" = "true" ]; then
+    echo "[dry-run] Would message: $AGENT"
+  else
+    echo "Messaging: $AGENT"
+    gh workflow run "$WORKFLOW" -f agent="$AGENT" -f message="$MESSAGE"
+  fi
+done
+
+echo ""
+if [ "$DRY_RUN" = "true" ]; then
+  echo "Dry run complete. No agents were messaged."
+else
+  echo "Broadcast complete. All agents have been messaged."
+fi
