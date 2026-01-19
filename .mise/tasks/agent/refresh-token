@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 #MISE description="Refresh the Claude OAuth token in GitHub secrets"
+#USAGE flag "--repo <repo>" help="Target repo (default: current directory's repo)"
 # Note: This is also called automatically by `agent:sync-secrets` (unless --skip-oauth)
 
 set -e
 
-# Determine target directory (caller's directory when using shimmer alias)
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
-cd "$TARGET_DIR"
-
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+# Determine target repo
+if [ -n "${usage_repo:-}" ]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  cd "$TARGET_DIR"
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+fi
 
 echo "Getting new OAuth token from Claude..."
 # Use TERM=dumb to reduce (but not eliminate) escape sequences
