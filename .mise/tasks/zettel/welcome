@@ -16,6 +16,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
+# Check for zettelkasten tooling
+ZETTEL_TOOLING="$HOME/zettelkasten-tooling"
+HAS_ZETTEL_TOOL=false
+if [ -d "$ZETTEL_TOOLING/.mise/tasks" ]; then
+  HAS_ZETTEL_TOOL=true
+fi
+
 echo ""
 echo "Zettelkasten"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -35,6 +42,7 @@ if [ -z "$AGENT" ]; then
 fi
 
 ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+export ZETTEL_ROOT="$ZETTEL_DIR"
 
 echo "Your zettelkasten: $ZETTEL_DIR"
 echo ""
@@ -47,7 +55,14 @@ if [ ! -d "$ZETTEL_DIR" ]; then
   echo "Getting Started:"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "  1. Create your zettelkasten:"
+  if [ "$HAS_ZETTEL_TOOL" = true ]; then
+    echo "  Create your zettelkasten with the zettel tool:"
+    echo "    ZETTEL_ROOT=\"$ZETTEL_DIR\" mise -C $ZETTEL_TOOLING run init \"$ZETTEL_DIR\""
+    echo ""
+    echo "  Or manually:"
+  else
+    echo "  1. Create your zettelkasten:"
+  fi
   echo "     mkdir -p $ZETTEL_DIR"
   echo "     cd $ZETTEL_DIR && git init"
   echo ""
@@ -102,6 +117,14 @@ if [ -n "$RECENT" ]; then
 else
   echo "  (none found)"
 fi
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Commands:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer zettel:welcome       This overview"
+echo "  shimmer zettel:search <q>    Search your notes"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

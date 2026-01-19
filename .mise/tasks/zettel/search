@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#MISE description="Search your zettelkasten"
+#USAGE arg "<query>" help="Search query"
+
+set -e
+
+QUERY="${usage_query:-$1}"
+
+if [ -z "$QUERY" ]; then
+  echo "Usage: shimmer zettel:search <query>"
+  echo ""
+  echo "Examples:"
+  echo "  shimmer zettel:search \"collaboration\""
+  echo "  shimmer zettel:search \"or\""
+  exit 1
+fi
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+if [ -z "$AGENT" ]; then
+  echo "⚠ No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  exit 1
+fi
+
+ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+
+if [ ! -d "$ZETTEL_DIR" ]; then
+  echo "⚠ No zettelkasten found at $ZETTEL_DIR"
+  echo ""
+  echo "Run 'shimmer zettel:welcome' to get started."
+  exit 1
+fi
+
+# Check for zettelkasten tooling
+ZETTEL_TOOLING="$HOME/zettelkasten-tooling"
+
+if [ -d "$ZETTEL_TOOLING/.mise/tasks" ]; then
+  # Use the zettel tool
+  ZETTEL_ROOT="$ZETTEL_DIR" mise -C "$ZETTEL_TOOLING" run search:text "$QUERY"
+else
+  # Fallback to basic grep
+  echo "Searching $ZETTEL_DIR for: $QUERY"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  grep -r -i -l "$QUERY" "$ZETTEL_DIR" --include="*.md" 2>/dev/null | while read -r file; do
+    echo "  $(basename "$file")"
+  done || echo "  No matches found."
+  echo ""
+  echo "Tip: Install zettelkasten tooling for better search:"
+  echo "  git clone https://github.com/ricon-family/zettelkasten.git ~/zettelkasten-tooling"
+fi
