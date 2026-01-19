@@ -600,23 +600,7 @@ defmodule Cli do
     case Jason.decode(line) do
       # Handle streaming text deltas
       {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
-        # Write text, skipping any prefix already shown via partial flush (issue #338)
-        text_to_write = text_beyond_flushed(text, state.flushed_chars)
-
-        if text_to_write != "" do
-          IO.write(text_to_write)
-        end
-
-        # Check for [[ABORT]] signal and update tracking state
-        {abort_seen, recent_text, had_newline} = check_abort_signal(text, state)
-
-        %{
-          state
-          | abort_seen: abort_seen,
-            recent_text: recent_text,
-            flushed_chars: 0,
-            had_newline_before_window: had_newline
-        }
+        handle_text_delta(text, state)
 
       # Handle tool use start - show which tool is being called
       {:ok,
@@ -633,23 +617,11 @@ defmodule Cli do
 
       # Handle tool completion - show the accumulated input
       {:ok, %{"type" => "stream_event", "event" => %{"type" => "content_block_stop"}}} ->
-        if state.tool_input != "" do
-          case Jason.decode(state.tool_input) do
-            {:ok, input} -> print_tool_input(input)
-            _ -> :ok
-          end
-        end
-
-        %{state | tool_input: ""}
+        handle_tool_completion(state)
 
       # Capture final result with usage data
       {:ok, %{"type" => "result"} = result} ->
-        # Print error message if present
-        if result["is_error"] && result["result"] do
-          IO.puts("ERROR: #{result["result"]}")
-        end
-
-        %{state | usage: extract_usage(result)}
+        handle_result(result, state)
 
       _ ->
         state
@@ -665,6 +637,51 @@ defmodule Cli do
       model_usage: Map.get(result, "modelUsage")
     }
   end
+
+  defp handle_text_delta(text, state) do
+    # Write text, skipping any prefix already shown via partial flush (issue #338)
+    text_to_write = text_beyond_flushed(text, state.flushed_chars)
+    maybe_write_text(text_to_write)
+
+    # Check for [[ABORT]] signal and update tracking state
+    {abort_seen, recent_text, had_newline} = check_abort_signal(text, state)
+
+    %{
+      state
+      | abort_seen: abort_seen,
+        recent_text: recent_text,
+        flushed_chars: 0,
+        had_newline_before_window: had_newline
+    }
+  end
+
+  defp maybe_write_text(""), do: :ok
+  defp maybe_write_text(text), do: IO.write(text)
+
+  defp handle_tool_completion(state) do
+    maybe_print_tool_input(state.tool_input)
+    %{state | tool_input: ""}
+  end
+
+  defp maybe_print_tool_input(""), do: :ok
+
+  defp maybe_print_tool_input(tool_input) do
+    case Jason.decode(tool_input) do
+      {:ok, input} -> print_tool_input(input)
+      _ -> :ok
+    end
+  end
+
+  defp handle_result(result, state) do
+    maybe_print_error(result)
+    %{state | usage: extract_usage(result)}
+  end
+
+  defp maybe_print_error(%{"is_error" => true, "result" => message}) when is_binary(message) do
+    IO.puts("ERROR: #{message}")
+  end
+
+  defp maybe_print_error(_), do: :ok
 
   @doc """
   Returns the portion of `text` that extends beyond the already flushed characters.
