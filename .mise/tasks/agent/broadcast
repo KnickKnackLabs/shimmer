@@ -6,27 +6,55 @@
 
 set -e
 
-# Discover agents from prompt files (source of truth for agents)
+# Get the caller's directory (where shimmer was invoked from)
+CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+
+# Validate this is an agent home
+validate_agent_home() {
+  if [ ! -d "$CALLER_DIR/agents" ]; then
+    echo "Error: No agents/ directory in $CALLER_DIR" >&2
+    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+    exit 1
+  fi
+
+  if [ ! -f "$CALLER_DIR/.github/workflows/agent-message.yml" ]; then
+    echo "Error: No agent-message.yml workflow in $CALLER_DIR" >&2
+    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+    exit 1
+  fi
+}
+
+# Discover agents from the caller's agents/ directory
 get_agents() {
-  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+  ls "$CALLER_DIR/agents"/*.txt 2>/dev/null \
     | xargs -n1 basename \
     | sed 's/\.txt$//' \
     | sort
 }
 
+# Get the repo name from the caller's directory
+get_repo() {
+  git -C "$CALLER_DIR" remote get-url origin 2>/dev/null \
+    | sed 's/.*github.com[:/]//' \
+    | sed 's/\.git$//'
+}
+
+validate_agent_home
+
 if [ $# -lt 1 ]; then
-  echo "Usage: mise run agent:broadcast <message> [--stagger <seconds>] [--dry-run]"
+  echo "Usage: shimmer agent:broadcast <message> [--stagger <seconds>] [--dry-run]"
   echo ""
   echo "Sends a message to all agents, waking each one without a specific job."
   echo "Agents are triggered sequentially with a stagger delay to avoid resource contention."
   echo ""
+  echo "Agent home: $CALLER_DIR"
   echo "Agents: $(get_agents | tr '\n' ' ')"
   echo ""
   echo "Options:"
   echo "  --stagger <seconds>  Wait time between agents (default: 30)"
   echo "  --dry-run            Show what would be done without triggering"
   echo ""
-  echo "Example: mise run agent:broadcast \"Please vote on issue #467\" --stagger 60"
+  echo "Example: shimmer agent:broadcast \"Please vote on issue #467\" --stagger 60"
   exit 1
 fi
 
@@ -34,17 +62,14 @@ MESSAGE="$1"
 STAGGER="${usage_stagger:-30}"
 DRY_RUN="${usage_dry_run:-false}"
 WORKFLOW="agent-message.yml"
-
-# Validate workflow exists
-if [ ! -f ".github/workflows/$WORKFLOW" ]; then
-  echo "Workflow not found: $WORKFLOW"
-  exit 1
-fi
+REPO=$(get_repo)
 
 AGENTS=$(get_agents)
 AGENT_COUNT=$(echo "$AGENTS" | wc -l | tr -d ' ')
 
 echo "Broadcasting to $AGENT_COUNT agents with ${STAGGER}s stagger"
+echo "Agent home: $CALLER_DIR"
+echo "Repo: $REPO"
 echo "Message: $MESSAGE"
 echo ""
 
@@ -63,7 +88,7 @@ for AGENT in $AGENTS; do
     echo "[dry-run] Would message: $AGENT"
   else
     echo "Messaging: $AGENT"
-    gh workflow run "$WORKFLOW" -f agent="$AGENT" -f message="$MESSAGE"
+    gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE"
   fi
 done
 

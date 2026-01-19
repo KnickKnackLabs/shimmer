@@ -6,9 +6,27 @@
 
 set -e
 
-# Discover agents from prompt files (source of truth for agents)
+# Get the caller's directory (where shimmer was invoked from)
+CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+
+# Validate this is an agent home
+validate_agent_home() {
+  if [ ! -d "$CALLER_DIR/agents" ]; then
+    echo "Error: No agents/ directory in $CALLER_DIR" >&2
+    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+    exit 1
+  fi
+
+  if [ ! -f "$CALLER_DIR/.github/workflows/agent-message.yml" ]; then
+    echo "Error: No agent-message.yml workflow in $CALLER_DIR" >&2
+    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+    exit 1
+  fi
+}
+
+# Discover agents from the caller's agents/ directory
 get_agents() {
-  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+  ls "$CALLER_DIR/agents"/*.txt 2>/dev/null \
     | xargs -n1 basename \
     | sed 's/\.txt$//' \
     | sort
@@ -17,15 +35,25 @@ get_agents() {
 # Discover jobs for a specific agent
 get_jobs() {
   local agent="$1"
-  ls .github/workflows/${agent}-*.yml 2>/dev/null \
+  ls "$CALLER_DIR/.github/workflows/${agent}-"*.yml 2>/dev/null \
     | xargs -n1 basename \
     | sed "s/^${agent}-//; s/\.yml$//" \
     | sort
 }
 
+# Get the repo name from the caller's directory
+get_repo() {
+  git -C "$CALLER_DIR" remote get-url origin 2>/dev/null \
+    | sed 's/.*github.com[:/]//' \
+    | sed 's/\.git$//'
+}
+
+validate_agent_home
+
 if [ $# -lt 2 ]; then
-  echo "Usage: mise run agent:trigger <agent> <job> [message]"
+  echo "Usage: shimmer agent:trigger <agent> <job> [message]"
   echo ""
+  echo "Agent home: $CALLER_DIR"
   echo "Agents: $(get_agents | tr '\n' ' ')"
   echo ""
   echo "Jobs for each agent:"
@@ -34,14 +62,14 @@ if [ $# -lt 2 ]; then
     echo "  $agent: $jobs"
   done
   echo ""
-  echo "Example: mise run agent:trigger quick probe"
+  echo "Example: shimmer agent:trigger quick probe"
   exit 1
 fi
 
 AGENT="$1"
 JOB="$2"
 MESSAGE="${3:-}"
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+REPO=$(get_repo)
 WORKFLOW="${AGENT}-${JOB}.yml"
 
 # Validate agent
@@ -52,25 +80,25 @@ if ! get_agents | grep -qx "$AGENT"; then
 fi
 
 # Validate workflow exists
-if [ ! -f ".github/workflows/$WORKFLOW" ]; then
+if [ ! -f "$CALLER_DIR/.github/workflows/$WORKFLOW" ]; then
   echo "Workflow not found: $WORKFLOW"
   echo ""
   echo "Available workflows for $AGENT:"
-  ls .github/workflows/${AGENT}-*.yml 2>/dev/null | xargs -n1 basename | sed 's/^/  /' || echo "  (none)"
+  ls "$CALLER_DIR/.github/workflows/${AGENT}-"*.yml 2>/dev/null | xargs -n1 basename | sed 's/^/  /' || echo "  (none)"
   exit 1
 fi
 
 if [ -n "$MESSAGE" ]; then
-  gh workflow run "$WORKFLOW" -f message="$MESSAGE"
+  gh workflow run "$WORKFLOW" -R "$REPO" -f message="$MESSAGE"
 else
-  gh workflow run "$WORKFLOW"
+  gh workflow run "$WORKFLOW" -R "$REPO"
 fi
 
 echo "Triggered $WORKFLOW on $REPO"
 
 # Wait briefly for GitHub to register the run, then get the URL
 sleep 2
-RUN_URL=$(gh run list --workflow="$WORKFLOW" --limit 1 --json url --jq '.[0].url' 2>/dev/null)
+RUN_URL=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 1 --json url --jq '.[0].url' 2>/dev/null)
 
 if [ -n "$RUN_URL" ]; then
   echo "View at: $RUN_URL"
