@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+#MISE description="Fetch a file from projects"
+#USAGE arg "<file>" help="File path to fetch (e.g. README.md)"
+#USAGE flag "--repo <repo>" help="Specific repo (default: all known projects)"
+
+set -e
+
+FILE="${usage_file}"
+REPO="${usage_repo:-}"
+
+# Known projects
+PROJECTS=(
+  "ricon-family/shimmer"
+  "ricon-family/fold"
+  "ricon-family/zettelkasten"
+  "ricon-family/food-life"
+  "KnickKnackLabs/wallpapers"
+  "KnickKnackLabs/monkeys"
+  "KnickKnackLabs/chicle"
+)
+
+fetch_file() {
+  local repo="$1"
+  local file="$2"
+
+  echo "=== $repo ==="
+
+  # URL-encode the file path (replace / with %2F)
+  local encoded_file=$(echo "$file" | sed 's/\//%2F/g')
+
+  local response
+  response=$(gh api "repos/$repo/contents/$encoded_file" 2>&1) || {
+    if echo "$response" | grep -q "Not Found"; then
+      echo "[not found]"
+    else
+      echo "[error: $response]"
+    fi
+    echo ""
+    return 0
+  }
+
+  # Check if it's a file or directory
+  local type=$(echo "$response" | jq -r '.type // "unknown"')
+
+  if [ "$type" = "file" ]; then
+    local encoding=$(echo "$response" | jq -r '.encoding')
+    if [ "$encoding" = "base64" ]; then
+      echo "$response" | jq -r '.content' | base64 -d
+    else
+      echo "[unsupported encoding: $encoding]"
+    fi
+  elif [ "$type" = "dir" ]; then
+    echo "[is a directory]"
+  else
+    echo "[unknown type: $type]"
+  fi
+
+  echo ""
+}
+
+if [ -z "$FILE" ]; then
+  echo "Usage: shimmer repo:file <file> [--repo <repo>]"
+  exit 1
+fi
+
+if [ -n "$REPO" ]; then
+  # Single repo
+  fetch_file "$REPO" "$FILE"
+else
+  # All projects
+  for repo in "${PROJECTS[@]}"; do
+    fetch_file "$repo" "$FILE"
+  done
+fi
