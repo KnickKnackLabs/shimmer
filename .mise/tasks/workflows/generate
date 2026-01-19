@@ -3,17 +3,12 @@
 #USAGE flag "--check" help="Check mode: fail if generated files differ from committed"
 set -eo pipefail
 
-cd "$(git rev-parse --show-toplevel)"
+# Determine target directory (caller's directory when using shimmer alias)
+TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+cd "$TARGET_DIR"
 
-# Find shimmer root (either we're in shimmer or it's a sibling checkout)
-if [[ -f ".mise/tasks/workflows/generate" ]]; then
-  SHIMMER_DIR="."
-elif [[ -f "shimmer/.mise/tasks/workflows/generate" ]]; then
-  SHIMMER_DIR="shimmer"
-else
-  # Try to find shimmer via the global command
-  SHIMMER_DIR="$HOME/shimmer"
-fi
+# Shimmer is always at ~/shimmer (where the global command lives)
+SHIMMER_DIR="$HOME/shimmer"
 
 TEMPLATE=".github/templates/agent-job.yml"
 OUTPUT_DIR=".github/workflows"
