@@ -677,7 +677,7 @@ defmodule Cli do
     %{state | usage: extract_usage(result)}
   end
 
-  defp maybe_print_error(%{"is_error" => true, "result" => message}) when is_binary(message) do
+  defp maybe_print_error(%{"is_error" => true, "result" => message}) when not is_nil(message) do
     IO.puts("ERROR: #{message}")
   end
 
