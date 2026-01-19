@@ -48,6 +48,9 @@ fi
 # Import the private key
 echo "Importing GPG key for $EMAIL..."
 echo "Key length: ${#GPG_PRIVATE_KEY} chars"
+echo "First 50 chars: ${GPG_PRIVATE_KEY:0:50}"
+echo "Contains literal backslash-n: $(echo "$GPG_PRIVATE_KEY" | grep -c '\\n' || echo 0)"
+echo "Number of actual newlines: $(echo "$GPG_PRIVATE_KEY" | wc -l)"
 if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
   echo "ERROR: GPG_PRIVATE_KEY seems too short or empty"
   exit 1
