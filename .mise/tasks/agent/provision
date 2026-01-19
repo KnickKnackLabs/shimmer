@@ -137,6 +137,23 @@ else
     --generate-password=20,letters,digits > /dev/null
 fi
 
+# Identity item (with admin override passphrase)
+if item_exists "${AGENT} - Identity"; then
+  echo "[auto] ${AGENT} - Identity already exists"
+else
+  echo "[auto] Creating ${AGENT} - Identity..."
+  # Generate a memorable two-word passphrase
+  WORD1=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+  WORD2=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+  PASSPHRASE="$WORD1 $WORD2"
+  op item create \
+    --category "Secure Note" \
+    --title "${AGENT} - Identity" \
+    --vault "$VAULT" \
+    "passphrase[password]=$PASSPHRASE" \
+    "notes[text]=Admin override passphrase for $AGENT. Used by shimmer --passphrase flag." > /dev/null
+fi
+
 echo ""
 echo "=== $AGENT provisioned ==="
 echo ""
