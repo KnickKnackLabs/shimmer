@@ -5,6 +5,16 @@ set -eo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+# Find shimmer root (either we're in shimmer or it's a sibling checkout)
+if [[ -f ".mise/tasks/workflows/generate" ]]; then
+  SHIMMER_DIR="."
+elif [[ -f "shimmer/.mise/tasks/workflows/generate" ]]; then
+  SHIMMER_DIR="shimmer"
+else
+  # Try to find shimmer via the global command
+  SHIMMER_DIR="$HOME/shimmer"
+fi
+
 TEMPLATE=".github/templates/agent-job.yml"
 OUTPUT_DIR=".github/workflows"
 CHECK_MODE="${usage_check:-false}"
@@ -15,53 +25,84 @@ if [[ "$CHECK_MODE" == "true" ]]; then
   trap "rm -rf $OUTPUT_DIR" EXIT
 fi
 
+# Ensure output directory exists
+mkdir -p "$OUTPUT_DIR"
+
+# Copy base workflow templates from shimmer
+echo "Copying base templates from shimmer..."
+cp "$SHIMMER_DIR/.github/templates/agent-run.yml" "$OUTPUT_DIR/agent-run.yml"
+echo "Generated: agent-run.yml"
+cp "$SHIMMER_DIR/.github/templates/agent-message.yml" "$OUTPUT_DIR/agent-message.yml"
+echo "Generated: agent-message.yml"
+
 # Read jobs and agents from manifest
-JOBS=$(yq -r '.jobs | keys | .[]' workflows.yaml)
+JOBS=$(yq -r '.jobs | keys | .[]' workflows.yaml 2>/dev/null || echo "")
 
-for JOB in $JOBS; do
-  AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
+# Generate per-agent-job scheduled workflows (if workflows.yaml exists and has jobs)
+if [[ -n "$JOBS" ]]; then
+  for JOB in $JOBS; do
+    AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
 
-  for AGENT in $AGENTS; do
-    SCHEDULE=$(yq -r ".jobs.$JOB.agents.$AGENT.schedule" workflows.yaml)
-    AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+    for AGENT in $AGENTS; do
+      SCHEDULE=$(yq -r ".jobs.$JOB.agents.$AGENT.schedule" workflows.yaml)
+      AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 
-    OUTPUT_FILE="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
+      OUTPUT_FILE="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
 
-    export AGENT JOB SCHEDULE AGENT_UPPER
-    envsubst < "$TEMPLATE" > "$OUTPUT_FILE"
+      export AGENT JOB SCHEDULE AGENT_UPPER
+      envsubst < "$TEMPLATE" > "$OUTPUT_FILE"
 
-    echo "Generated: ${AGENT}-${JOB}.yml"
+      echo "Generated: ${AGENT}-${JOB}.yml"
+    done
   done
-done
+fi
 
 # In check mode, diff against committed files
 if [[ "$CHECK_MODE" == "true" ]]; then
   DIFF_FOUND=false
 
-  for JOB in $JOBS; do
-    AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
-    for AGENT in $AGENTS; do
-      GENERATED="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
-      COMMITTED=".github/workflows/${AGENT}-${JOB}.yml"
+  # Check base templates
+  for BASE in agent-run.yml agent-message.yml; do
+    GENERATED="$OUTPUT_DIR/$BASE"
+    COMMITTED=".github/workflows/$BASE"
 
-      if [[ ! -f "$COMMITTED" ]]; then
-        echo "Missing: $COMMITTED"
-        DIFF_FOUND=true
-      elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
-        echo "Differs: $COMMITTED"
-        diff "$GENERATED" "$COMMITTED" || true
-        DIFF_FOUND=true
-      fi
-    done
+    if [[ ! -f "$COMMITTED" ]]; then
+      echo "Missing: $COMMITTED"
+      DIFF_FOUND=true
+    elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
+      echo "Differs: $COMMITTED"
+      diff "$GENERATED" "$COMMITTED" || true
+      DIFF_FOUND=true
+    fi
   done
+
+  # Check per-agent-job workflows
+  if [[ -n "$JOBS" ]]; then
+    for JOB in $JOBS; do
+      AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
+      for AGENT in $AGENTS; do
+        GENERATED="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
+        COMMITTED=".github/workflows/${AGENT}-${JOB}.yml"
+
+        if [[ ! -f "$COMMITTED" ]]; then
+          echo "Missing: $COMMITTED"
+          DIFF_FOUND=true
+        elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
+          echo "Differs: $COMMITTED"
+          diff "$GENERATED" "$COMMITTED" || true
+          DIFF_FOUND=true
+        fi
+      done
+    done
+  fi
 
   if [[ "$DIFF_FOUND" == "true" ]]; then
     echo ""
-    echo "Workflow files are out of sync with workflows.yaml"
-    echo "Run 'mise run workflows:generate' to regenerate"
+    echo "Workflow files are out of sync"
+    echo "Run 'shimmer workflows:generate' to regenerate"
     exit 1
   fi
 
   echo ""
-  echo "All workflow files match workflows.yaml"
+  echo "All workflow files are in sync"
 fi
