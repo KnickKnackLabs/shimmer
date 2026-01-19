@@ -10,7 +10,12 @@ cd "$TARGET_DIR"
 # Shimmer is always at ~/shimmer (where the global command lives)
 SHIMMER_DIR="$HOME/shimmer"
 
-TEMPLATE=".github/templates/agent-job.yml"
+# Use local template if exists, otherwise use shimmer's
+if [[ -f ".github/templates/agent-job.yml" ]]; then
+  TEMPLATE=".github/templates/agent-job.yml"
+else
+  TEMPLATE="$SHIMMER_DIR/.github/templates/agent-job.yml"
+fi
 OUTPUT_DIR=".github/workflows"
 CHECK_MODE="${usage_check:-false}"
 
