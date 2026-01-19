@@ -644,6 +644,11 @@ defmodule Cli do
 
       # Capture final result with usage data
       {:ok, %{"type" => "result"} = result} ->
+        # Print error message if present
+        if result["is_error"] && result["result"] do
+          IO.puts("ERROR: #{result["result"]}")
+        end
+
         %{state | usage: extract_usage(result)}
 
       _ ->
