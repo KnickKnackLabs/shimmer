@@ -50,9 +50,11 @@ echo "Health check:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Identity check
+# Identity check (env var or git config)
 if [ -n "$GIT_AUTHOR_EMAIL" ] && echo "$GIT_AUTHOR_EMAIL" | grep -q '@ricon.family'; then
   echo "  Identity:  ✓ $GIT_AUTHOR_EMAIL"
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  echo "  Identity:  ✓ $(git config user.email) (via git config)"
 else
   echo "  Identity:  ✗ not set (run: eval \$(shimmer as <agent>))"
 fi
