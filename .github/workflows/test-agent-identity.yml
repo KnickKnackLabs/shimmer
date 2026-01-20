@@ -22,18 +22,20 @@ jobs:
         with:
           token: ${{ secrets[format('{0}_GITHUB_PAT', steps.upper.outputs.agent)] }}
 
+      - name: Set up mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
       - name: Setup GPG
         env:
           GPG_PRIVATE_KEY: ${{ secrets[format('{0}_GPG_PRIVATE_KEY', steps.upper.outputs.agent)] }}
+        run: mise run gpg:setup ${{ inputs.agent }}
+
+      - name: Configure git identity
         run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-
-          KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "${AGENT}@ricon.family" | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-
           git config --global user.name "$AGENT"
           git config --global user.email "${AGENT}@ricon.family"
-          git config --global user.signingkey "$KEY_ID"
-          git config --global commit.gpgsign true
 
       - name: Make test commit
         run: |
