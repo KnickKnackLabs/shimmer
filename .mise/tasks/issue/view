@@ -15,5 +15,13 @@ TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
 REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
 
-# Get issue details with comments
-gh issue view "$ISSUE" --repo "$REPO" --comments
+# Show issue body first, then comments
+gh issue view "$ISSUE" --repo "$REPO"
+
+# Show comments if any exist
+COMMENT_COUNT=$(gh issue view "$ISSUE" --repo "$REPO" --json comments --jq '.comments | length')
+if [[ "$COMMENT_COUNT" -gt 0 ]]; then
+  echo ""
+  echo "--- Comments ---"
+  gh issue view "$ISSUE" --repo "$REPO" --comments
+fi
