@@ -2,18 +2,21 @@
 #MISE description="Send a GPG-signed email"
 #USAGE arg "<to>" help="Recipient email address"
 #USAGE arg "<subject>" help="Email subject"
-#USAGE flag "-b --body <body>" help="Message body (or pipe via stdin)"
+#USAGE arg "[body]" help="Message body (optional, or use -b flag or stdin)"
+#USAGE flag "-b --body <body>" help="Message body (alternative to positional arg)"
 
 set -e
 
 TO="${usage_to:-$1}"
 SUBJECT="${usage_subject:-$2}"
-BODY="${usage_body:-}"
+# Body can come from: positional arg, -b flag, or stdin
+BODY="${usage_body:-${3:-}}"
 
 if [ -z "$TO" ] || [ -z "$SUBJECT" ]; then
-  echo "Usage: shimmer email:send <to> <subject> [--body <message>]"
+  echo "Usage: shimmer email:send <to> <subject> [body]"
   echo ""
   echo "Examples:"
+  echo "  shimmer email:send admin@ricon.family 'Question' 'Hello!'"
   echo "  shimmer email:send admin@ricon.family 'Question' --body 'Hello!'"
   echo "  echo 'Hello!' | shimmer email:send admin@ricon.family 'Question'"
   echo ""

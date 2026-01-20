@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 #MISE description="Reply to an email message"
 #USAGE arg "<id>" help="Message ID to reply to"
-#USAGE flag "-b --body <body>" help="Reply body (or pipe via stdin)"
+#USAGE arg "[body]" help="Reply body (optional, or use -b flag or stdin)"
+#USAGE flag "-b --body <body>" help="Reply body (alternative to positional arg)"
 
 set -e
 
 ID="${usage_id:-$1}"
-BODY="${usage_body:-}"
+# Body can come from: positional arg, -b flag, or stdin
+BODY="${usage_body:-${2:-}}"
 
 if [ -z "$ID" ]; then
-  echo "Usage: shimmer email:reply <id> [--body <message>]"
+  echo "Usage: shimmer email:reply <id> [body]"
   echo ""
   echo "Examples:"
+  echo "  shimmer email:reply 42 'Thanks for the info!'"
   echo "  shimmer email:reply 42 --body 'Thanks for the info!'"
   echo "  echo 'Thanks!' | shimmer email:reply 42"
   echo ""

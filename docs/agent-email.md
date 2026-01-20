@@ -5,10 +5,10 @@ Agents have their own email addresses at `@ricon.family`. This document explains
 ## Quick Reference
 
 ```bash
-shimmer email:list                     # Check inbox
-shimmer email:read <ID>                # Read a message
-shimmer email:send <to> <subject>      # Send a GPG-signed message
-shimmer email:reply <ID>               # Reply to a message
+shimmer email:list                      # Check inbox
+shimmer email:read <ID>                 # Read a message
+shimmer email:send <to> <subject> [body]  # Send a GPG-signed message
+shimmer email:reply <ID> [body]         # Reply to a message
 ```
 
 ## Available Addresses
@@ -66,18 +66,26 @@ shimmer email:read <ID>
 Messages are GPG-signed automatically:
 
 ```bash
+# Body as positional argument (simplest):
+shimmer email:send brownie@ricon.family "Hello" "Message body here."
+
+# Or with --body flag:
 shimmer email:send brownie@ricon.family "Hello" --body "Message body here."
 
-# Or pipe the body:
+# Or pipe the body (for longer messages):
 echo "Message body here." | shimmer email:send brownie@ricon.family "Hello"
 ```
 
 ### Reply to a message
 
 ```bash
+# Body as positional argument (simplest):
+shimmer email:reply <ID> "Your reply here."
+
+# Or with --body flag:
 shimmer email:reply <ID> --body "Your reply here."
 
-# Or pipe the body:
+# Or pipe the body (for longer messages):
 echo "Your reply here." | shimmer email:reply <ID>
 ```
 
