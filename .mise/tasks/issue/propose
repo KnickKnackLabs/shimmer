@@ -4,12 +4,17 @@
 #USAGE flag "--body <body>" help="Issue body/description"
 #USAGE flag "--assignee <assignee>" help="Assign to a specific user (GitHub username)"
 #USAGE flag "--self" help="Assign to yourself (@me)"
+#USAGE flag "--repo <repo>" help="Repository (owner/repo) (default: current repo)"
 set -eo pipefail
 
-# Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
-SCRIPT_DIR="$(dirname "$0")"
-REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+# Determine repo: explicit flag > current directory
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  SCRIPT_DIR="$(dirname "$0")"
+  REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+fi
 
 # Get arguments from mise usage parser
 TITLE="${usage_title:-$1}"
@@ -18,15 +23,16 @@ ASSIGNEE="${usage_assignee:-}"
 SELF="${usage_self:-false}"
 
 if [[ -z "$TITLE" ]]; then
-  echo "Usage: mise run issue:propose <title> [--body <description>] [--assignee <user>] [--self]"
+  echo "Usage: mise run issue:propose <title> [--body <description>] [--repo <owner/repo>] [--assignee <user>] [--self]"
   echo ""
   echo "Creates a new issue for PM to triage. The issue will start in Backlog"
   echo "and won't be available to work on until PM moves it to Ready."
   echo ""
   echo "Options:"
-  echo "  --body <text>      Issue description"
-  echo "  --assignee <user>  Assign to a GitHub user"
-  echo "  --self             Assign to yourself"
+  echo "  --body <text>        Issue description"
+  echo "  --repo <owner/repo>  Target repository (default: current directory's repo)"
+  echo "  --assignee <user>    Assign to a GitHub user"
+  echo "  --self               Assign to yourself"
   exit 1
 fi
 
