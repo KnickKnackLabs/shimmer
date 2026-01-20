@@ -1,0 +1,86 @@
+#!/bin/bash
+#MISE description="Create a pull request"
+#USAGE arg "[title]" help="PR title (default: first commit message)"
+#USAGE flag "--body <body>" help="PR body (supports markdown)"
+#USAGE flag "--draft" help="Create as draft PR"
+#USAGE flag "--base <base>" help="Base branch (default: repo default)"
+#USAGE flag "--issue <issue>" help="Link to issue number (adds 'Fixes #N')"
+set -eo pipefail
+
+# Determine target directory and repo
+TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+SCRIPT_DIR="$(dirname "$0")"
+REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+
+# Get arguments from mise usage parser
+TITLE="${usage_title:-$1}"
+BODY="${usage_body:-}"
+DRAFT="${usage_draft:-false}"
+BASE="${usage_base:-}"
+ISSUE="${usage_issue:-}"
+
+# Change to target directory for git operations
+cd "$TARGET_DIR"
+
+# Get current branch
+CURRENT_BRANCH=$(git branch --show-current)
+
+# Check if we're on main/master
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+  echo "Error: Cannot create PR from $CURRENT_BRANCH branch"
+  echo "Create a feature branch first: git checkout -b <branch-name>"
+  exit 1
+fi
+
+# Check for unpushed commits
+if ! git rev-parse --verify "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
+  echo "Pushing branch to origin..."
+  git push -u origin "$CURRENT_BRANCH"
+elif [[ -n $(git log "origin/$CURRENT_BRANCH..$CURRENT_BRANCH" 2>/dev/null) ]]; then
+  echo "Pushing commits to origin..."
+  git push
+fi
+
+# If no title provided, use first commit message on this branch
+if [[ -z "$TITLE" ]]; then
+  DEFAULT_BRANCH=$(gh repo view "$REPO" --json defaultBranchRef --jq '.defaultBranchRef.name')
+  TITLE=$(git log --format="%s" "$DEFAULT_BRANCH..$CURRENT_BRANCH" | tail -1)
+  if [[ -z "$TITLE" ]]; then
+    echo "Error: No title provided and no commits found on branch"
+    echo "Usage: shimmer pr:create [title] [--body <description>] [--issue <number>]"
+    exit 1
+  fi
+fi
+
+# Build PR body
+PR_BODY=""
+
+# If issue is linked, start with "Fixes #N"
+if [[ -n "$ISSUE" ]]; then
+  PR_BODY="Fixes #$ISSUE"$'\n\n'
+fi
+
+# Add user-provided body or auto-generate summary
+if [[ -n "$BODY" ]]; then
+  PR_BODY+="$BODY"
+else
+  # Auto-generate from commits
+  DEFAULT_BRANCH=$(gh repo view "$REPO" --json defaultBranchRef --jq '.defaultBranchRef.name')
+  COMMITS=$(git log --format="- %s" "$DEFAULT_BRANCH..$CURRENT_BRANCH" 2>/dev/null | head -10)
+  if [[ -n "$COMMITS" && $(echo "$COMMITS" | wc -l) -gt 1 ]]; then
+    PR_BODY+="## Changes"$'\n\n'"$COMMITS"
+  fi
+fi
+
+# Add standard footer
+PR_BODY+=$'\n\n'"---"$'\n'"Generated with [Claude Code](https://claude.com/claude-code)"
+
+# Create the PR
+PR_URL=$(gh pr create --repo "$REPO" --title "$TITLE" --body "$PR_BODY" ${DRAFT:+--draft} ${BASE:+--base "$BASE"})
+
+echo "$PR_URL"
+echo ""
+echo "PR created: $TITLE"
+if [[ -n "$ISSUE" ]]; then
+  echo "Linked issue: #$ISSUE"
+fi
