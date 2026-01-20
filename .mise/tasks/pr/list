@@ -1,7 +1,7 @@
 #!/bin/bash
 #MISE description="List open pull requests for review"
 #USAGE flag "--all" help="Show all open PRs (default: prioritized for review)"
-#USAGE flag "--repo <repo>" help="Repository (owner/repo) to list PRs from (default: current repo)"
+#USAGE flag "--repo <repo>" help="Repository (owner/repo) (default: current repo)"
 set -eo pipefail
 
 # Determine repo: explicit flag > current directory

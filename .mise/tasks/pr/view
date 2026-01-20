@@ -1,7 +1,7 @@
 #!/bin/bash
 #MISE description="View pull request details"
 #USAGE arg "<number>" help="PR number"
-#USAGE flag "--repo <repo>" help="Repository (owner/repo) to view PR from (default: current repo)"
+#USAGE flag "--repo <repo>" help="Repository (owner/repo) (default: current repo)"
 set -eo pipefail
 
 PR="${usage_number:-$1}"
