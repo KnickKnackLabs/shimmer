@@ -1,19 +1,24 @@
 #!/bin/bash
 #MISE description="View issue with all comments"
 #USAGE arg "<number>" help="Issue number"
+#USAGE flag "--repo <repo>" help="Repository (owner/repo) (default: current repo)"
 set -eo pipefail
 
 ISSUE="${usage_number:-$1}"
 
 if [[ -z "$ISSUE" ]]; then
-  echo "Usage: mise run issue:view <number>"
+  echo "Usage: mise run issue:view <number> [--repo <owner/repo>]"
   exit 1
 fi
 
-# Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
-SCRIPT_DIR="$(dirname "$0")"
-REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+# Determine repo: explicit flag > current directory
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  SCRIPT_DIR="$(dirname "$0")"
+  REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+fi
 
 # Show issue body first, then comments
 gh issue view "$ISSUE" --repo "$REPO"

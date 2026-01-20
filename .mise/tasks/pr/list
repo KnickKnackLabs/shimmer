@@ -1,12 +1,17 @@
 #!/bin/bash
 #MISE description="List open pull requests for review"
 #USAGE flag "--all" help="Show all open PRs (default: prioritized for review)"
+#USAGE flag "--repo <repo>" help="Repository (owner/repo) (default: current repo)"
 set -eo pipefail
 
-# Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
-SCRIPT_DIR="$(dirname "$0")"
-REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+# Determine repo: explicit flag > current directory
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  SCRIPT_DIR="$(dirname "$0")"
+  REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+fi
 
 SHOW_ALL="${usage_all:-false}"
 NOW=$(date +%s)
