@@ -3,8 +3,6 @@
 
 set -e
 
-cd cli
-
 echo "=== Running tests ==="
 mix test
 

@@ -4,8 +4,6 @@
 
 set -e
 
-cd cli
-
 if [ "$usage_fix" = "true" ]; then
   mix format
 else

@@ -5,10 +5,13 @@ defmodule Cli.MixProject do
     [
       app: :cli,
       version: "0.1.0",
+      build_path: "../../_build",
+      config_path: "../../config/config.exs",
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
-      deps: deps(),
-      releases: releases()
+      deps: deps()
     ]
   end
 
@@ -31,22 +34,6 @@ defmodule Cli.MixProject do
       {:jason, "~> 1.4"},
       {:burrito, "~> 1.5", only: :prod},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
-    ]
-  end
-
-  # Burrito release configuration for multi-platform builds
-  defp releases do
-    [
-      shimmer: [
-        steps: [:assemble, &Burrito.wrap/1],
-        burrito: [
-          targets: [
-            linux_x86_64: [os: :linux, cpu: :x86_64],
-            linux_arm64: [os: :linux, cpu: :aarch64],
-            darwin_arm64: [os: :darwin, cpu: :aarch64]
-          ]
-        ]
-      ]
     ]
   end
 end

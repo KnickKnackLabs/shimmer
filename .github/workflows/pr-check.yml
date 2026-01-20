@@ -46,29 +46,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            cli/_build
-            cli/deps
-          key: ${{ runner.os }}-elixir-${{ hashFiles('cli/mix.lock') }}
+            _build
+            deps
+          key: ${{ runner.os }}-elixir-${{ hashFiles('mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-elixir-
 
       - name: Install dependencies
         run: |
-          cd cli
           mix local.hex --force
           mix deps.get
 
       - name: Run tests
-        run: |
-          cd cli
-          mix test
+        run: mix test
 
       - name: Check formatting
-        run: |
-          cd cli
-          mix format --check-formatted
+        run: mix format --check-formatted
 
       - name: Run Credo linter
-        run: |
-          cd cli
-          mix credo
+        run: mix credo

@@ -3,5 +3,4 @@
 
 set -e
 
-cd cli
 mix credo "$@"
