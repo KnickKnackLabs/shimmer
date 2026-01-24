@@ -52,7 +52,7 @@ jobs:
         run: |
           cd cli/burrito_out
           chmod +x shimmer_${{ matrix.target }}
-          ./shimmer_${{ matrix.target }} --version
+          ./shimmer_${{ matrix.target }} --help
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
