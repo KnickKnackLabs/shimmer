@@ -32,5 +32,8 @@ if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/
   exit 1
 fi
 
-himalaya message move -a "$AGENT" "$ID" Archive
+# Create Archive folder if it doesn't exist
+himalaya folder create -a "$AGENT" Archive 2>/dev/null || true
+
+himalaya message move -a "$AGENT" Archive "$ID"
 echo "Archived message $ID"
