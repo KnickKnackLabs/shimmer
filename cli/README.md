@@ -1,72 +1,56 @@
 # CLI
 
-Elixir CLI that invokes Claude Code with agent-specific system prompts.
+Thin Elixir wrapper that invokes Claude Code with a system prompt.
 
 ## Overview
 
 This CLI is a streaming JSON client for Claude Code. It:
 
-- Loads agent-specific system prompts from `priv/prompts/`
+- Reads a system prompt from a file (`--system-prompt-file`)
 - Executes Claude via Port with configurable timeout
 - Streams output in real-time, showing tool invocations with formatted inputs
 - Supports optional context logging via a proxy
 
+**Important:** This CLI does not do agent/job lookup. It expects a ready-to-use system prompt file. Agent and job discovery is handled by the `agent:run` mise task, which composes prompts and calls this CLI.
+
 ## Usage
 
-Run via the Mix task. Requires `--agent` and `--timeout`:
-
 ```bash
-# Run with an agent and job (timeout in seconds)
-mix shimmer --agent quick --job probe --timeout 540 "Explore the codebase"
+# Direct usage (rare - usually called via mise run agent:run)
+shimmer --system-prompt-file /tmp/prompt.txt --timeout 300 "Your message"
+
+# With optional agent name for logging
+shimmer --system-prompt-file ./prompt.txt --agent quick --timeout 600 "Explore"
 
 # Enable context logging (starts claude-code-logger proxy)
-mix shimmer --agent brownie --job critic --timeout 540 --log-context "Find something to critique"
+shimmer --system-prompt-file ./prompt.txt --timeout 540 --log-context "Debug this"
 ```
 
-## Agent Prompt System
-
-System prompts are composed from two optional files:
-
-1. `priv/prompts/agents/<name>.txt` - Agent-specific identity
-2. `priv/prompts/jobs/<job>.txt` - Job-specific instructions (via `--job` flag)
-
-When an agent runs, available files are concatenated to form the system prompt.
-
-Common instructions (workspace, communication, workflow, etc.) are in the repo's `CLAUDE.md`, which Claude Code reads automatically.
-
-### Available Jobs
-
-| Job | Purpose |
-|-----|---------|
-| `activity-digest` | Generate and send a weekly activity digest email |
-| `cleanup` | Clean up after merged PRs and hunt for stale branches |
-| `critic` | Find ONE thing in the codebase that could be better, create an issue |
-| `discuss` | Participate in design discussions on GitHub issues |
-| `failure-analysis` | Analyze failed agent runs, identify root causes |
-| `pr-followup` | Find PRs where agents haven't responded to feedback |
-| `probe` | Explore codebase, find improvements, implement them |
-| `project-manager` | Maintain project boards and help agents find high-value work |
-| `readme` | Tend the README and documentation |
-| `runs-retro` | Review daily agent runs, identify patterns |
-| `scan-secrets` | Scan git history for secrets, report findings via email |
-| `triage` | Review open PRs/issues, coordinate via Matrix to get things merged |
-
-### Adding a new agent
-
-1. Create `priv/prompts/agents/<name>.txt` with agent identity
-2. Create or reuse a job in `priv/prompts/jobs/`
-3. Create a workflow in `.github/workflows/<agent>-<job>.yml` that calls `agent-run.yml` (see existing workflows for the pattern)
-4. Run with `--agent <name> --job <job>`
+Most agent runs go through `mise run agent:run`, which handles:
+1. Finding agent identity prompts (from repo's `agents/` directory)
+2. Finding job prompts (from repo's `.jobs/` directory)
+3. Composing these into a temp file
+4. Calling this CLI with `--system-prompt-file`
 
 ## Configuration
 
 | Option | Description |
 |--------|-------------|
-| `--agent <name>` | Required. Specifies which agent prompt to load |
-| `--job <name>` | Optional. Specifies a job prompt to append from `priv/prompts/jobs/` |
-| `--timeout <seconds>` | Required. Timeout in seconds for the Claude command |
-| `--model <model>` | Optional. Claude model to use (default: `claude-opus-4-5-20251101`) |
+| `--system-prompt-file <path>` | Required. Path to system prompt file |
+| `--timeout <seconds>` | Required. Timeout in seconds for Claude |
+| `--agent <name>` | Optional. Agent name for logging (display only) |
+| `--passphrase <phrase>` | Optional. Admin override passphrase (injected into prompt) |
+| `--model <model>` | Optional. Claude model (default: `claude-opus-4-5-20251101`) |
 | `--log-context` | Enables context logging via claude-code-logger proxy |
+
+## Adding a New Agent
+
+Agent identities live in the consuming repo's `agents/` directory (e.g., `fold/agents/c0da.txt`). Jobs live in `.jobs/` (e.g., `grow-heal-love/.jobs/referral-check.txt`).
+
+To add a new agent:
+1. Create `agents/<name>.txt` with agent identity
+2. Create or reuse jobs in `.jobs/`
+3. Run via `mise run agent:run --agent <name> --job <job>`
 
 ## Timeout
 
