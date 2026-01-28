@@ -2,42 +2,42 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ricon-family/shimmer/workflows.schema.json",
   "title": "Workflow Configuration",
-  "description": "Defines jobs, their agent assignments, and schedules for workflow generation",
+  "description": "Defines scheduled agent workflows for workflow generation",
 
   "type": "object",
-  "required": ["jobs"],
+  "required": ["workflows"],
   "properties": {
-    "jobs": {
-      "type": "object",
-      "description": "Map of job names to their configuration",
-      "additionalProperties": { "$ref": "#/$defs/job" }
+    "workflows": {
+      "type": "array",
+      "description": "List of scheduled workflows",
+      "items": { "$ref": "#/$defs/workflow" }
     }
   },
 
   "$defs": {
-    "job": {
-      "title": "Job",
-      "description": "Configuration for a job type",
+    "workflow": {
+      "title": "Workflow",
+      "description": "A scheduled agent workflow",
       "type": "object",
-      "required": ["agents"],
+      "required": ["name", "agent", "schedule", "message"],
       "properties": {
-        "agents": {
-          "type": "object",
-          "description": "Map of agent names to their assignment configuration",
-          "additionalProperties": { "$ref": "#/$defs/assignment" }
-        }
-      }
-    },
-
-    "assignment": {
-      "title": "Assignment",
-      "description": "Configuration for an agent's job assignment",
-      "type": "object",
-      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Workflow name (used for filename: <name>.yml)",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "agent": {
+          "type": "string",
+          "description": "Agent to run (e.g., c0da, quick)"
+        },
         "schedule": {
           "type": "string",
           "description": "Cron expression (e.g., '0 */4 * * *' for every 4 hours)",
           "pattern": "^[0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+ [0-9*,/-]+$"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message/instruction for the agent"
         }
       }
     }

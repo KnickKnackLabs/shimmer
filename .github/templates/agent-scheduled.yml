@@ -1,22 +1,16 @@
-name: ${AGENT}-${JOB}
+name: ${NAME}
 
 on:
   schedule:
     - cron: '${SCHEDULE}'
   workflow_dispatch:
-    inputs:
-      message:
-        description: 'Message'
-        required: false
-        type: string
 
 jobs:
   run:
     uses: ./.github/workflows/agent-run.yml
     with:
       agent: ${AGENT}
-      job: ${JOB}
-      message: ${{ github.event.inputs.message }}
+      message: ${MESSAGE}
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       AGENT_GITHUB_PAT: ${{ secrets.${AGENT_UPPER}_GITHUB_PAT }}

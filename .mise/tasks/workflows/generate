@@ -11,10 +11,10 @@ cd "$TARGET_DIR"
 SHIMMER_DIR="$HOME/shimmer"
 
 # Use local template if exists, otherwise use shimmer's
-if [[ -f ".github/templates/agent-job.yml" ]]; then
-  TEMPLATE=".github/templates/agent-job.yml"
+if [[ -f ".github/templates/agent-scheduled.yml" ]]; then
+  TEMPLATE=".github/templates/agent-scheduled.yml"
 else
-  TEMPLATE="$SHIMMER_DIR/.github/templates/agent-job.yml"
+  TEMPLATE="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
 fi
 OUTPUT_DIR=".github/workflows"
 CHECK_MODE="${usage_check:-false}"
@@ -35,25 +35,28 @@ echo "Generated: agent-run.yml"
 cp "$SHIMMER_DIR/.github/templates/agent-message.yml" "$OUTPUT_DIR/agent-message.yml"
 echo "Generated: agent-message.yml"
 
-# Read jobs and agents from manifest
-JOBS=$(yq -r '.jobs | keys | .[]' workflows.yaml 2>/dev/null || echo "")
+# Read workflows from manifest
+WORKFLOW_COUNT=$(yq -r '.workflows | length' workflows.yaml 2>/dev/null || echo "0")
 
-# Generate per-agent-job scheduled workflows (if workflows.yaml exists and has jobs)
-if [[ -n "$JOBS" ]]; then
-  for JOB in $JOBS; do
-    AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
+# Generate scheduled workflows (if workflows.yaml exists and has workflows)
+if [[ "$WORKFLOW_COUNT" -gt 0 ]]; then
+  for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
+    NAME=$(yq -r ".workflows[$i].name" workflows.yaml)
+    AGENT=$(yq -r ".workflows[$i].agent" workflows.yaml)
+    SCHEDULE=$(yq -r ".workflows[$i].schedule" workflows.yaml)
+    MESSAGE=$(yq -r ".workflows[$i].message" workflows.yaml)
+    AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 
-    for AGENT in $AGENTS; do
-      SCHEDULE=$(yq -r ".jobs.$JOB.agents.$AGENT.schedule" workflows.yaml)
-      AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+    OUTPUT_FILE="$OUTPUT_DIR/${NAME}.yml"
 
-      OUTPUT_FILE="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
+    # Export for envsubst, using temp file for message to handle special chars
+    export NAME AGENT SCHEDULE AGENT_UPPER
 
-      export AGENT JOB SCHEDULE AGENT_UPPER
-      envsubst < "$TEMPLATE" > "$OUTPUT_FILE"
+    # Use sed to replace MESSAGE separately (envsubst doesn't handle multiline well)
+    envsubst '${NAME} ${AGENT} ${SCHEDULE} ${AGENT_UPPER}' < "$TEMPLATE" | \
+      sed "s|\${MESSAGE}|$MESSAGE|g" > "$OUTPUT_FILE"
 
-      echo "Generated: ${AGENT}-${JOB}.yml"
-    done
+    echo "Generated: ${NAME}.yml"
   done
 fi
 
@@ -76,23 +79,21 @@ if [[ "$CHECK_MODE" == "true" ]]; then
     fi
   done
 
-  # Check per-agent-job workflows
-  if [[ -n "$JOBS" ]]; then
-    for JOB in $JOBS; do
-      AGENTS=$(yq -r ".jobs.$JOB.agents | keys | .[]" workflows.yaml)
-      for AGENT in $AGENTS; do
-        GENERATED="$OUTPUT_DIR/${AGENT}-${JOB}.yml"
-        COMMITTED=".github/workflows/${AGENT}-${JOB}.yml"
+  # Check scheduled workflows
+  if [[ "$WORKFLOW_COUNT" -gt 0 ]]; then
+    for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
+      NAME=$(yq -r ".workflows[$i].name" workflows.yaml)
+      GENERATED="$OUTPUT_DIR/${NAME}.yml"
+      COMMITTED=".github/workflows/${NAME}.yml"
 
-        if [[ ! -f "$COMMITTED" ]]; then
-          echo "Missing: $COMMITTED"
-          DIFF_FOUND=true
-        elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
-          echo "Differs: $COMMITTED"
-          diff "$GENERATED" "$COMMITTED" || true
-          DIFF_FOUND=true
-        fi
-      done
+      if [[ ! -f "$COMMITTED" ]]; then
+        echo "Missing: $COMMITTED"
+        DIFF_FOUND=true
+      elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
+        echo "Differs: $COMMITTED"
+        diff "$GENERATED" "$COMMITTED" || true
+        DIFF_FOUND=true
+      fi
     done
   fi
 
