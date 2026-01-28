@@ -33,12 +33,12 @@ if [ "$UNREAD" = "true" ]; then
 fi
 
 # List envelopes with account selection
-OUTPUT=$(himalaya envelope list -a "$AGENT" -w 120 $QUERY 2>/dev/null)
+OUTPUT=$(himalaya envelope list -a "$AGENT" -w 120 --page-size "$LIMIT" $QUERY 2>/dev/null)
 
 if [ "$COUNT_ONLY" = "true" ]; then
-  # Count lines, skipping 2 header rows
-  echo "$OUTPUT" | tail -n +3 | wc -l | tr -d ' '
+  # Count lines, skipping 3 header rows (blank + column headers + separator)
+  echo "$OUTPUT" | tail -n +4 | wc -l | tr -d ' '
 else
-  # Add 2 to limit to account for header rows, then use head
-  echo "$OUTPUT" | head -$((LIMIT + 2))
+  # Add 3 to limit to account for header rows (blank + column headers + separator)
+  echo "$OUTPUT" | head -$((LIMIT + 3))
 fi
