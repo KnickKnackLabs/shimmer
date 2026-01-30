@@ -7,13 +7,18 @@
 #USAGE flag "--no-cache" help="Force re-fetch of logs"
 #USAGE flag "--info" help="Show log metadata (total lines, jobs) without content"
 #USAGE flag "--agent" help="Show only the agent session (between markers)"
+#USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
 
 set -e
 
-# Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
-SCRIPT_DIR="$(dirname "$0")"
-REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+# Determine repo - use --repo flag if provided, otherwise detect from directory
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  SCRIPT_DIR="$(dirname "$0")"
+  REPO=$("$SCRIPT_DIR/../pm/_get-repo" "$TARGET_DIR")
+fi
 
 # Get values from mise usage variables
 RUN_ID_ARG="${usage_run_id:-}"
@@ -25,7 +30,7 @@ INFO_ONLY="${usage_info:-false}"
 AGENT_ONLY="${usage_agent:-false}"
 
 if [[ -z "$RUN_ID_ARG" ]]; then
-  echo "Usage: ci:logs <run_id> [--offset N] [--limit N] [--tail] [--info] [--agent]"
+  echo "Usage: ci:logs <run_id> [--repo owner/name] [--offset N] [--limit N] [--tail] [--info] [--agent]"
   exit 1
 fi
 
