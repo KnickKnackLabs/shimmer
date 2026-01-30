@@ -38,6 +38,15 @@
         "message": {
           "type": "string",
           "description": "Message/instruction for the agent"
+        },
+        "model": {
+          "type": "string",
+          "description": "Claude model to use (defaults to opus if not specified)",
+          "enum": [
+            "claude-opus-4-5-20251101",
+            "claude-sonnet-4-5-20250929",
+            "claude-haiku-4-5-20251001"
+          ]
         }
       }
     }

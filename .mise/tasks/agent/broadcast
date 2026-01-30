@@ -3,6 +3,7 @@
 #USAGE arg "<message>" help="Message for all agents"
 #USAGE flag "-s --stagger <seconds>" help="Seconds to wait between agents (default: 30)"
 #USAGE flag "--dry-run" help="Show what would be done without triggering"
+#USAGE flag "--model <model>" help="Claude model to use"
 
 set -e
 
@@ -61,6 +62,7 @@ fi
 MESSAGE="$1"
 STAGGER="${usage_stagger:-30}"
 DRY_RUN="${usage_dry_run:-false}"
+MODEL="${usage_model:-}"
 WORKFLOW="agent-message.yml"
 REPO=$(get_repo)
 
@@ -84,11 +86,16 @@ for AGENT in $AGENTS; do
     fi
   fi
 
+  MODEL_ARG=""
+  if [ -n "$MODEL" ]; then
+    MODEL_ARG="-f model=$MODEL"
+  fi
+
   if [ "$DRY_RUN" = "true" ]; then
     echo "[dry-run] Would message: $AGENT"
   else
     echo "Messaging: $AGENT"
-    gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE"
+    gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $MODEL_ARG
   fi
 done
 

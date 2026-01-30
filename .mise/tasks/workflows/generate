@@ -45,16 +45,22 @@ if [[ "$WORKFLOW_COUNT" -gt 0 ]]; then
     AGENT=$(yq -r ".workflows[$i].agent" workflows.yaml)
     SCHEDULE=$(yq -r ".workflows[$i].schedule" workflows.yaml)
     MESSAGE=$(yq -r ".workflows[$i].message" workflows.yaml)
+    MODEL=$(yq -r ".workflows[$i].model // \"\"" workflows.yaml)
     AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 
     OUTPUT_FILE="$OUTPUT_DIR/${NAME}.yml"
 
     # Export for envsubst, using temp file for message to handle special chars
-    export NAME AGENT SCHEDULE AGENT_UPPER
+    export NAME AGENT SCHEDULE AGENT_UPPER MODEL
 
     # Use sed to replace MESSAGE separately (envsubst doesn't handle multiline well)
-    envsubst '${NAME} ${AGENT} ${SCHEDULE} ${AGENT_UPPER}' < "$TEMPLATE" | \
+    envsubst '${NAME} ${AGENT} ${SCHEDULE} ${AGENT_UPPER} ${MODEL}' < "$TEMPLATE" | \
       sed "s|\${MESSAGE}|$MESSAGE|g" > "$OUTPUT_FILE"
+
+    # Remove empty model line if no model specified
+    if [[ -z "$MODEL" ]]; then
+      sed -i '' '/^      model: *$/d' "$OUTPUT_FILE"
+    fi
 
     echo "Generated: ${NAME}.yml"
   done

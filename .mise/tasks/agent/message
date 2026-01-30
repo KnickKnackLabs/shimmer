@@ -2,6 +2,7 @@
 #MISE description="Send a message to an agent (wakes them without a specific job)"
 #USAGE arg "<agent>" help="Agent to message (e.g., quick, brownie)"
 #USAGE arg "<message>" help="Message for the agent"
+#USAGE flag "--model <model>" help="Claude model to use"
 
 set -e
 
@@ -55,6 +56,7 @@ fi
 
 AGENT="$1"
 MESSAGE="$2"
+MODEL="${usage_model:-}"
 REPO=$(get_repo)
 WORKFLOW="agent-message.yml"
 
@@ -65,7 +67,12 @@ if ! get_agents | grep -qx "$AGENT"; then
   exit 1
 fi
 
-gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE"
+MODEL_ARG=""
+if [ -n "$MODEL" ]; then
+  MODEL_ARG="-f model=$MODEL"
+fi
+
+gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $MODEL_ARG
 
 echo "Sent message to $AGENT on $REPO"
 

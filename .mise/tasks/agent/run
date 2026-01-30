@@ -6,6 +6,7 @@
 #USAGE flag "--passphrase <phrase>" help="Admin override passphrase"
 #USAGE flag "--system-prompt-file <file>" help="Path to system prompt file"
 #USAGE flag "--job <job>" help="Job name (used to find job prompt)"
+#USAGE flag "--model <model>" help="Claude model to use"
 
 set -e
 
@@ -19,6 +20,7 @@ TIMEOUT="${usage_timeout:-540}"
 PASSPHRASE="${usage_passphrase:-}"
 SYSTEM_PROMPT_FILE="${usage_system_prompt_file:-}"
 JOB="${usage_job:-}"
+MODEL="${usage_model:-}"
 
 # Get the caller's directory (where shimmer was invoked from)
 CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
@@ -72,6 +74,10 @@ CLI_ARGS=(
 
 if [ -n "$PASSPHRASE" ]; then
   CLI_ARGS+=(--passphrase "$PASSPHRASE")
+fi
+
+if [ -n "$MODEL" ]; then
+  CLI_ARGS+=(--model "$MODEL")
 fi
 
 # Run the CLI
