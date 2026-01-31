@@ -1,0 +1,30 @@
+#!/bin/bash
+#MISE description="Find the agents directory for the current context"
+#MISE hide=true
+# Usage: AGENTS_DIR=$(.mise/tasks/_get-agents-dir [dir])
+#
+# Searches for an agents/ directory in this order:
+# 1. Target directory (or SHIMMER_CALLER_PWD, or current dir)
+# 2. Git repository root of that directory
+#
+# Returns the path to agents/ or fails with exit 1 if not found.
+
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TARGET_DIR="${1:-${SHIMMER_CALLER_PWD:-.}}"
+
+# Check target directory first
+if [ -d "$TARGET_DIR/agents" ]; then
+  echo "$TARGET_DIR/agents"
+  exit 0
+fi
+
+# Try git repository root
+if ROOT=$("$SCRIPT_DIR/_get-git-root" "$TARGET_DIR" 2>/dev/null) && [ -d "$ROOT/agents" ]; then
+  echo "$ROOT/agents"
+  exit 0
+fi
+
+echo "Error: No agents/ directory found in '$TARGET_DIR' or its git root" >&2
+exit 1

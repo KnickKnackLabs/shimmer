@@ -4,9 +4,14 @@
 
 set -e
 
-# Discover agents from prompt files (source of truth for agents)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Find agents directory
+AGENTS_DIR=$("$SCRIPT_DIR/_get-agents-dir") || exit 1
+
+# Discover agents from the agents directory
 get_agents() {
-  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+  ls "$AGENTS_DIR"/*.txt 2>/dev/null \
     | xargs -n1 basename \
     | sed 's/\.txt$//' \
     | sort
@@ -20,6 +25,7 @@ VAULT="Agents"
 if ! get_agents | grep -qx "$AGENT"; then
   echo "Unknown agent: $AGENT" >&2
   echo "Available agents: $(get_agents | tr '\n' ' ')" >&2
+  echo "Agents directory: $AGENTS_DIR" >&2
   exit 1
 fi
 
@@ -53,4 +59,4 @@ echo "export GIT_COMMITTER_NAME='$AGENT'"
 
 # Print info to stderr so it doesn't interfere with eval
 echo "# Agent identity set: $AGENT ($EMAIL)" >&2
-echo "# Verify with: mise run whoami" >&2
+echo "# Verify with: shimmer whoami" >&2

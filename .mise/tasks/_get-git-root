@@ -1,0 +1,18 @@
+#!/bin/bash
+#MISE description="Get the root of the git repository for a directory"
+#MISE hide=true
+# Usage: ROOT=$(.mise/tasks/_get-git-root [dir])
+#
+# Returns the git repository root for the given directory (or current dir).
+# Fails with exit 1 if not inside a git repository.
+
+set -eo pipefail
+
+TARGET_DIR="${1:-.}"
+
+if ROOT=$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null); then
+  echo "$ROOT"
+else
+  echo "Error: '$TARGET_DIR' is not inside a git repository" >&2
+  exit 1
+fi
