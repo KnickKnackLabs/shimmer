@@ -70,6 +70,7 @@ CLI_ARGS=(
   --system-prompt-file "$SYSTEM_PROMPT_FILE"
   --agent "$AGENT"
   --timeout "$TIMEOUT"
+  --cwd "$CALLER_DIR"
 )
 
 if [ -n "$PASSPHRASE" ]; then

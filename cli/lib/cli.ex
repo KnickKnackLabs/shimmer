@@ -68,6 +68,7 @@ defmodule Cli do
     timeout = opts[:timeout]
     agent = opts[:agent]
     model = opts[:model] || @default_model
+    cwd = opts[:cwd]
 
     print_header(opts, message, timeout, agent, model)
 
@@ -81,9 +82,9 @@ defmodule Cli do
         system_prompt = maybe_add_passphrase(base_prompt, opts[:passphrase])
 
         if opts[:log_context] do
-          run_with_logger(message, system_prompt, timeout, model)
+          run_with_logger(message, system_prompt, timeout, model, cwd)
         else
-          run_claude(message, [], system_prompt, timeout, model)
+          run_claude(message, [], system_prompt, timeout, model, cwd)
         end
     end
   end
@@ -118,6 +119,7 @@ defmodule Cli do
     if opts[:system_prompt_file], do: IO.puts("System prompt: #{opts[:system_prompt_file]}")
     if opts[:passphrase], do: IO.puts("Passphrase: [set]")
     IO.puts("Model: #{model}")
+    if opts[:cwd], do: IO.puts("Working dir: #{opts[:cwd]}")
     if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
   end
@@ -165,6 +167,7 @@ defmodule Cli do
           passphrase: :string,
           timeout: :integer,
           model: :string,
+          cwd: :string,
           help: :boolean
         ],
         aliases: [h: :help]
@@ -198,16 +201,18 @@ defmodule Cli do
       --agent <name>           Agent name for logging (optional, display only)
       --passphrase <phrase>    Admin override passphrase (injected into prompt)
       --model <model>          Claude model to use (default: claude-opus-4-5-20251101)
+      --cwd <path>             Working directory for claude (default: current dir)
       --log-context            Enable context logging via proxy
       -h, --help               Show this help message
 
     Examples:
       shimmer --system-prompt-file /tmp/prompt.txt --timeout 300 "Fix the bug"
       shimmer --system-prompt-file ./agent.txt --agent quick --timeout 600 "Explore"
+      shimmer --cwd /path/to/repo --system-prompt-file ./prompt.txt --timeout 300 "Work here"
     """)
   end
 
-  defp run_claude(message, env_extras, system_prompt, timeout, model) do
+  defp run_claude(message, env_extras, system_prompt, timeout, model, cwd) do
     # Build claude arguments - message and system prompt passed as positional params to avoid escaping
     system_prompt_args =
       case system_prompt do
@@ -236,10 +241,14 @@ defmodule Cli do
       |> Enum.map(&parse_env_extra/1)
       |> Enum.reject(&is_nil/1)
 
+    # Build port options, including working directory if specified
+    port_opts = [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
+    port_opts = if cwd, do: [{:cd, cwd} | port_opts], else: port_opts
+
     port =
       Port.open(
         {:spawn_executable, "/bin/sh"},
-        [:binary, :exit_status, :stderr_to_stdout, {:args, args}, {:env, env}]
+        port_opts
       )
 
     status =
@@ -262,11 +271,11 @@ defmodule Cli do
     status
   end
 
-  defp run_with_logger(message, system_prompt, timeout, model) do
+  defp run_with_logger(message, system_prompt, timeout, model, cwd) do
     # Find an available port to avoid collision with other shimmer instances (issue #398)
     case find_available_port() do
       {:ok, logger_port_num} ->
-        run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num)
+        run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num, cwd)
 
       {:error, :no_port_available} ->
         IO.puts("ERROR: Could not find available port for logger")
@@ -274,7 +283,7 @@ defmodule Cli do
     end
   end
 
-  defp run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num) do
+  defp run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num, cwd) do
     # Use microseconds + random suffix to avoid collision when multiple CLI processes start close together
     random_suffix = :rand.uniform(0xFFFF) |> Integer.to_string(16) |> String.pad_leading(4, "0")
     log_file = "/tmp/claude-context-#{:os.system_time(:microsecond)}-#{random_suffix}.log"
@@ -305,7 +314,8 @@ defmodule Cli do
               ["ANTHROPIC_BASE_URL=http://localhost:#{logger_port_num}"],
               system_prompt,
               timeout,
-              model
+              model,
+              cwd
             )
 
           # Show context log to user (the purpose of --log-context)
