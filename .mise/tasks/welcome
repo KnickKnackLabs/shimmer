@@ -19,12 +19,10 @@ SHIMMER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 echo ""
 if [ -n "$AGENT" ]; then
   echo "Welcome, $AGENT!"
-  echo ""
-  echo "You are ${AGENT}@ricon.family. Your commits are signed with GPG."
 else
   echo "Welcome!"
   echo ""
-  echo "⚠ No agent identity detected."
+  echo "  No agent identity detected."
   echo "  Run: eval \$(shimmer as <agent>)"
 fi
 
@@ -50,21 +48,48 @@ echo "Health check:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+# Helper for consistent formatting
+# Usage: print_status "Label" "✓|✗" "status text" ["hint"]
+print_status() {
+  local label="$1"
+  local check="$2"
+  local status="$3"
+  local hint="${4:-}"
+
+  if [ -n "$hint" ]; then
+    printf "  %-9s %s %-18s %s\n" "$label:" "$check" "$status" "→ $hint"
+  else
+    printf "  %-9s %s %s\n" "$label:" "$check" "$status"
+  fi
+}
+
 # Identity check (env var or git config)
 if [ -n "$GIT_AUTHOR_EMAIL" ] && echo "$GIT_AUTHOR_EMAIL" | grep -q '@ricon.family'; then
-  echo "  Identity:  ✓ $GIT_AUTHOR_EMAIL"
+  print_status "Identity" "✓" "$GIT_AUTHOR_EMAIL"
 elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  echo "  Identity:  ✓ $(git config user.email) (via git config)"
+  print_status "Identity" "✓" "$(git config user.email)"
 else
-  echo "  Identity:  ✗ not set (run: eval \$(shimmer as <agent>))"
+  print_status "Identity" "✗" "not set (run: eval \$(shimmer as <agent>))"
 fi
 
 # GPG check (only if we know the agent)
 if [ -n "$AGENT" ]; then
-  if gpg --list-secret-keys "${AGENT}@ricon.family" &>/dev/null; then
-    echo "  GPG:       ✓ key imported"
+  EMAIL="${AGENT}@ricon.family"
+
+  if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
+    KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+    SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
+    GPG_SIGN=$(git config --global commit.gpgsign 2>/dev/null || echo "false")
+
+    if [ "$SIGNING_KEY" = "$KEY_ID" ] && [ "$GPG_SIGN" = "true" ]; then
+      print_status "GPG" "✓" "signing enabled" "shimmer gpg:status $AGENT"
+    elif [ "$GPG_SIGN" = "true" ]; then
+      print_status "GPG" "✗" "wrong key configured" "shimmer gpg:setup $AGENT"
+    else
+      print_status "GPG" "✗" "signing disabled" "shimmer gpg:setup $AGENT"
+    fi
   else
-    echo "  GPG:       ✗ no key (run: shimmer gpg:setup $AGENT)"
+    print_status "GPG" "✗" "no key" "shimmer gpg:setup $AGENT"
   fi
 
   # Email check
@@ -73,48 +98,48 @@ if [ -n "$AGENT" ]; then
     # Count unread emails using email:list task
     UNREAD_COUNT=$(mise run -q email:list --unread --count 2>/dev/null || echo "0")
     if [ -n "$UNREAD_COUNT" ] && [ "$UNREAD_COUNT" -gt 0 ]; then
-      echo "  Email:     ✓ configured ($UNREAD_COUNT unread) → shimmer email:welcome"
+      print_status "Email" "✓" "$UNREAD_COUNT unread" "shimmer email:welcome"
     else
-      echo "  Email:     ✓ configured       → shimmer email:welcome"
+      print_status "Email" "✓" "configured" "shimmer email:welcome"
     fi
   else
-    echo "  Email:     ✗ not configured (run: shimmer email:setup $AGENT)"
+    print_status "Email" "✗" "not configured (run: shimmer email:setup $AGENT)"
   fi
 
   # Matrix check
   MATRIX_CREDS="$HOME/.config/matrix-commander/$AGENT/credentials.json"
   if [ -f "$MATRIX_CREDS" ]; then
-    echo "  Matrix:    ✓ logged in        → shimmer matrix:welcome"
+    print_status "Matrix" "✓" "logged in" "shimmer matrix:welcome"
   else
-    echo "  Matrix:    ✗ not logged in (run: shimmer matrix:login $AGENT)"
+    print_status "Matrix" "✗" "not logged in (run: shimmer matrix:login $AGENT)"
   fi
 
   # GitHub check
   if [ -n "$GH_TOKEN" ]; then
     GH_USER=$(gh api /user --jq '.login' 2>/dev/null || true)
     if [ -n "$GH_USER" ]; then
-      echo "  GitHub:    ✓ $GH_USER        → shimmer github:welcome"
+      print_status "GitHub" "✓" "$GH_USER" "shimmer github:welcome"
     else
-      echo "  GitHub:    ✗ token invalid (run: shimmer github:token:new-personal $AGENT)"
+      print_status "GitHub" "✗" "token invalid (run: shimmer github:token:new-personal $AGENT)"
     fi
   else
-    echo "  GitHub:    ✗ no token (run: eval \$(shimmer as $AGENT))"
+    print_status "GitHub" "✗" "no token (run: eval \$(shimmer as $AGENT))"
   fi
 
   # Zettelkasten check
   ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
   if [ -d "$ZETTEL_DIR" ]; then
     NOTE_COUNT=$(find "$ZETTEL_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo "  Zettel:    ✓ $NOTE_COUNT notes      → shimmer zettel:welcome"
+    print_status "Zettel" "✓" "$NOTE_COUNT notes" "shimmer zettel:welcome"
   else
-    echo "  Zettel:    ✗ none yet   → shimmer zettel:welcome"
+    print_status "Zettel" "✗" "none yet" "shimmer zettel:welcome"
   fi
 else
-  echo "  GPG:       ? (set identity first)"
-  echo "  Email:     ? (set identity first)"
-  echo "  Matrix:    ? (set identity first)"
-  echo "  GitHub:    ? (set identity first)"
-  echo "  Zettel:    ? (set identity first)"
+  print_status "GPG" "?" "set identity first"
+  print_status "Email" "?" "set identity first"
+  print_status "Matrix" "?" "set identity first"
+  print_status "GitHub" "?" "set identity first"
+  print_status "Zettel" "?" "set identity first"
 fi
 
 echo ""

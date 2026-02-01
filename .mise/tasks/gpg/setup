@@ -17,65 +17,60 @@ fi
 if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
   KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
   echo "GPG key for $EMAIL already imported (key: $KEY_ID)"
-  echo ""
-  echo "To re-import, first delete the key:"
-  echo "  gpg --delete-secret-keys $EMAIL"
-  echo "  gpg --delete-keys $EMAIL"
-  exit 0
-fi
-
-# Get private key: env var > 1Password > error
-if [ -z "$GPG_PRIVATE_KEY" ]; then
-  if command -v op &> /dev/null && op account get &> /dev/null; then
-    echo "Fetching GPG key from 1Password..."
-    # 1Password returns the key with quotes, strip them
-    GPG_PRIVATE_KEY=$(op item get "${AGENT} - GPG" --vault Agents --fields "Private Key" --reveal 2>/dev/null | tr -d '"' || true)
-    if [ -n "$GPG_PRIVATE_KEY" ]; then
-      echo "Using key from 1Password"
+else
+  # Get private key: env var > 1Password > error
+  if [ -z "$GPG_PRIVATE_KEY" ]; then
+    if command -v op &> /dev/null && op account get &> /dev/null; then
+      echo "Fetching GPG key from 1Password..."
+      # 1Password returns the key with quotes, strip them
+      GPG_PRIVATE_KEY=$(op item get "${AGENT} - GPG" --vault Agents --fields "Private Key" --reveal 2>/dev/null | tr -d '"' || true)
+      if [ -n "$GPG_PRIVATE_KEY" ]; then
+        echo "Using key from 1Password"
+      fi
     fi
   fi
+
+  if [ -z "$GPG_PRIVATE_KEY" ]; then
+    echo "ERROR: Could not get GPG key for $AGENT"
+    echo ""
+    echo "Options:"
+    echo "  1. Sign into 1Password: op signin"
+    echo "  2. Set GPG_PRIVATE_KEY env var manually"
+    exit 1
+  fi
+
+  # Import the private key
+  echo "Importing GPG key for $EMAIL..."
+  echo "Key length: ${#GPG_PRIVATE_KEY} chars"
+  echo "First line: $(echo "$GPG_PRIVATE_KEY" | head -1)"
+  echo "Number of lines: $(echo "$GPG_PRIVATE_KEY" | wc -l)"
+  if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
+    echo "ERROR: GPG_PRIVATE_KEY seems too short or empty"
+    exit 1
+  fi
+
+  # Write to temp file and import (more reliable than piping)
+  TMPKEY=$(mktemp)
+  echo "$GPG_PRIVATE_KEY" > "$TMPKEY"
+  gpg --batch --import "$TMPKEY"
+  rm -f "$TMPKEY"
+
+  # Get the key ID
+  KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+
+  if [ -z "$KEY_ID" ]; then
+    echo "ERROR: Key import failed - could not find key ID for $EMAIL"
+    exit 1
+  fi
+
+  # Trust the key (so gpg doesn't complain about untrusted key)
+  echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true
 fi
 
-if [ -z "$GPG_PRIVATE_KEY" ]; then
-  echo "ERROR: Could not get GPG key for $AGENT"
-  echo ""
-  echo "Options:"
-  echo "  1. Sign into 1Password: op signin"
-  echo "  2. Set GPG_PRIVATE_KEY env var manually"
-  exit 1
-fi
-
-# Import the private key
-echo "Importing GPG key for $EMAIL..."
-echo "Key length: ${#GPG_PRIVATE_KEY} chars"
-echo "First line: $(echo "$GPG_PRIVATE_KEY" | head -1)"
-echo "Number of lines: $(echo "$GPG_PRIVATE_KEY" | wc -l)"
-if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
-  echo "ERROR: GPG_PRIVATE_KEY seems too short or empty"
-  exit 1
-fi
-
-# Write to temp file and import (more reliable than piping)
-TMPKEY=$(mktemp)
-echo "$GPG_PRIVATE_KEY" > "$TMPKEY"
-gpg --batch --import "$TMPKEY"
-rm -f "$TMPKEY"
-
-# Get the key ID
-KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-
-if [ -z "$KEY_ID" ]; then
-  echo "ERROR: Key import failed - could not find key ID for $EMAIL"
-  exit 1
-fi
-
-# Configure git to use this key for signing
+# Always configure git to use this key for signing
 git config --global user.signingkey "$KEY_ID"
 git config --global commit.gpgsign true
 git config --global tag.gpgsign true
-
-# Trust the key (so gpg doesn't complain about untrusted key)
-echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true
 
 echo ""
 echo "GPG configured for $EMAIL"
