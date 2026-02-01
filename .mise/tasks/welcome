@@ -57,7 +57,7 @@ print_status() {
   local hint="${4:-}"
 
   if [ -n "$hint" ]; then
-    printf "  %-9s %s %-18s %s\n" "$label:" "$check" "$status" "→ $hint"
+    printf "  %-9s %s %-22s %s\n" "$label:" "$check" "$status" "→ $hint"
   else
     printf "  %-9s %s %s\n" "$label:" "$check" "$status"
   fi
