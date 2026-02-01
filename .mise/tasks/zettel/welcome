@@ -169,36 +169,40 @@ for dir in inbox 00_Inbox; do
   fi
 done
 
-# Only show structure if at least one standard dir exists
-if [ -n "$INBOX_DIR" ] || [ -n "$SESSIONS_DIR" ] || [ -n "$NOTES_DIR" ]; then
-  echo "  Structure:"
+# Structure - always show to teach the convention
+echo "  Structure:"
 
-  # Inbox first - encourages processing pending items
-  if [ -n "$INBOX_DIR" ]; then
-    printf "    %-12s → %s/\n" "$INBOX_COUNT pending" "$INBOX_DIR"
-  fi
-
-  # Sessions (more likely to be reviewed than notes)
-  if [ -n "$SESSIONS_DIR" ]; then
-    printf "    %-12s → %s/\n" "$SESSIONS_COUNT sessions" "$SESSIONS_DIR"
-  fi
-
-  # Notes (permanent atomic notes)
-  if [ -n "$NOTES_DIR" ]; then
-    printf "    %-12s → %s/\n" "$NOTES_COUNT notes" "$NOTES_DIR"
-  fi
-
-  # Uncategorized (files not in standard dirs, excluding README.md)
-  TOTAL_COUNT=$(find "$ZETTEL_DIR" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
-  CATEGORIZED=$((NOTES_COUNT + SESSIONS_COUNT + INBOX_COUNT))
-  [ "$HAS_README" = true ] && CATEGORIZED=$((CATEGORIZED + 1))
-  UNCATEGORIZED=$((TOTAL_COUNT - CATEGORIZED))
-  if [ "$UNCATEGORIZED" -gt 0 ]; then
-    printf "    %-12s %s\n" "$UNCATEGORIZED other" "(in root or other dirs)"
-  fi
-
-  echo ""
+# Inbox first - encourages processing pending items
+if [ -n "$INBOX_DIR" ]; then
+  printf "    %-12s → %s/\n" "$INBOX_COUNT pending" "$INBOX_DIR"
+else
+  printf "    %-12s → %s/\n" "0 pending" "inbox"
 fi
+
+# Sessions (more likely to be reviewed than notes)
+if [ -n "$SESSIONS_DIR" ]; then
+  printf "    %-12s → %s/\n" "$SESSIONS_COUNT sessions" "$SESSIONS_DIR"
+else
+  printf "    %-12s → %s/\n" "0 sessions" "sessions"
+fi
+
+# Notes (permanent atomic notes)
+if [ -n "$NOTES_DIR" ]; then
+  printf "    %-12s → %s/\n" "$NOTES_COUNT notes" "$NOTES_DIR"
+else
+  printf "    %-12s → %s/\n" "0 notes" "notes"
+fi
+
+# Uncategorized (files not in standard dirs, excluding README.md)
+TOTAL_COUNT=$(find "$ZETTEL_DIR" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+CATEGORIZED=$((NOTES_COUNT + SESSIONS_COUNT + INBOX_COUNT))
+[ "$HAS_README" = true ] && CATEGORIZED=$((CATEGORIZED + 1))
+UNCATEGORIZED=$((TOTAL_COUNT - CATEGORIZED))
+if [ "$UNCATEGORIZED" -gt 0 ]; then
+  printf "    %-12s %s\n" "$UNCATEGORIZED other" "(in root or other dirs)"
+fi
+
+echo ""
 
 # Git status (brief) - only show if there's something notable
 if [ -d "$ZETTEL_DIR/.git" ]; then
