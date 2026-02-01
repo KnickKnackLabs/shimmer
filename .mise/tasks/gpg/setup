@@ -13,10 +13,9 @@ if ! command -v gpg &> /dev/null; then
   exit 1
 fi
 
-# Check if key is already imported
+# Import key if not already present
 if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
-  KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-  echo "GPG key for $EMAIL already imported (key: $KEY_ID)"
+  echo "GPG key for $EMAIL already imported"
 else
   # Get private key: env var > 1Password > error
   if [ -z "$GPG_PRIVATE_KEY" ]; then
@@ -55,16 +54,16 @@ else
   gpg --batch --import "$TMPKEY"
   rm -f "$TMPKEY"
 
-  # Get the key ID
-  KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-
-  if [ -z "$KEY_ID" ]; then
-    echo "ERROR: Key import failed - could not find key ID for $EMAIL"
-    exit 1
-  fi
-
   # Trust the key (so gpg doesn't complain about untrusted key)
   echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true
+fi
+
+# Get the key ID (single location, after import if needed)
+KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
+
+if [ -z "$KEY_ID" ]; then
+  echo "ERROR: Could not find key ID for $EMAIL"
+  exit 1
 fi
 
 # Always configure git to use this key for signing
