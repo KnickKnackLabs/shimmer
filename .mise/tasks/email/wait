@@ -23,9 +23,10 @@ else
 fi
 
 # Parse optional query (variadic args - mise passes as shell-escaped string)
-QUERY=""
+# Use eval to strip mise's quoting, same pattern as email:delete
+QUERY_ARGS=()
 if [ -n "${usage_query:-}" ]; then
-  QUERY="$usage_query"
+  eval "QUERY_ARGS=($usage_query)"
 fi
 
 # Determine current agent from environment or git config
@@ -46,12 +47,17 @@ fi
 
 # Fetch current envelope IDs from the folder (optionally filtered by query)
 get_ids() {
-  himalaya envelope list -a "$AGENT" -f "$FOLDER" --page-size 1000 -o json $QUERY 2>/dev/null \
+  himalaya envelope list -a "$AGENT" -f "$FOLDER" --page-size 1000 -o json "${QUERY_ARGS[@]}" 2>/dev/null \
     | jq -r '.[].id'
 }
 
+# Debug mode (set DEBUG=1 to enable)
+debug() { [ "${DEBUG:-}" = "1" ] && echo "[debug] $*" >&2; }
+
 # Snapshot current state
 INITIAL_IDS=$(get_ids | sort)
+debug "snapshot: $(echo "$INITIAL_IDS" | tr '\n' ' ')"
+debug "agent=$AGENT folder=$FOLDER count=$COUNT interval=$INTERVAL timeout=$TIMEOUT query='${QUERY_ARGS[*]}'"
 
 # Poll loop
 ELAPSED=0
@@ -60,10 +66,12 @@ while true; do
   ELAPSED=$((ELAPSED + INTERVAL))
 
   CURRENT_IDS=$(get_ids | sort)
+  debug "current: $(echo "$CURRENT_IDS" | tr '\n' ' ')"
 
   # Find new IDs (in current but not in initial)
   NEW_IDS=$(comm -23 <(echo "$CURRENT_IDS") <(echo "$INITIAL_IDS"))
   NEW_COUNT=$(echo "$NEW_IDS" | grep -c . || true)
+  debug "new: $(echo "$NEW_IDS" | tr '\n' ' ') count=$NEW_COUNT"
 
   printf "\rWaiting for mail in %s... %ds (%d new)" "$FOLDER" "$ELAPSED" "$NEW_COUNT" >&2
 
