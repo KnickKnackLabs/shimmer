@@ -76,6 +76,7 @@ while true; do
   if [ "$TIMEOUT" -gt 0 ] && [ "$ELAPSED" -ge "$TIMEOUT" ]; then
     echo "" >&2
     if [ "$NEW_COUNT" -gt 0 ]; then
+      echo "Timeout: $NEW_COUNT/$COUNT new" >&2
       echo "$NEW_IDS"
     fi
     exit 0
