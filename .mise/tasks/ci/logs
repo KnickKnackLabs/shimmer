@@ -69,8 +69,9 @@ RUN_STATUS=$(gh run view "$RUN_ID" --repo "$REPO" --json status -q '.status')
 if [[ -f "$CACHE_FILE" ]] && [[ "$NO_CACHE" != "true" ]] && [[ "$RUN_STATUS" == "completed" ]]; then
   LOG_SOURCE="(cached)"
 else
-  # Get first job ID and its status
-  JOB_INFO=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q '.jobs[0] | {id: .databaseId, status: .status}')
+  # Get the first non-skipped job (skipped jobs are common in multi-agent dispatch runs)
+  JOB_INFO=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs \
+    -q '([.jobs[] | select(.conclusion == "skipped" | not)] | if length > 0 then .[0] else .[0] end) | {id: .databaseId, status: .status}')
   JOB_ID=$(echo "$JOB_INFO" | jq -r '.id')
   JOB_STATUS=$(echo "$JOB_INFO" | jq -r '.status')
 
@@ -92,7 +93,7 @@ else
         echo "Timeout after ${ELAPSED}s"
         exit 1
       fi
-      JOB_STATUS=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q '.jobs[0].status')
+      JOB_STATUS=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q "[.jobs[] | select(.databaseId == $JOB_ID)][0].status")
     done
     echo ""  # newline after \r progress
   fi
