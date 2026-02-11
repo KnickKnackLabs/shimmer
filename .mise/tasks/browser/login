@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+#MISE description="Browser login to save auth for a site (auto or interactive)"
+#USAGE arg "<site>" help="Site to authenticate with (e.g. github.com)"
+#USAGE flag "--interactive" help="Force interactive login (skip credential auto-detection)"
+
+set -e
+
+SITE="${usage_site:?Usage: shimmer browser:login <site>}"
+
+# Determine agent identity
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Auth state directory
+AUTH_DIR="$HOME/.config/shimmer/browser/$AGENT"
+AUTH_FILE="$AUTH_DIR/${SITE}.json"
+mkdir -p "$AUTH_DIR"
+
+# Browser cache
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
+export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
+
+if [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; then
+  echo "Chromium not installed. Run: shimmer browser:setup" >&2
+  exit 1
+fi
+
+if [ -f "$AUTH_FILE" ]; then
+  echo "Existing auth found for $AGENT @ $SITE"
+  echo "  $AUTH_FILE"
+  echo "Will be overwritten."
+  echo ""
+fi
+
+INTERACTIVE="${usage_interactive:-false}"
+
+# --- Credential resolution: env var > 1Password > interactive ---
+# Site-specific env var prefix: github.com → BROWSER_GITHUB_COM
+SITE_UPPER=$(echo "$SITE" | tr '.-' '_' | tr '[:lower:]' '[:upper:]')
+ENV_USER="BROWSER_${SITE_UPPER}_USERNAME"
+ENV_PASS="BROWSER_${SITE_UPPER}_PASSWORD"
+
+LOGIN_USER=""
+LOGIN_PASS=""
+
+if [ "$INTERACTIVE" = "true" ]; then
+  echo "Interactive mode — skipping credential auto-detection."
+else
+  LOGIN_USER="${!ENV_USER:-}"
+  LOGIN_PASS="${!ENV_PASS:-}"
+
+  if [ -n "$LOGIN_USER" ] && [ -n "$LOGIN_PASS" ]; then
+    echo "Using credentials from environment ($ENV_USER)"
+  fi
+fi
+
+# Try 1Password if no env vars (and not --interactive)
+if [ "$INTERACTIVE" != "true" ] && { [ -z "$LOGIN_USER" ] || [ -z "$LOGIN_PASS" ]; }; then
+  if command -v op &> /dev/null && op account get &> /dev/null; then
+    # Map site to 1Password item name
+    case "$SITE" in
+      github.com) OP_ITEM="${AGENT} - GitHub" ;;
+      *)          OP_ITEM="" ;;
+    esac
+
+    if [ -n "$OP_ITEM" ]; then
+      OP_USER=$(op item get "$OP_ITEM" --vault Agents --fields username --reveal 2>/dev/null || true)
+      OP_PASS=$(op item get "$OP_ITEM" --vault Agents --fields password --reveal 2>/dev/null || true)
+      if [ -n "$OP_USER" ] && [ -n "$OP_PASS" ]; then
+        LOGIN_USER="$OP_USER"
+        LOGIN_PASS="$OP_PASS"
+        echo "Using credentials from 1Password ($OP_ITEM)"
+      fi
+    fi
+  fi
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -n "$LOGIN_USER" ] && [ -n "$LOGIN_PASS" ]; then
+  # Automated login (headless)
+  echo "Logging in to $SITE as $LOGIN_USER (automated)..."
+  echo ""
+
+  node "$SCRIPT_DIR/scripts/_harness.mjs" \
+    --mode login \
+    --site "$SITE" \
+    --auth-file "$AUTH_FILE" \
+    --username "$LOGIN_USER" \
+    --password "$LOGIN_PASS"
+else
+  # Interactive login (headed browser)
+  echo "Opening browser for $AGENT to log in to $SITE..."
+  echo "Log in manually, then close the browser window."
+  echo ""
+
+  node "$SCRIPT_DIR/scripts/_harness.mjs" \
+    --mode login \
+    --site "$SITE" \
+    --auth-file "$AUTH_FILE"
+fi
+
+if [ -f "$AUTH_FILE" ]; then
+  echo ""
+  echo "Auth saved for $AGENT @ $SITE"
+  echo "  $AUTH_FILE"
+else
+  echo ""
+  echo "No auth state was saved." >&2
+  exit 1
+fi

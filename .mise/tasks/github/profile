@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#MISE description="View or update GitHub profile (display name, bio, etc.)"
+#USAGE flag "-n --name <name>" help="Set display name"
+#USAGE flag "-b --bio <bio>" help="Set bio"
+#USAGE flag "--company <company>" help="Set company"
+#USAGE flag "--location <location>" help="Set location"
+#USAGE flag "--blog <blog>" help="Set blog/website URL"
+
+set -e
+
+NAME="${usage_name:-}"
+BIO="${usage_bio:-}"
+COMPANY="${usage_company:-}"
+LOCATION="${usage_location:-}"
+BLOG="${usage_blog:-}"
+
+# Build PATCH args (only set fields that were provided)
+ARGS=()
+[ -n "$NAME" ] && ARGS+=(-f "name=$NAME")
+[ -n "$BIO" ] && ARGS+=(-f "bio=$BIO")
+[ -n "$COMPANY" ] && ARGS+=(-f "company=$COMPANY")
+[ -n "$LOCATION" ] && ARGS+=(-f "location=$LOCATION")
+[ -n "$BLOG" ] && ARGS+=(-f "blog=$BLOG")
+
+if [ ${#ARGS[@]} -gt 0 ]; then
+  # Update profile
+  gh api -X PATCH /user "${ARGS[@]}" --silent
+  echo "Profile updated."
+  echo ""
+fi
+
+# Show current profile
+PROFILE=$(gh api /user --jq '{login, name, bio, company, location, blog}')
+LOGIN=$(echo "$PROFILE" | jq -r '.login')
+DISPLAY=$(echo "$PROFILE" | jq -r '.name // empty')
+BIO_VAL=$(echo "$PROFILE" | jq -r '.bio // empty')
+COMPANY_VAL=$(echo "$PROFILE" | jq -r '.company // empty')
+LOCATION_VAL=$(echo "$PROFILE" | jq -r '.location // empty')
+BLOG_VAL=$(echo "$PROFILE" | jq -r '.blog // empty')
+
+echo "  Username: $LOGIN"
+[ -n "$DISPLAY" ] && echo "  Name:     $DISPLAY"
+[ -n "$BIO_VAL" ] && echo "  Bio:      $BIO_VAL"
+[ -n "$COMPANY_VAL" ] && echo "  Company:  $COMPANY_VAL"
+[ -n "$LOCATION_VAL" ] && echo "  Location: $LOCATION_VAL"
+[ -n "$BLOG_VAL" ] && echo "  Blog:     $BLOG_VAL"
+
+if [ -z "$DISPLAY" ] && [ -z "$BIO_VAL" ]; then
+  echo ""
+  echo "  Profile is mostly empty. Set it up:"
+  echo "    shimmer github:profile --name \"your name\" --bio \"your bio\""
+fi

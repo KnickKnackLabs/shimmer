@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#MISE description="Install Playwright browser (Chromium only)"
+
+set -e
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
+export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
+
+echo "Installing Playwright Chromium..."
+echo "  Browser cache: $CACHE_DIR"
+echo ""
+
+npx playwright install chromium
+
+# ESM imports can't use NODE_PATH, so create a local node_modules symlink
+# pointing to mise's playwright install for our scripts to import from.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts"
+PLAYWRIGHT_MODULES="$(mise where npm:playwright)/lib/node_modules"
+if [ -d "$PLAYWRIGHT_MODULES" ]; then
+  ln -sfn "$PLAYWRIGHT_MODULES" "$SCRIPT_DIR/node_modules"
+  echo "  Linked node_modules → $PLAYWRIGHT_MODULES"
+fi
+
+echo ""
+echo "Done. Run: shimmer browser:login <site>"

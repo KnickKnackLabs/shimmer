@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#MISE description="Run a Playwright script with saved browser auth"
+#USAGE arg "<script>" help="Script name (built-in) or path to .mjs file"
+#USAGE arg "[args...]" var=#true help="Arguments to pass to the script"
+#USAGE flag "-s --site <site>" help="Site to use auth for (default: inferred from script)"
+#USAGE flag "--headed" help="Run with visible browser"
+
+set -e
+
+SCRIPT_NAME="${usage_script:?Usage: shimmer browser:run <script> [args...]}"
+HEADED="${usage_headed:-false}"
+# Variadic args come as a shell-escaped string
+eval "SCRIPT_ARGS=(${usage_args:-})"
+
+# Determine agent identity
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+TASK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Resolve script: absolute path or built-in name
+if [ -f "$SCRIPT_NAME" ]; then
+  SCRIPT_PATH="$(cd "$(dirname "$SCRIPT_NAME")" && pwd)/$(basename "$SCRIPT_NAME")"
+elif [ -f "$TASK_DIR/scripts/${SCRIPT_NAME}.mjs" ]; then
+  SCRIPT_PATH="$TASK_DIR/scripts/${SCRIPT_NAME}.mjs"
+else
+  echo "Script not found: $SCRIPT_NAME" >&2
+  echo "" >&2
+  echo "Built-in scripts:" >&2
+  ls "$TASK_DIR/scripts/"*.mjs 2>/dev/null | grep -v '_harness' | xargs -n1 basename | sed 's/\.mjs$//' | sed 's/^/  /' >&2
+  exit 1
+fi
+
+# Determine site from flag or script metadata
+SITE="${usage_site:-}"
+if [ -z "$SITE" ]; then
+  SITE=$(node -e "import('file://$SCRIPT_PATH').then(m => console.log(m.site || ''))" 2>/dev/null || true)
+fi
+if [ -z "$SITE" ]; then
+  echo "Could not determine site. Use --site <site> or export 'site' from your script." >&2
+  exit 1
+fi
+
+# Check auth exists
+AUTH_DIR="$HOME/.config/shimmer/browser/$AGENT"
+AUTH_FILE="$AUTH_DIR/${SITE}.json"
+
+if [ ! -f "$AUTH_FILE" ]; then
+  echo "No auth found for $AGENT @ $SITE" >&2
+  echo "Run: shimmer browser:login $SITE" >&2
+  exit 1
+fi
+
+# Browser cache
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
+export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
+
+if [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; then
+  echo "Chromium not installed. Run: shimmer browser:setup" >&2
+  exit 1
+fi
+
+echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
+echo "  Agent: $AGENT"
+echo "  Site:  $SITE"
+echo ""
+
+node "$TASK_DIR/scripts/_harness.mjs" \
+  --mode run \
+  --site "$SITE" \
+  --auth-file "$AUTH_FILE" \
+  --script "$SCRIPT_PATH" \
+  --headed "$HEADED" \
+  -- "${SCRIPT_ARGS[@]}"

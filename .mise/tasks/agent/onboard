@@ -193,6 +193,10 @@ else
   echo "[WARN] No token provided, skipping storage"
 fi
 
+# Set display name on GitHub profile
+echo "[auto] Setting GitHub display name to '$AGENT'..."
+GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent 2>/dev/null || true
+
 wait_for_enter
 
 # STEP 8: Matrix Setup
