@@ -22,6 +22,8 @@ const { values, positionals } = parseArgs({
     value:    { type: 'string' },
     // screenshot
     stdout:   { type: 'boolean', default: false },
+    // wait
+    timeout:  { type: 'string', default: '30000' },
     // save-auth / load-auth
     site:     { type: 'string' },
   },
@@ -223,6 +225,17 @@ if (action === 'goto') {
     await context.addCookies(state.cookies);
   }
   console.log(`Auth loaded from: ${authPath}`);
+  await browser.close();
+
+} else if (action === 'wait') {
+  const selector = values.selector || positionals[0];
+  if (!selector) {
+    console.error('Usage: --action wait --selector <sel> [--timeout <ms>]');
+    process.exit(1);
+  }
+  const timeout = parseInt(values.timeout, 10);
+  const { browser, page } = await connect(agent);
+  await page.waitForSelector(selector, { timeout });
   await browser.close();
 
 } else {

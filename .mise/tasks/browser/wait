@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#MISE description="Wait for an element to appear in the browser"
+#USAGE arg "<selector>" help="CSS selector to wait for"
+#USAGE flag "-t --timeout <timeout>" help="Timeout in milliseconds (default: 30000)"
+
+set -e
+
+SELECTOR="${usage_selector:?Usage: shimmer browser:wait <selector>}"
+TIMEOUT="${usage_timeout:-30000}"
+
+# Determine agent identity
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
+export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+node "$SCRIPT_DIR/scripts/_cdp.mjs" --action wait --agent "$AGENT" --selector "$SELECTOR" --timeout "$TIMEOUT"
