@@ -56,6 +56,7 @@ echo "export GIT_AUTHOR_EMAIL='$EMAIL'"
 echo "export GIT_COMMITTER_EMAIL='$EMAIL'"
 echo "export GIT_AUTHOR_NAME='$AGENT'"
 echo "export GIT_COMMITTER_NAME='$AGENT'"
+echo "export AGENT_HOME='$(dirname "$AGENTS_DIR")'"
 
 # Print info to stderr so it doesn't interfere with eval
 echo "# Agent identity set: $AGENT ($EMAIL)" >&2

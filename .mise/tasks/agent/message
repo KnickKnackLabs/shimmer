@@ -7,7 +7,7 @@
 set -e
 
 # Get the caller's directory (where shimmer was invoked from)
-CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+CALLER_DIR="${AGENT_HOME:-${SHIMMER_CALLER_PWD:-$(pwd)}}"
 
 # Validate this is an agent home
 validate_agent_home() {
