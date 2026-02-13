@@ -3,17 +3,20 @@
 
 set -e
 
-# Get the caller's directory (where shimmer was invoked from)
-CALLER_DIR="${AGENT_HOME:-${SHIMMER_CALLER_PWD:-$(pwd)}}"
+if [ -z "${AGENT_HOME:-}" ]; then
+  echo "Error: AGENT_HOME not set" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
 
 echo ""
 echo "Available Agents"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-AGENTS_DIR="$CALLER_DIR/agents"
+AGENTS_DIR="$AGENT_HOME/agents"
 if [ -d "$AGENTS_DIR" ]; then
-  echo "  Agent home: $CALLER_DIR"
+  echo "  Agent home: $AGENT_HOME"
   echo ""
   for agent_file in "$AGENTS_DIR"/*.txt; do
     if [ -f "$agent_file" ]; then
@@ -22,7 +25,7 @@ if [ -d "$AGENTS_DIR" ]; then
     fi
   done
 else
-  echo "  No agents/ directory in $CALLER_DIR"
+  echo "  No agents/ directory in $AGENT_HOME"
   echo "  Run this from an agent home (e.g., fold)"
 fi
 

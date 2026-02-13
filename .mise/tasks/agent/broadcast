@@ -8,18 +8,20 @@
 
 set -e
 
-CALLER_DIR="${AGENT_HOME:-${SHIMMER_CALLER_PWD:-$(pwd)}}"
-
-# Validate this is an agent home
-if [ ! -d "$CALLER_DIR/agents" ]; then
-  echo "Error: No agents/ directory in $CALLER_DIR" >&2
-  echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+if [ -z "${AGENT_HOME:-}" ]; then
+  echo "Error: AGENT_HOME not set" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
   exit 1
 fi
 
-if [ ! -f "$CALLER_DIR/.github/workflows/agent-message.yml" ]; then
-  echo "Error: No agent-message.yml workflow in $CALLER_DIR" >&2
-  echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+# Validate this is an agent home
+if [ ! -d "$AGENT_HOME/agents" ]; then
+  echo "Error: No agents/ directory in $AGENT_HOME" >&2
+  exit 1
+fi
+
+if [ ! -f "$AGENT_HOME/.github/workflows/agent-message.yml" ]; then
+  echo "Error: No agent-message.yml workflow in $AGENT_HOME" >&2
   exit 1
 fi
 
@@ -30,7 +32,7 @@ MODEL="${usage_model:-}"
 AGENTS_FLAG="${usage_agents:-}"
 
 # Discover or filter agents
-ALL_AGENTS=$(ls "$CALLER_DIR/agents"/*.txt 2>/dev/null \
+ALL_AGENTS=$(ls "$AGENT_HOME/agents"/*.txt 2>/dev/null \
   | xargs -n1 basename \
   | sed 's/\.txt$//' \
   | sort)
