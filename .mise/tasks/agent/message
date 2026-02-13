@@ -54,8 +54,8 @@ if [ $# -lt 2 ]; then
   exit 1
 fi
 
-AGENT="$1"
-MESSAGE="$2"
+AGENT="$usage_agent"
+MESSAGE="$usage_message"
 MODEL="${usage_model:-}"
 REPO=$(get_repo)
 WORKFLOW="agent-message.yml"

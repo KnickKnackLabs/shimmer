@@ -1,61 +1,19 @@
 #!/usr/bin/env bash
-#MISE description="Send a message to all agents"
-#USAGE arg "<message>" help="Message for all agents"
+#MISE description="Send a message to multiple agents"
+#USAGE arg "<message>" help="Message for agents"
 #USAGE flag "-s --stagger <seconds>" help="Seconds to wait between agents (default: 30)"
+#USAGE flag "--agents <list>" help="Comma-separated list of agents (default: all)"
 #USAGE flag "--dry-run" help="Show what would be done without triggering"
 #USAGE flag "--model <model>" help="Claude model to use"
 
 set -e
 
-# Get the caller's directory (where shimmer was invoked from)
 CALLER_DIR="${AGENT_HOME:-${SHIMMER_CALLER_PWD:-$(pwd)}}"
 
 # Validate this is an agent home
-validate_agent_home() {
-  if [ ! -d "$CALLER_DIR/agents" ]; then
-    echo "Error: No agents/ directory in $CALLER_DIR" >&2
-    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
-    exit 1
-  fi
-
-  if [ ! -f "$CALLER_DIR/.github/workflows/agent-message.yml" ]; then
-    echo "Error: No agent-message.yml workflow in $CALLER_DIR" >&2
-    echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
-    exit 1
-  fi
-}
-
-# Discover agents from the caller's agents/ directory
-get_agents() {
-  ls "$CALLER_DIR/agents"/*.txt 2>/dev/null \
-    | xargs -n1 basename \
-    | sed 's/\.txt$//' \
-    | sort
-}
-
-# Get the repo name from the caller's directory
-get_repo() {
-  git -C "$CALLER_DIR" remote get-url origin 2>/dev/null \
-    | sed 's/.*github.com[:/]//' \
-    | sed 's/\.git$//'
-}
-
-validate_agent_home
-
-if [ $# -lt 1 ]; then
-  echo "Usage: shimmer agent:broadcast <message> [--stagger <seconds>] [--dry-run]"
-  echo ""
-  echo "Sends a message to all agents, waking each one without a specific job."
-  echo "Agents are triggered sequentially with a stagger delay to avoid resource contention."
-  echo ""
-  echo "Agent home: $CALLER_DIR"
-  echo "Agents: $(get_agents | tr '\n' ' ')"
-  echo ""
-  echo "Options:"
-  echo "  --stagger <seconds>  Wait time between agents (default: 30)"
-  echo "  --dry-run            Show what would be done without triggering"
-  echo ""
-  echo "Example: shimmer agent:broadcast \"Please vote on issue #467\" --stagger 60"
+if [ ! -d "$CALLER_DIR/agents" ]; then
+  echo "Error: No agents/ directory in $CALLER_DIR" >&2
+  echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
   exit 1
 fi
 
@@ -63,17 +21,39 @@ MESSAGE="$usage_message"
 STAGGER="${usage_stagger:-30}"
 DRY_RUN="${usage_dry_run:-false}"
 MODEL="${usage_model:-}"
-WORKFLOW="agent-message.yml"
-REPO=$(get_repo)
+AGENTS_FLAG="${usage_agents:-}"
 
-AGENTS=$(get_agents)
+# Discover or filter agents
+ALL_AGENTS=$(ls "$CALLER_DIR/agents"/*.txt 2>/dev/null \
+  | xargs -n1 basename \
+  | sed 's/\.txt$//' \
+  | sort)
+
+if [ -n "$AGENTS_FLAG" ]; then
+  # Filter to requested agents, validate each exists
+  AGENTS=""
+  for AGENT in $(echo "$AGENTS_FLAG" | tr ',' ' '); do
+    if ! echo "$ALL_AGENTS" | grep -qx "$AGENT"; then
+      echo "Unknown agent: $AGENT" >&2
+      echo "Available agents: $(echo "$ALL_AGENTS" | tr '\n' ' ')" >&2
+      exit 1
+    fi
+    AGENTS="${AGENTS:+$AGENTS$'\n'}$AGENT"
+  done
+else
+  AGENTS="$ALL_AGENTS"
+fi
+
 AGENT_COUNT=$(echo "$AGENTS" | wc -l | tr -d ' ')
 
 echo "Broadcasting to $AGENT_COUNT agents with ${STAGGER}s stagger"
-echo "Agent home: $CALLER_DIR"
-echo "Repo: $REPO"
 echo "Message: $MESSAGE"
 echo ""
+
+MODEL_ARG=""
+if [ -n "$MODEL" ]; then
+  MODEL_ARG="--model $MODEL"
+fi
 
 FIRST=true
 for AGENT in $AGENTS; do
@@ -86,16 +66,10 @@ for AGENT in $AGENTS; do
     fi
   fi
 
-  MODEL_ARG=""
-  if [ -n "$MODEL" ]; then
-    MODEL_ARG="-f model=$MODEL"
-  fi
-
   if [ "$DRY_RUN" = "true" ]; then
     echo "[dry-run] Would message: $AGENT"
   else
-    echo "Messaging: $AGENT"
-    gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $MODEL_ARG
+    shimmer agent:message "$AGENT" "$MESSAGE" $MODEL_ARG
   fi
 done
 
