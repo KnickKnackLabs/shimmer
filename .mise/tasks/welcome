@@ -146,7 +146,21 @@ if [ -n "$AGENT" ]; then
   ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
   if [ -d "$ZETTEL_DIR" ]; then
     NOTE_COUNT=$(find "$ZETTEL_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    print_status "Zettel" "✓" "$NOTE_COUNT notes" "shimmer zettel:welcome"
+    # Check if behind remote
+    ZETTEL_BEHIND=0
+    if [ -d "$ZETTEL_DIR/.git" ]; then
+      ZETTEL_TRACKING=$(git -C "$ZETTEL_DIR" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo "")
+      if [ -n "$ZETTEL_TRACKING" ]; then
+        if timeout 5 git -C "$ZETTEL_DIR" fetch origin 2>/dev/null; then
+          ZETTEL_BEHIND=$(git -C "$ZETTEL_DIR" rev-list --count HEAD.."$ZETTEL_TRACKING" 2>/dev/null || echo 0)
+        fi
+      fi
+    fi
+    if [ "$ZETTEL_BEHIND" -gt 0 ]; then
+      print_status "Zettel" "⚠" "$NOTE_COUNT notes ($ZETTEL_BEHIND behind remote)" "cd $ZETTEL_DIR && git pull"
+    else
+      print_status "Zettel" "✓" "$NOTE_COUNT notes" "shimmer zettel:welcome"
+    fi
   else
     print_status "Zettel" "✗" "none yet" "shimmer zettel:welcome"
   fi

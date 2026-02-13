@@ -206,8 +206,39 @@ echo ""
 
 # Git status (brief) - only show if there's something notable
 if [ -d "$ZETTEL_DIR/.git" ]; then
+  # Check for uncommitted changes
+  DIRTY=false
   if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-    echo "  Git: uncommitted changes"
+    DIRTY=true
+  fi
+
+  # Check sync status with remote (fetch with timeout, graceful failure if offline)
+  BEHIND=0
+  AHEAD=0
+  TRACKING=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo "")
+  if [ -n "$TRACKING" ]; then
+    if timeout 5 git fetch origin 2>/dev/null; then
+      BEHIND=$(git rev-list --count HEAD.."$TRACKING" 2>/dev/null || echo 0)
+      AHEAD=$(git rev-list --count "$TRACKING"..HEAD 2>/dev/null || echo 0)
+    fi
+  fi
+
+  # Build status message (only show when something is notable)
+  GIT_PARTS=()
+  if [ "$DIRTY" = true ]; then
+    GIT_PARTS+=("uncommitted changes")
+  fi
+  if [ "$AHEAD" -gt 0 ] && [ "$BEHIND" -gt 0 ]; then
+    GIT_PARTS+=("$AHEAD ahead, $BEHIND behind $TRACKING")
+  elif [ "$BEHIND" -gt 0 ]; then
+    GIT_PARTS+=("$BEHIND behind $TRACKING (run: git pull)")
+  elif [ "$AHEAD" -gt 0 ]; then
+    GIT_PARTS+=("$AHEAD ahead of $TRACKING (run: git push)")
+  fi
+
+  if [ ${#GIT_PARTS[@]} -gt 0 ]; then
+    GIT_MSG=$(printf '%s, ' "${GIT_PARTS[@]}")
+    echo "  Git: ${GIT_MSG%, }"
     echo ""
   fi
 fi
