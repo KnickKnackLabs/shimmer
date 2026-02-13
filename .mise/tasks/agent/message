@@ -41,19 +41,6 @@ get_repo() {
 
 validate_agent_home
 
-if [ $# -lt 2 ]; then
-  echo "Usage: shimmer agent:message <agent> <message>"
-  echo ""
-  echo "Sends a message to an agent, waking them without a specific job."
-  echo "The agent receives the message and decides how to respond."
-  echo ""
-  echo "Agent home: $CALLER_DIR"
-  echo "Agents: $(get_agents | tr '\n' ' ')"
-  echo ""
-  echo "Example: shimmer agent:message quick \"Please vote on issue #467\""
-  exit 1
-fi
-
 AGENT="$usage_agent"
 MESSAGE="$usage_message"
 MODEL="${usage_model:-}"

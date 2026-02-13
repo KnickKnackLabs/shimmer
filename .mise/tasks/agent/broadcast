@@ -17,6 +17,12 @@ if [ ! -d "$CALLER_DIR/agents" ]; then
   exit 1
 fi
 
+if [ ! -f "$CALLER_DIR/.github/workflows/agent-message.yml" ]; then
+  echo "Error: No agent-message.yml workflow in $CALLER_DIR" >&2
+  echo "Run this from an agent home (a codebase with agents/ and agent workflows)" >&2
+  exit 1
+fi
+
 MESSAGE="$usage_message"
 STAGGER="${usage_stagger:-30}"
 DRY_RUN="${usage_dry_run:-false}"
