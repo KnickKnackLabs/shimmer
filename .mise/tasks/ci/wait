@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#MISE description="Wait for a workflow run to complete"
+#USAGE arg "<run_id>" help="Run ID (numeric) or workflow name"
+#USAGE flag "--timeout <duration>" help="Max wait time (default: 600s, supports 5m/1h/forever)"
+#USAGE flag "--interval <seconds>" help="Poll interval in seconds (default: 10)"
+#USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
+
+set -e
+
+SCRIPT_DIR="$(dirname "$0")"
+
+# Determine repo
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR")
+fi
+
+# Parse timeout
+TIMEOUT=$("$SCRIPT_DIR/../_parse-duration" "${usage_timeout:-600}")
+INTERVAL="${usage_interval:-10}"
+
+RUN_ID_ARG="${usage_run_id:-}"
+
+if [[ -z "$RUN_ID_ARG" ]]; then
+  echo "Usage: ci:wait <run_id> [--repo owner/name] [--timeout duration] [--interval seconds]" >&2
+  exit 1
+fi
+
+# Resolve workflow name to run ID if not numeric
+if [[ "$RUN_ID_ARG" =~ ^[0-9]+$ ]]; then
+  RUN_ID="$RUN_ID_ARG"
+else
+  WORKFLOW="$RUN_ID_ARG"
+  RUN_ID=$(gh run list --repo "$REPO" --workflow="$WORKFLOW" --limit 1 --json databaseId -q '.[0].databaseId')
+  if [[ -z "$RUN_ID" ]]; then
+    echo "No runs found for workflow: $WORKFLOW" >&2
+    exit 1
+  fi
+fi
+
+# Check current status
+RUN_JSON=$(gh run view "$RUN_ID" --repo "$REPO" --json status,conclusion)
+RUN_STATUS=$(echo "$RUN_JSON" | jq -r '.status')
+
+if [[ "$RUN_STATUS" == "completed" ]]; then
+  echo "$RUN_JSON" | jq -r '.conclusion'
+  exit 0
+fi
+
+if [[ "$RUN_STATUS" != "in_progress" ]] && [[ "$RUN_STATUS" != "queued" ]] && [[ "$RUN_STATUS" != "waiting" ]]; then
+  echo "Warning: unexpected run status: $RUN_STATUS" >&2
+fi
+
+# Poll until complete or timeout
+ELAPSED=0
+while [[ "$RUN_STATUS" != "completed" ]]; do
+  printf "\rWaiting for run %s (%s)... %ds" "$RUN_ID" "$RUN_STATUS" "$ELAPSED" >&2
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
+
+  if [[ "$TIMEOUT" -gt 0 ]] && [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
+    echo "" >&2
+    echo "Timeout after ${ELAPSED}s" >&2
+    exit 1
+  fi
+
+  RUN_STATUS=$(gh run view "$RUN_ID" --repo "$REPO" --json status -q '.status')
+done
+
+echo "" >&2
+
+# Output final conclusion
+CONCLUSION=$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion -q '.conclusion')
+echo "$CONCLUSION"

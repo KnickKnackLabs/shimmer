@@ -8,7 +8,7 @@
 #USAGE flag "--info" help="Show log metadata (total lines, jobs) without content"
 #USAGE flag "--agent" help="Show only the agent session (between markers)"
 #USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
-#USAGE flag "--wait [timeout]" help="Wait for job to complete (default: 600s, or 'forever')"
+#USAGE flag "--wait [timeout]" help="Wait for run to complete (default: 600s, supports 5m/1h/forever)"
 
 set -e
 
@@ -31,17 +31,12 @@ INFO_ONLY="${usage_info:-false}"
 AGENT_ONLY="${usage_agent:-false}"
 
 # Parse --wait flag
-# Supports: --wait (default 600s), --wait <seconds>, --wait forever
 # Uses raw args check because mise doesn't set usage_wait for bare --wait
 WAIT_TIMEOUT=""
 if [[ -n "${usage_wait:-}" ]]; then
-  if [[ "$usage_wait" == "forever" ]]; then
-    WAIT_TIMEOUT=-1
-  else
-    WAIT_TIMEOUT="$usage_wait"
-  fi
+  WAIT_TIMEOUT="$usage_wait"
 elif [[ " $* " == *" --wait "* ]] || [[ "$*" == "--wait" ]] || [[ "$*" == *" --wait" ]]; then
-  WAIT_TIMEOUT=600
+  WAIT_TIMEOUT="600"
 fi
 
 if [[ -z "$RUN_ID_ARG" ]]; then
@@ -75,27 +70,14 @@ else
   JOB_ID=$(echo "$JOB_INFO" | jq -r '.id')
   JOB_STATUS=$(echo "$JOB_INFO" | jq -r '.status')
 
-  if [[ "$JOB_STATUS" == "in_progress" ]] || [[ "$JOB_STATUS" == "queued" ]]; then
+  if [[ "$JOB_STATUS" == "in_progress" ]] || [[ "$JOB_STATUS" == "queued" ]] || [[ "$JOB_STATUS" == "waiting" ]]; then
     if [[ -z "$WAIT_TIMEOUT" ]]; then
       echo "job $JOB_ID is still $JOB_STATUS; logs will be available when it is complete"
       echo "Tip: use --wait to wait for completion"
       exit 1
     fi
 
-    # Poll until job completes or timeout
-    ELAPSED=0
-    while [[ "$JOB_STATUS" == "in_progress" ]] || [[ "$JOB_STATUS" == "queued" ]]; do
-      printf "\rWaiting for job $JOB_ID ($JOB_STATUS)... ${ELAPSED}s"
-      sleep 10
-      ELAPSED=$((ELAPSED + 10))
-      if [[ "$WAIT_TIMEOUT" -gt 0 ]] && [[ "$ELAPSED" -ge "$WAIT_TIMEOUT" ]]; then
-        echo ""
-        echo "Timeout after ${ELAPSED}s"
-        exit 1
-      fi
-      JOB_STATUS=$(gh run view "$RUN_ID" --repo "$REPO" --json jobs -q "[.jobs[] | select(.databaseId == $JOB_ID)][0].status")
-    done
-    echo ""  # newline after \r progress
+    shimmer ci:wait "$RUN_ID" --repo "$REPO" --timeout "$WAIT_TIMEOUT" > /dev/null
   fi
 
   gh run view --repo "$REPO" --job="$JOB_ID" --log 2>&1 > "$CACHE_FILE"

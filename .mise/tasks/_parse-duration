@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#MISE hide=true
+#MISE description="Parse a human-friendly duration string into seconds"
+
+set -e
+
+INPUT="${1:-}"
+
+if [ -z "$INPUT" ]; then
+  echo "Usage: _parse-duration <duration>" >&2
+  echo "Examples: 300, 30s, 5m, 1h, forever" >&2
+  exit 1
+fi
+
+if [ "$INPUT" = "forever" ]; then
+  echo "-1"
+  exit 0
+fi
+
+# Match number with optional suffix
+if [[ "$INPUT" =~ ^([0-9]+)([smh])?$ ]]; then
+  VALUE="${BASH_REMATCH[1]}"
+  SUFFIX="${BASH_REMATCH[2]}"
+
+  case "$SUFFIX" in
+    s|"") echo "$VALUE" ;;
+    m)    echo $((VALUE * 60)) ;;
+    h)    echo $((VALUE * 3600)) ;;
+  esac
+  exit 0
+fi
+
+echo "Invalid duration: $INPUT (expected: 300, 30s, 5m, 1h, or forever)" >&2
+exit 1

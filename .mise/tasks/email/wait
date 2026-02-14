@@ -2,7 +2,7 @@
 #MISE description="Wait for new email to arrive"
 #USAGE flag "-f --folder <folder>" help="Folder to watch (default: INBOX)"
 #USAGE flag "-n --count <n>" help="Wait for at least N new messages (default: 1)"
-#USAGE flag "--timeout <seconds>" help="Max wait time in seconds (default: 600, or 'forever')"
+#USAGE flag "--timeout <duration>" help="Max wait time (default: 600s, supports 5m/1h/forever)"
 #USAGE flag "--interval <seconds>" help="Poll interval in seconds (default: 30)"
 #USAGE arg "[query...]" var=#true help="Optional himalaya query filter (e.g. 'from groups.io')"
 
@@ -16,11 +16,8 @@ COUNT="${usage_count:-1}"
 INTERVAL="${usage_interval:-30}"
 
 # Parse timeout
-if [[ "${usage_timeout:-}" == "forever" ]]; then
-  TIMEOUT=-1
-else
-  TIMEOUT="${usage_timeout:-600}"
-fi
+SCRIPT_DIR="$(dirname "$0")"
+TIMEOUT=$("$SCRIPT_DIR/../_parse-duration" "${usage_timeout:-600}")
 
 # Parse optional query (variadic args - mise passes as shell-escaped string)
 # Use eval to strip mise's quoting, same pattern as email:delete
