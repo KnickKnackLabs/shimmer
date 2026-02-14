@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#MISE description="Inspect email message structure and metadata"
+#USAGE arg "<id>" help="Message ID to inspect"
+#USAGE flag "-f --folder <folder>" help="Folder to inspect from (default: INBOX)"
+
+set -e
+
+# Suppress himalaya debug warnings (still shows errors)
+export RUST_LOG=error
+
+ID="${usage_id:-$1}"
+FOLDER="${usage_folder:-INBOX}"
+
+if [ -z "$ID" ]; then
+  echo "Usage: shimmer email:inspect <id> [-f <folder>]"
+  echo ""
+  echo "Shows MIME structure, size, and metadata for a message."
+  exit 1
+fi
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  exit 1
+fi
+
+CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
+if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
+  exit 1
+fi
+
+# Get password from himalaya config
+PASS=$(grep -A30 "accounts.$AGENT" "$CONFIG_FILE" | grep 'auth.raw' | head -1 | sed 's/.*= *"//' | sed 's/"$//')
+
+if [ -z "$PASS" ]; then
+  echo "Could not read email password from config"
+  exit 1
+fi
+
+# Fetch message metadata via IMAP
+RESULT=$({
+  sleep 0.3
+  echo "a LOGIN ${AGENT}@ricon.family $PASS"
+  sleep 0.3
+  echo "b SELECT \"$FOLDER\""
+  sleep 0.3
+  echo "c FETCH $ID (RFC822.SIZE BODYSTRUCTURE BODY[HEADER.FIELDS (From To Subject Date Content-Type)])"
+  sleep 0.5
+  echo "d LOGOUT"
+} | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
+
+# Extract size
+SIZE=$(echo "$RESULT" | grep -oE 'RFC822\.SIZE [0-9]+' | awk '{print $2}')
+if [ -z "$SIZE" ]; then
+  echo "Message $ID not found in $FOLDER"
+  exit 1
+fi
+
+SIZE_KB=$((SIZE / 1024))
+if [ "$SIZE_KB" -ge 1024 ]; then
+  SIZE_DISPLAY="${SIZE} bytes ($((SIZE_KB / 1024))MB)"
+else
+  SIZE_DISPLAY="${SIZE} bytes (${SIZE_KB}KB)"
+fi
+
+# Extract headers
+FROM=$(echo "$RESULT" | grep -i "^From:" | head -1 | sed 's/^From: *//')
+TO=$(echo "$RESULT" | grep -i "^To:" | head -1 | sed 's/^To: *//')
+SUBJECT=$(echo "$RESULT" | grep -i "^Subject:" | head -1 | sed 's/^Subject: *//')
+DATE=$(echo "$RESULT" | grep -i "^Date:" | head -1 | sed 's/^Date: *//')
+
+echo "ID:      $ID ($FOLDER)"
+echo "Subject: $SUBJECT"
+echo "From:    $FROM"
+echo "To:      $TO"
+echo "Date:    $DATE"
+echo "Size:    $SIZE_DISPLAY"
+echo ""
+
+# Parse and display BODYSTRUCTURE
+BODYSTRUCT=$(echo "$RESULT" | grep "BODYSTRUCTURE" | sed 's/.*BODYSTRUCTURE //' | sed 's/ BODY\[.*//')
+
+echo "MIME Structure:"
+
+# Parse the BODYSTRUCTURE into a readable format
+# Only show actual MIME content type pairs (type/subtype)
+MIME_CATEGORIES="text|message|application|image|audio|video|multipart"
+echo "$BODYSTRUCT" | grep -oE "\"($MIME_CATEGORIES)\" \"[a-z0-9+.-]+\"" | while read -r PAIR; do
+  TYPE=$(echo "$PAIR" | sed 's/"//g' | tr ' ' '/')
+  echo "  - $TYPE"
+done
+
+# Check for overall multipart type
+MULTIPART=$(echo "$BODYSTRUCT" | grep -oE '"(signed|mixed|related|alternative)"' | sed 's/"//g' | head -1)
+if [ -n "$MULTIPART" ]; then
+  echo "  (multipart/$MULTIPART)"
+fi
