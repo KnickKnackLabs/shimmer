@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 #MISE description="Output shell configuration for global shimmer command (use with eval)"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# Pass caller's PWD so tasks can know where shimmer was invoked from
+
+# Create shim so shimmer is callable from scripts and subprocesses
+BIN_DIR="$HOME/.local/bin"
+BIN="$BIN_DIR/shimmer"
+mkdir -p "$BIN_DIR"
+cat > "$BIN" <<SCRIPT
+#!/usr/bin/env bash
+SHIMMER_CALLER_PWD="\${SHIMMER_CALLER_PWD:-\$PWD}" exec mise -C "$REPO_DIR" run "\$@"
+SCRIPT
+chmod +x "$BIN"
+
+# Ensure ~/.local/bin is on PATH (skip if already there)
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) echo "export PATH=\"$BIN_DIR:\$PATH\"" ;;
+esac
+
+# Shell alias (captures caller's PWD for interactive use)
 echo "alias shimmer='SHIMMER_CALLER_PWD=\"\$PWD\" mise -C \"$REPO_DIR\" run'"
