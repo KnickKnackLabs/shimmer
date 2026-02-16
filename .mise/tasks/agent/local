@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Start a local interactive Claude session as an agent"
+#MISE quiet=true
+
+set -e
+
+# Derive agent name from environment (set by `shimmer as`)
+if [ -z "$GIT_AUTHOR_NAME" ]; then
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+AGENT="$GIT_AUTHOR_NAME"
+
+if [ -z "$AGENT_HOME" ]; then
+  echo "AGENT_HOME not set. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Find agent identity file
+AGENT_FILE="${AGENT_HOME}/agents/${AGENT}.txt"
+if [ ! -f "$AGENT_FILE" ]; then
+  echo "Agent identity not found: $AGENT_FILE" >&2
+  exit 1
+fi
+
+# Read prompt and pass to claude. Double-quoted variable expansion is safe
+# against shell injection — special chars are not re-evaluated.
+PROMPT=$(cat "$AGENT_FILE")
+
+cd "${SHIMMER_CALLER_PWD:-.}"
+exec claude --append-system-prompt "$PROMPT"
