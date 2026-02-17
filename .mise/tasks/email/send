@@ -4,6 +4,7 @@
 #USAGE arg "<subject>" help="Email subject"
 #USAGE arg "[body]" help="Message body (optional, or use -b flag or stdin)"
 #USAGE flag "-b --body <body>" help="Message body (alternative to positional arg)"
+#USAGE flag "--allow-short" help="Allow short message bodies (under 50 chars)"
 
 set -e
 
@@ -64,6 +65,14 @@ fi
 
 if [ -z "${BODY:-}" ]; then
   echo "Error: Message body is required"
+  exit 1
+fi
+
+# Guard against suspiciously short messages (wrong args, unresolved paths, etc.)
+BODY_LEN=${#BODY}
+if [ "$BODY_LEN" -lt 50 ] && [ "${usage_allow_short:-false}" != "true" ]; then
+  echo "Error: Message body seems too short ($BODY_LEN chars)."
+  echo "If intentional, re-run with --allow-short"
   exit 1
 fi
 
