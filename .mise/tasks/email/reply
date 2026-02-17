@@ -42,6 +42,11 @@ if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/
   exit 1
 fi
 
+# If BODY looks like a file path and the file exists, read its contents
+if [ -n "$BODY" ] && [ -f "$BODY" ]; then
+  BODY=$(cat "$BODY")
+fi
+
 # Read body from stdin if not provided via flag
 if [ -z "$BODY" ]; then
   if [ -t 0 ]; then
