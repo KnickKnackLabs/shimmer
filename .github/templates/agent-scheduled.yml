@@ -2,7 +2,7 @@ name: ${NAME}
 
 on:
   schedule:
-    - cron: '${SCHEDULE}'
+__SCHEDULE_ENTRIES__
   workflow_dispatch:
 
 jobs:

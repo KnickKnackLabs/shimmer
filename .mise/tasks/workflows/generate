@@ -7,8 +7,8 @@ set -eo pipefail
 TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
 
-# Shimmer is always at ~/shimmer (where the global command lives)
-SHIMMER_DIR="$HOME/shimmer"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Use local template if exists, otherwise use shimmer's
 if [[ -f ".github/templates/agent-scheduled.yml" ]]; then
@@ -43,19 +43,35 @@ if [[ "$WORKFLOW_COUNT" -gt 0 ]]; then
   for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
     NAME=$(yq -r ".workflows[$i].name" workflows.yaml)
     AGENT=$(yq -r ".workflows[$i].agent" workflows.yaml)
-    SCHEDULE=$(yq -r ".workflows[$i].schedule" workflows.yaml)
     MESSAGE=$(yq -r ".workflows[$i].message" workflows.yaml)
     MODEL=$(yq -r ".workflows[$i].model // \"\"" workflows.yaml)
     AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
 
+    # Build schedule entries (array of cron expressions)
+    SCHEDULE_ENTRIES=""
+    SCHEDULE_COUNT=$(yq -r ".workflows[$i].schedule | length" workflows.yaml)
+    for j in $(seq 0 $((SCHEDULE_COUNT - 1))); do
+      CRON=$(yq -r ".workflows[$i].schedule[$j]" workflows.yaml)
+      SCHEDULE_ENTRIES+="    - cron: '${CRON}'"$'\n'
+    done
+
     OUTPUT_FILE="$OUTPUT_DIR/${NAME}.yml"
 
     # Export for envsubst, using temp file for message to handle special chars
-    export NAME AGENT SCHEDULE AGENT_UPPER MODEL
+    export NAME AGENT AGENT_UPPER MODEL
 
     # Use sed to replace MESSAGE separately (envsubst doesn't handle multiline well)
-    envsubst '${NAME} ${AGENT} ${SCHEDULE} ${AGENT_UPPER} ${MODEL}' < "$TEMPLATE" | \
+    envsubst '${NAME} ${AGENT} ${AGENT_UPPER} ${MODEL}' < "$TEMPLATE" | \
       sed "s|\${MESSAGE}|$MESSAGE|g" > "$OUTPUT_FILE"
+
+    # Replace schedule placeholder with cron entries (sed r reads from file, handles multiline)
+    SCHED_TMP=$(mktemp)
+    printf '%s' "$SCHEDULE_ENTRIES" > "$SCHED_TMP"
+    sed -i '' -e "/__SCHEDULE_ENTRIES__/{
+r $SCHED_TMP
+d
+}" "$OUTPUT_FILE"
+    rm "$SCHED_TMP"
 
     # Remove empty model line if no model specified
     if [[ -z "$MODEL" ]]; then
