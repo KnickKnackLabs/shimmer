@@ -33,21 +33,44 @@ if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
 fi
 
 # Get user info and scopes
-USER_RESPONSE=$(gh api /user -i 2>&1)
-USERNAME=$(echo "$USER_RESPONSE" | grep '"login"' | head -1 | sed 's/.*"login":"\([^"]*\)".*/\1/')
-SCOPES=$(echo "$USER_RESPONSE" | grep "X-Oauth-Scopes:" | sed 's/X-Oauth-Scopes: //')
-
-echo "Your GitHub: $USERNAME"
-echo ""
-
-if [ -z "$USERNAME" ]; then
-  echo "Status: ✗ token invalid or expired"
+if ! USER_RESPONSE=$(gh api /user -i 2>&1); then
+  echo "Status: ✗ token expired or invalid"
   echo ""
-  echo "Create a new token: shimmer github:token:new-personal $AGENT"
+  echo "To rotate your token:"
+  echo "  1. shimmer github:token:new-personal $AGENT   (create new token in browser)"
+  echo "  2. shimmer github:token:store $AGENT <token>   (save to 1Password)"
+  echo "  3. shimmer agent:sync-secrets                   (push to GitHub secrets)"
+  echo ""
   exit 0
 fi
 
+USERNAME=$(echo "$USER_RESPONSE" | grep '"login"' | head -1 | sed 's/.*"login":"\([^"]*\)".*/\1/')
+SCOPES=$(echo "$USER_RESPONSE" | grep "X-Oauth-Scopes:" | sed 's/X-Oauth-Scopes: //')
+EXPIRY=$(echo "$USER_RESPONSE" | grep -i 'github-authentication-token-expiration:' | sed 's/.*: //' | tr -d '\r')
+
+echo "Your GitHub: $USERNAME"
+echo ""
 echo "Status: ✓ authenticated"
+echo ""
+
+# Show token expiration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "$EXPIRY" ]; then
+  DAYS_LEFT=$("$SCRIPT_DIR/../_days-until" "$EXPIRY" 2>/dev/null || echo "")
+  if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
+    echo "Token:  ✗ expired ($EXPIRY)"
+    echo "        Rotate: shimmer github:token:regenerate $AGENT"
+  elif [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -le 7 ]; then
+    echo "Token:  ⚠ expires in ${DAYS_LEFT} days ($EXPIRY)"
+    echo "        Rotate: shimmer github:token:regenerate $AGENT"
+  elif [ -n "$DAYS_LEFT" ]; then
+    echo "Token:  expires in ${DAYS_LEFT} days ($EXPIRY)"
+  else
+    echo "Token:  expires $EXPIRY"
+  fi
+else
+  echo "Token:  no expiration set"
+fi
 echo ""
 
 # Show scopes (abbreviated)
@@ -92,4 +115,5 @@ echo ""
 echo "  shimmer github:profile               View/update your profile"
 echo "  shimmer github:token:scopes          Check current token scopes"
 echo "  shimmer github:token:new-personal $AGENT   Create new personal token"
+echo "  shimmer github:token:regenerate $AGENT     Regenerate existing token"
 echo ""

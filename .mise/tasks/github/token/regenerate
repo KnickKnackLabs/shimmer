@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-#MISE description="Open browser to create a full-access personal token for an agent"
-#USAGE arg "<agent>" help="Agent name (e.g., k7r2, brownie)"
+#MISE description="Open browser to regenerate an existing personal token for an agent"
+#USAGE arg "<agent>" help="Agent name (e.g., c0da, brownie)"
 
 set -e
 
-AGENT="${usage_agent:?Usage: shimmer token:new-personal <agent>}"
+AGENT="${usage_agent:?Usage: shimmer github:token:regenerate <agent>}"
 VAULT="Agents"
 ITEM="${AGENT} - GitHub"
 
@@ -28,16 +28,9 @@ if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   exit 1
 fi
 
-# All scopes for full personal access
-SCOPES="repo,workflow,admin:org,admin:public_key,admin:gpg_key,admin:ssh_signing_key,admin:repo_hook,admin:org_hook,gist,notifications,user,delete_repo,write:packages,delete:packages,write:discussion,project,codespace"
+LOGIN_URL="https://github.com/login?return_to=/settings/tokens"
 
-# Build token creation path and URL-encode it for return_to
-TOKEN_PATH="/settings/tokens/new?scopes=${SCOPES}&description=${AGENT}"
-ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$TOKEN_PATH', safe=''))")
-
-LOGIN_URL="https://github.com/login?return_to=${ENCODED_PATH}"
-
-echo "=== Create Personal Token for: $AGENT ==="
+echo "=== Regenerate Token for: $AGENT ==="
 echo ""
 echo "Credentials:"
 echo "  Username: $USERNAME"
@@ -47,11 +40,10 @@ echo "If GitHub requests device verification, check the agent's email:"
 echo "  shimmer email:list -n 3"
 echo "  shimmer email:read <id>"
 echo ""
-echo "After logging in, you'll be redirected to the token creation page."
-echo "All scopes will be pre-selected."
+echo "After logging in, find the token named '$AGENT' and click 'Regenerate'."
 echo ""
-echo "After creating the token:"
-echo "  1. Copy the token value"
+echo "After regenerating:"
+echo "  1. Copy the new token value"
 echo "  2. shimmer github:token:store $AGENT <token>"
 echo "  3. shimmer agent:sync-secrets"
 echo ""

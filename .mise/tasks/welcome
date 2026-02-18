@@ -131,15 +131,29 @@ if [ -n "$AGENT" ]; then
   fi
 
   # GitHub check
-  if [ -n "$GH_TOKEN" ]; then
-    GH_USER=$(gh api /user --jq '.login' 2>/dev/null || true)
-    if [ -n "$GH_USER" ]; then
-      print_status "GitHub" "✓" "$GH_USER" "shimmer github:welcome"
-    else
-      print_status "GitHub" "✗" "token invalid (run: shimmer github:token:new-personal $AGENT)"
-    fi
+  if [ -z "$GH_TOKEN" ]; then
+    print_status "GitHub" "✗" "no token" "eval \$(shimmer as $AGENT)"
+  elif ! GH_RESPONSE=$(gh api /user -i 2>&1); then
+    print_status "GitHub" "✗" "token expired or invalid" "shimmer github:token:new-personal $AGENT"
   else
-    print_status "GitHub" "✗" "no token (run: eval \$(shimmer as $AGENT))"
+    GH_USER=$(echo "$GH_RESPONSE" | grep '"login"' | head -1 | sed 's/.*"login":"\([^"]*\)".*/\1/')
+    GH_EXPIRY=$(echo "$GH_RESPONSE" | grep -i 'github-authentication-token-expiration:' | sed 's/.*: //' | tr -d '\r')
+    GH_CHECK="✓" GH_HINT="shimmer github:welcome"
+
+    if [ -n "$GH_EXPIRY" ]; then
+      DAYS_LEFT=$("$SCRIPT_DIR/_days-until" "$GH_EXPIRY" 2>/dev/null || echo "")
+      if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
+        GH_CHECK="✗" GH_HINT="shimmer github:token:regenerate $AGENT"
+        GH_USER="$GH_USER (token expired)"
+      elif [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -le 7 ]; then
+        GH_CHECK="⚠" GH_HINT="shimmer github:token:regenerate $AGENT"
+        GH_USER="$GH_USER (expires in ${DAYS_LEFT}d)"
+      elif [ -n "$DAYS_LEFT" ]; then
+        GH_USER="$GH_USER (expires in ${DAYS_LEFT}d)"
+      fi
+    fi
+
+    print_status "GitHub" "$GH_CHECK" "$GH_USER" "$GH_HINT"
   fi
 
   # Zettelkasten check

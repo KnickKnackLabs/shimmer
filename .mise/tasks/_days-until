@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE hide=true
+#MISE description="Calculate days until a UTC timestamp (e.g. '2026-03-20 13:48:22 UTC')"
+
+set -e
+
+INPUT="${1:-}"
+
+if [ -z "$INPUT" ]; then
+  echo "Usage: _days-until <timestamp>" >&2
+  echo "Example: _days-until '2026-03-20 13:48:22 UTC'" >&2
+  exit 1
+fi
+
+# Cross-platform: macOS (date -j) then Linux (date -d)
+EPOCH=$(date -j -f "%Y-%m-%d %H:%M:%S UTC" "$INPUT" "+%s" 2>/dev/null || date -d "$INPUT" "+%s" 2>/dev/null || echo "")
+
+if [ -z "$EPOCH" ]; then
+  echo "Failed to parse timestamp: $INPUT" >&2
+  exit 1
+fi
+
+NOW=$(date "+%s")
+echo $(( (EPOCH - NOW) / 86400 ))
