@@ -142,11 +142,14 @@ if [ -n "$AGENT" ]; then
 
     if [ -n "$GH_EXPIRY" ]; then
       DAYS_LEFT=$("$SCRIPT_DIR/_days-until" "$GH_EXPIRY" 2>/dev/null || echo "")
-      if [ -n "$DAYS_LEFT" ]; then
+      if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
+        GH_CHECK="✗" GH_HINT="shimmer github:token:regenerate $AGENT"
+        GH_USER="$GH_USER (token expired)"
+      elif [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -le 7 ]; then
+        GH_CHECK="⚠" GH_HINT="shimmer github:token:regenerate $AGENT"
         GH_USER="$GH_USER (expires in ${DAYS_LEFT}d)"
-        if [ "$DAYS_LEFT" -le 7 ]; then
-          GH_CHECK="⚠" GH_HINT="shimmer github:token:new-personal $AGENT"
-        fi
+      elif [ -n "$DAYS_LEFT" ]; then
+        GH_USER="$GH_USER (expires in ${DAYS_LEFT}d)"
       fi
     fi
 

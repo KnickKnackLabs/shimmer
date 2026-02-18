@@ -28,11 +28,7 @@ if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   exit 1
 fi
 
-# Go to the tokens list page — find the token named after the agent and click regenerate
-TOKEN_PATH="/settings/tokens"
-ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$TOKEN_PATH', safe=''))")
-
-LOGIN_URL="https://github.com/login?return_to=${ENCODED_PATH}"
+LOGIN_URL="https://github.com/login?return_to=/settings/tokens"
 
 echo "=== Regenerate Token for: $AGENT ==="
 echo ""

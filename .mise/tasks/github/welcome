@@ -57,9 +57,12 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -n "$EXPIRY" ]; then
   DAYS_LEFT=$("$SCRIPT_DIR/../_days-until" "$EXPIRY" 2>/dev/null || echo "")
-  if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -le 7 ]; then
+  if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
+    echo "Token:  ✗ expired ($EXPIRY)"
+    echo "        Rotate: shimmer github:token:regenerate $AGENT"
+  elif [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -le 7 ]; then
     echo "Token:  ⚠ expires in ${DAYS_LEFT} days ($EXPIRY)"
-    echo "        Rotate: shimmer github:token:new-personal $AGENT"
+    echo "        Rotate: shimmer github:token:regenerate $AGENT"
   elif [ -n "$DAYS_LEFT" ]; then
     echo "Token:  expires in ${DAYS_LEFT} days ($EXPIRY)"
   else
@@ -112,4 +115,5 @@ echo ""
 echo "  shimmer github:profile               View/update your profile"
 echo "  shimmer github:token:scopes          Check current token scopes"
 echo "  shimmer github:token:new-personal $AGENT   Create new personal token"
+echo "  shimmer github:token:regenerate $AGENT     Regenerate existing token"
 echo ""
