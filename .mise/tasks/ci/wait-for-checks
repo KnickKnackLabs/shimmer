@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Wait for PR checks to complete (timeout 3 min)"
+#USAGE arg "[pr_number]" help="PR number (defaults to current branch PR)"
 
 set -e
 
@@ -8,7 +9,7 @@ TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
 REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR")
 
-PR_NUMBER="${1:-$(gh pr view --repo "$REPO" --json number -q .number 2>/dev/null)}"
+PR_NUMBER="${usage_pr_number:-$(gh pr view --repo "$REPO" --json number -q .number 2>/dev/null)}"
 
 if [ -z "$PR_NUMBER" ]; then
   echo "No PR number provided and not on a PR branch"

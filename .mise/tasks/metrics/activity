@@ -4,7 +4,7 @@
 
 set -e
 
-DAYS="${1:-7}"
+DAYS="${usage_days:-7}"
 
 export GH_PAGER=""
 
