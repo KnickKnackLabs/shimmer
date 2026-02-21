@@ -95,6 +95,14 @@ REPLY_TEMPLATE=$(himalaya template reply -a "$AGENT" "$ID" "")
 # Extract just the headers (everything before the first blank line)
 HEADERS=$(echo "$REPLY_TEMPLATE" | sed '/^$/q')
 
+# Check that the reply template has a recipient
+REPLY_TO=$(echo "$HEADERS" | grep -i "^To:" | sed 's/^To:[[:space:]]*//')
+if [ -z "$REPLY_TO" ]; then
+  echo "Error: Cannot determine recipient for reply (empty To: header)."
+  echo "This can happen when replying to your own messages."
+  exit 1
+fi
+
 # Build the full message with signed body and optional attachments
 {
   echo "$HEADERS"
