@@ -77,7 +77,7 @@ for AGENT in $AGENTS; do
   if [ "$DRY_RUN" = "true" ]; then
     echo "[dry-run] Would message: $AGENT"
   else
-    shimmer agent:message "$AGENT" "$MESSAGE" $MODEL_ARG
+    mise run agent:message "$AGENT" "$MESSAGE" $MODEL_ARG
   fi
 done
 

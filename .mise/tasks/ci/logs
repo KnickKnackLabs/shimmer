@@ -77,7 +77,7 @@ else
       exit 1
     fi
 
-    shimmer ci:wait "$RUN_ID" --repo "$REPO" --timeout "$WAIT_TIMEOUT" > /dev/null
+    mise run ci:wait "$RUN_ID" --repo "$REPO" --timeout "$WAIT_TIMEOUT" > /dev/null
   fi
 
   gh run view --repo "$REPO" --job="$JOB_ID" --log 2>&1 > "$CACHE_FILE"
