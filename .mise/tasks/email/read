@@ -110,7 +110,10 @@ if [ "$HAS_ATTACHMENT" = "true" ]; then
     while IFS= read -r fname; do
       [ -n "$fname" ] || continue
       f="$DOWNLOADS_DIR/$fname"
-      if file -b "$f" | grep -qi "pgp\|gpg"; then
+      # Filter GPG signature blobs from multipart/signed — himalaya assigns
+      # these UUID filenames with no extension. Intentionally-attached PGP files
+      # (e.g. keys.asc, document.gpg) have real filenames and are kept.
+      if [[ "$fname" != *.* ]] && file -b "$f" | grep -qi "pgp\|gpg"; then
         rm -f "$f"
       else
         FOUND=$((FOUND + 1))
