@@ -1,10 +1,10 @@
-// _harness.mjs — Playwright harness for shimmer browser tasks
+// _harness.mjs — Patchright harness for shimmer browser tasks
 //
 // Modes:
 //   login: Save storageState after authenticating (auto or interactive)
 //   run:   Load storageState, run a script module, close browser
 
-import { chromium } from 'playwright';
+import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
 import { existsSync, chmodSync } from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';

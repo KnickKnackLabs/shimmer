@@ -5,7 +5,7 @@
 // Connects to a running Chromium via CDP, performs one action, disconnects.
 // The browser keeps running after disconnect.
 
-import { chromium } from 'playwright';
+import { chromium } from 'patchright';
 import { parseArgs } from 'node:util';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { chmodSync } from 'node:fs';

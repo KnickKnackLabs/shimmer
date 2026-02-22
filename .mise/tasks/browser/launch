@@ -38,10 +38,10 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
-# Find Chromium binary via Playwright (run from scripts/ where node_modules lives)
+# Find Chromium binary via Patchright (run from scripts/ where node_modules lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHROMIUM_PATH=$(cd "$SCRIPT_DIR/scripts" && node -e "
-  import { chromium } from 'playwright';
+  import { chromium } from 'patchright';
   console.log(chromium.executablePath());
 " 2>/dev/null) || true
 
