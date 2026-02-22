@@ -7,9 +7,8 @@
 import { chromium } from 'playwright';
 import { parseArgs } from 'node:util';
 import { existsSync, chmodSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const { values, positionals } = parseArgs({
   options: {
