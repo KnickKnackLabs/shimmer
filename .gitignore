@@ -20,5 +20,5 @@ Thumbs.db
 # Build artifacts
 cli/shimmer
 
-# Browser automation (symlink to mise-installed playwright)
+# Browser automation (symlink to mise-installed patchright)
 node_modules

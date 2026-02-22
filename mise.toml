@@ -9,5 +9,5 @@ zig = "0.15.2"                            # Required for Burrito cross-compilati
 "pipx:check-jsonschema" = "0.36.0"        # JSON Schema validation
 jq = "1.8.1"                              # JSON processing
 yq = "4.50.1"                             # YAML processing
-"npm:playwright" = "1.58"                 # Browser automation
+"npm:patchright" = "1.57"                  # Browser automation (undetected Playwright fork)
 fzf = "0.67.0"                            # Fuzzy finder for interactive pickers

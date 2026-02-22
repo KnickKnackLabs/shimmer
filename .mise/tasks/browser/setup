@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-#MISE description="Install Playwright browser (Chromium only)"
+#MISE description="Install Patchright browser (Chromium only)"
 
 set -e
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
 export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
 
-echo "Installing Playwright Chromium..."
+echo "Installing Patchright Chromium..."
 echo "  Browser cache: $CACHE_DIR"
 echo ""
 
-npx playwright install chromium
+npx patchright install chromium
 
 # ESM imports can't use NODE_PATH, so create a node_modules symlink at the
-# repo root pointing to mise's playwright install. This keeps it out of
+# repo root pointing to mise's patchright install. This keeps it out of
 # .mise/tasks/ (where mise would discover executables inside it as tasks).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PLAYWRIGHT_MODULES="$(mise where npm:playwright)/lib/node_modules"
-if [ -d "$PLAYWRIGHT_MODULES" ]; then
-  ln -sfn "$PLAYWRIGHT_MODULES" "$REPO_ROOT/node_modules"
-  echo "  Linked node_modules → $PLAYWRIGHT_MODULES"
+PATCHRIGHT_MODULES="$(mise where npm:patchright)/lib/node_modules"
+if [ -d "$PATCHRIGHT_MODULES" ]; then
+  ln -sfn "$PATCHRIGHT_MODULES" "$REPO_ROOT/node_modules"
+  echo "  Linked node_modules → $PATCHRIGHT_MODULES"
 fi
 
 echo ""
