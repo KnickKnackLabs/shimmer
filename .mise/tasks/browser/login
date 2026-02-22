@@ -84,8 +84,9 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ -n "$LOGIN_USER" ] && [ -n "$LOGIN_PASS" ]; then
-  # Automated login (headless)
-  echo "Logging in to $SITE as $LOGIN_USER (automated)..."
+  # Automated login — harness will use per-site script if available,
+  # otherwise fall back to interactive
+  echo "Logging in to $SITE as $LOGIN_USER..."
   echo ""
 
   node "$SCRIPT_DIR/scripts/_harness.mjs" \
@@ -95,7 +96,10 @@ if [ -n "$LOGIN_USER" ] && [ -n "$LOGIN_PASS" ]; then
     --username "$LOGIN_USER" \
     --password "$LOGIN_PASS"
 else
-  # Interactive login (headed browser)
+  # No credentials found — interactive login
+  if [ "$INTERACTIVE" != "true" ]; then
+    echo "No credentials found for $SITE — opening interactive login."
+  fi
   echo "Opening browser for $AGENT to log in to $SITE..."
   echo "Log in manually, then close the browser window."
   echo ""

@@ -7,7 +7,8 @@
 import { chromium } from 'playwright';
 import { parseArgs } from 'node:util';
 import { existsSync, chmodSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 const { values, positionals } = parseArgs({
   options: {
@@ -34,17 +35,21 @@ const password = values.password;
 if (mode === 'login') {
   const automated = username && password;
 
-  const browser = await chromium.launch({ headless: automated ? true : false });
+  // Check for a site-specific login script
+  const scriptDir = dirname(fileURLToPath(import.meta.url));
+  const loginScriptPath = join(scriptDir, 'login', `${site}.mjs`);
+  const hasLoginScript = existsSync(loginScriptPath);
+
+  // Only go headless if we can actually automate this site
+  const canAutomate = automated && hasLoginScript;
+  const browser = await chromium.launch({ headless: canAutomate ? true : false });
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(`https://${site}/login`);
-
-  // Save auth state when navigating away from the login page.
-  // For interactive mode: save on EVERY qualifying navigation (not just the first),
-  // because login may involve multiple steps (device verification, 2FA, etc.)
-  // and we want the final state before the user closes the browser.
-  // We can't save after browser disconnect because the context is already gone.
+  // Save auth state on navigation. For interactive mode, save on every
+  // qualifying navigation because login may involve multiple steps
+  // (2FA, device verification, etc.) and we want the final state before
+  // the user closes the browser.
   let saved = false;
   const saveAuth = async () => {
     saved = true;
@@ -59,28 +64,17 @@ if (mode === 'login') {
   page.on('framenavigated', async (frame) => {
     if (frame !== page.mainFrame()) return;
     const url = frame.url();
-    if (url.includes('/login') || url.includes('/sessions/') || url === 'about:blank') return;
+    if (url === 'about:blank') return;
     await saveAuth();
-    if (!automated) {
+    if (!canAutomate) {
       console.log('Auth captured.');
     }
   });
 
-  if (automated) {
-    // Fill login form automatically (site-specific)
-    if (site === 'github.com') {
-      await page.fill('input[name="login"]', username);
-      await page.fill('input[name="password"]', password);
-      await page.click('input[type="submit"], button[type="submit"]');
-    } else {
-      // Generic: try common selectors
-      await page.fill('input[type="email"], input[name="username"], input[name="login"]', username);
-      await page.fill('input[type="password"], input[name="password"]', password);
-      await page.click('button[type="submit"], input[type="submit"]');
-    }
-
-    // Wait for navigation away from login page
-    await page.waitForURL((url) => !url.toString().includes('/login'), { timeout: 30000 });
+  if (canAutomate) {
+    // Automated login — per-site script handles navigation and form-filling
+    const loginModule = await import(pathToFileURL(loginScriptPath).href);
+    await loginModule.default({ page, username, password });
     await saveAuth();
     await browser.close();
 
@@ -91,7 +85,11 @@ if (mode === 'login') {
       process.exit(1);
     }
   } else {
-    // Interactive: wait for user to close browser
+    // Interactive — navigate to site root and let human log in
+    if (automated && !hasLoginScript) {
+      console.log(`No automated login script for ${site} — opening interactive login.`);
+    }
+    await page.goto(`https://${site}`);
     await new Promise(resolve => page.on('close', resolve));
     await browser.close();
   }
