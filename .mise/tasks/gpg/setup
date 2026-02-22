@@ -66,14 +66,37 @@ if [ -z "$KEY_ID" ]; then
   exit 1
 fi
 
-# Always configure git to use this key for signing
-git config --global user.signingkey "$KEY_ID"
-git config --global commit.gpgsign true
-git config --global tag.gpgsign true
+# Write per-agent gitconfig
+AGENT_DIR="$HOME/agents/$AGENT"
+AGENT_GITCONFIG="$AGENT_DIR/.gitconfig"
+mkdir -p "$AGENT_DIR"
+
+cat > "$AGENT_GITCONFIG" <<GITCONFIG
+[user]
+	name = $AGENT
+	email = $EMAIL
+	signingkey = $KEY_ID
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+GITCONFIG
+
+echo "Wrote $AGENT_GITCONFIG"
+
+# Add includeIf to global gitconfig if not already present
+INCLUDE_PATH="includeIf \"gitdir:~/agents/$AGENT/\""
+if ! git config --global --get-regexp 'includeIf' 2>/dev/null | grep -q "agents/$AGENT/"; then
+  git config --global --add "includeIf.gitdir:~/agents/$AGENT/.path" "$AGENT_GITCONFIG"
+  echo "Added conditional include to global gitconfig"
+else
+  echo "Conditional include already present in global gitconfig"
+fi
 
 echo ""
 echo "GPG configured for $EMAIL"
 echo "  Key ID: $KEY_ID"
-echo "  Signing: enabled (commit.gpgsign = true)"
+echo "  Config: $AGENT_GITCONFIG"
+echo "  Scope:  repos under ~/agents/$AGENT/"
 echo ""
-echo "Test with: git commit --allow-empty -m 'Test signed commit'"
+echo "Test with: cd ~/agents/$AGENT/<repo> && git commit --allow-empty -m 'Test signed commit'"
