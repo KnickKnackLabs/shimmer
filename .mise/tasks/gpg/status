@@ -27,20 +27,30 @@ fi
 
 echo ""
 
-# Check git config
-SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
-GPG_SIGN=$(git config --global commit.gpgsign 2>/dev/null || echo "false")
+# Check per-agent gitconfig
+AGENT_GITCONFIG="$HOME/agents/$AGENT/.gitconfig"
 
-if [ "$SIGNING_KEY" = "$KEY_ID" ]; then
-  echo "Git signing key: ✓ (matches)"
-else
-  echo "Git signing key: ✗ (mismatch or not set)"
-  echo "  Current: ${SIGNING_KEY:-<not set>}"
-  echo "  Expected: $KEY_ID"
-fi
+if [ -f "$AGENT_GITCONFIG" ]; then
+  echo "Agent gitconfig: ✓ ($AGENT_GITCONFIG)"
 
-if [ "$GPG_SIGN" = "true" ]; then
-  echo "Auto-sign commits: ✓"
+  SIGNING_KEY=$(git config --file "$AGENT_GITCONFIG" user.signingkey 2>/dev/null || echo "")
+  GPG_SIGN=$(git config --file "$AGENT_GITCONFIG" commit.gpgsign 2>/dev/null || echo "false")
+
+  if [ "$SIGNING_KEY" = "$KEY_ID" ]; then
+    echo "Git signing key: ✓ (matches)"
+  else
+    echo "Git signing key: ✗ (mismatch or not set)"
+    echo "  Current: ${SIGNING_KEY:-<not set>}"
+    echo "  Expected: $KEY_ID"
+  fi
+
+  if [ "$GPG_SIGN" = "true" ]; then
+    echo "Auto-sign commits: ✓"
+  else
+    echo "Auto-sign commits: ✗"
+  fi
 else
-  echo "Auto-sign commits: ✗"
+  echo "Agent gitconfig: ✗ (not found)"
+  echo ""
+  echo "Run: shimmer gpg:setup $AGENT"
 fi
