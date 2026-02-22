@@ -78,15 +78,21 @@ if [ -n "$AGENT" ]; then
 
   if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
     KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-    SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
-    GPG_SIGN=$(git config --global commit.gpgsign 2>/dev/null || echo "false")
+    AGENT_GITCONFIG="$HOME/agents/$AGENT/.gitconfig"
 
-    if [ "$SIGNING_KEY" = "$KEY_ID" ] && [ "$GPG_SIGN" = "true" ]; then
-      print_status "GPG" "✓" "signing enabled" "shimmer gpg:status $AGENT"
-    elif [ "$GPG_SIGN" = "true" ]; then
-      print_status "GPG" "✗" "wrong key configured" "shimmer gpg:setup $AGENT"
+    if [ -f "$AGENT_GITCONFIG" ]; then
+      SIGNING_KEY=$(git config --file "$AGENT_GITCONFIG" user.signingkey 2>/dev/null || echo "")
+      GPG_SIGN=$(git config --file "$AGENT_GITCONFIG" commit.gpgsign 2>/dev/null || echo "false")
+
+      if [ "$SIGNING_KEY" = "$KEY_ID" ] && [ "$GPG_SIGN" = "true" ]; then
+        print_status "GPG" "✓" "signing enabled" "shimmer gpg:status $AGENT"
+      elif [ "$GPG_SIGN" = "true" ]; then
+        print_status "GPG" "✗" "wrong key configured" "shimmer gpg:setup $AGENT"
+      else
+        print_status "GPG" "✗" "signing disabled" "shimmer gpg:setup $AGENT"
+      fi
     else
-      print_status "GPG" "✗" "signing disabled" "shimmer gpg:setup $AGENT"
+      print_status "GPG" "✗" "not configured" "shimmer gpg:setup $AGENT"
     fi
   else
     print_status "GPG" "✗" "no key" "shimmer gpg:setup $AGENT"
