@@ -85,9 +85,8 @@ GITCONFIG
 echo "Wrote $AGENT_GITCONFIG"
 
 # Add includeIf to global gitconfig if not already present
-INCLUDE_PATH="includeIf \"gitdir:~/agents/$AGENT/\""
 if ! git config --global --get-regexp 'includeIf' 2>/dev/null | grep -q "agents/$AGENT/"; then
-  git config --global --add "includeIf.gitdir:~/agents/$AGENT/.path" "$AGENT_GITCONFIG"
+  git config --global --add "includeIf.gitdir:~/agents/$AGENT/.path" "~/agents/$AGENT/.gitconfig"
   echo "Added conditional include to global gitconfig"
 else
   echo "Conditional include already present in global gitconfig"
