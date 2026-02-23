@@ -5,9 +5,6 @@
 
 set -e
 
-# Suppress himalaya debug warnings (still shows errors)
-export RUST_LOG=error
-
 ID="${usage_id:-$1}"
 FOLDER="${usage_folder:-INBOX}"
 
@@ -18,29 +15,8 @@ if [ -z "$ID" ]; then
   exit 1
 fi
 
-# Determine current agent from environment or git config
-if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
-elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
-else
-  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
-  exit 1
-fi
-
-CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
-if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
-  exit 1
-fi
-
-# Get password from himalaya config
-PASS=$(grep -A30 "accounts.$AGENT" "$CONFIG_FILE" | grep 'auth.raw' | head -1 | sed 's/.*= *"//' | sed 's/"$//')
-
-if [ -z "$PASS" ]; then
-  echo "Could not read email password from config"
-  exit 1
-fi
+# shellcheck source=scripts/imap-init.sh
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/imap-init.sh"
 
 # Fetch message metadata via IMAP
 RESULT=$({

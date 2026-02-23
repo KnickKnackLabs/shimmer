@@ -22,10 +22,11 @@ if [ -n "$usage_ids" ] && [[ ! "$usage_ids" =~ ^[0-9[:space:]]+$ ]]; then
 fi
 eval "IDS=($usage_ids)"
 
-# Reject operating on Trash - use email:purge instead
-if echo "$FOLDER" | grep -qi '^trash$'; then
-  echo "Error: Cannot delete from Trash (messages are already there)"
-  echo "Use: shimmer email:purge to permanently empty Trash"
+# Reject non-permanent delete from Trash - use email:purge instead
+if echo "$FOLDER" | grep -qi '^trash$' && [ "$PERMANENT" != "true" ]; then
+  echo "Error: Cannot move Trash messages to Trash"
+  echo "Use: shimmer email:delete --permanent -f Trash <id>"
+  echo "  or: shimmer email:purge to permanently empty Trash"
   exit 1
 fi
 
