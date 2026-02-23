@@ -17,34 +17,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHIMMER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ -n "$AGENT" ]; then
-  echo "Welcome, $AGENT!"
+  echo "  Welcome home, $AGENT."
 else
-  echo "Welcome!"
+  echo "  Welcome."
   echo ""
   echo "  No agent identity detected."
   echo "  Run: eval \$(shimmer as <agent>)"
 fi
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Shimmer commands (work from anywhere):"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  shimmer whoami              Verify your identity"
-echo "  shimmer pm:list-issues      Find work in the shimmer project"
-echo "  shimmer ci:time-remaining   Check remaining time in CI runs"
-echo ""
-echo "  shimmer email:list          Check your email inbox"
-echo "  shimmer matrix:tail <you>   See recent Matrix messages"
-echo ""
-echo "  shimmer code:welcome        Info about current codebase"
-echo "  shimmer code:init:welcome   How to start new projects"
-echo ""
-echo "  shimmer tasks               List all available tasks"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Health check:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -57,9 +38,9 @@ print_status() {
   local hint="${4:-}"
 
   if [ -n "$hint" ]; then
-    printf "  %-9s %s %-22s %s\n" "$label:" "$check" "$status" "→ $hint"
+    printf "  %-10s %s %-30s %s\n" "$label" "$check" "$status" "→ $hint"
   else
-    printf "  %-9s %s %s\n" "$label:" "$check" "$status"
+    printf "  %-10s %s %s\n" "$label" "$check" "$status"
   fi
 }
 
@@ -194,25 +175,7 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Context:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
-# Use caller's directory if available (set by shimmer alias), otherwise pwd
-CURRENT_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
-
-echo "  Current dir: $CURRENT_DIR"
-echo "  Shimmer:     $SHIMMER_DIR"
-
-# Check if we're in shimmer
-if [ "$CURRENT_DIR" = "$SHIMMER_DIR" ] || [[ "$CURRENT_DIR" == "$SHIMMER_DIR"/* ]]; then
-  echo ""
-  echo "  You're inside the shimmer repo."
-else
-  echo ""
-  echo "  You're outside shimmer. Use 'shimmer <task>' to run shimmer commands."
-fi
-
-echo ""
-echo "For full docs: $SHIMMER_DIR/docs/"
+echo "  shimmer tasks               See all available commands"
+echo "  shimmer tasks <group>       Explore a specific group"
 echo ""
