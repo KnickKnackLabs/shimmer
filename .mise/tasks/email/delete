@@ -2,6 +2,7 @@
 #MISE description="Delete email message(s) (moves to Trash)"
 #USAGE arg "[ids...]" var=#true help="Message ID(s) to delete"
 #USAGE flag "--all" help="Delete all messages in folder"
+#USAGE flag "--permanent" help="Permanently delete (skip Trash, purge immediately)"
 #USAGE flag "-f --folder <folder>" help="Folder to operate on (default: INBOX)"
 
 set -e
@@ -10,6 +11,7 @@ set -e
 export RUST_LOG=error
 
 ALL="${usage_all:-false}"
+PERMANENT="${usage_permanent:-false}"
 FOLDER="${usage_folder:-INBOX}"
 
 # Parse variadic args - mise passes them as a shell-escaped string, not an array
@@ -20,10 +22,11 @@ if [ -n "$usage_ids" ] && [[ ! "$usage_ids" =~ ^[0-9[:space:]]+$ ]]; then
 fi
 eval "IDS=($usage_ids)"
 
-# Reject operating on Trash - use email:purge instead
-if echo "$FOLDER" | grep -qi '^trash$'; then
-  echo "Error: Cannot delete from Trash (messages are already there)"
-  echo "Use: shimmer email:purge to permanently empty Trash"
+# Reject non-permanent delete from Trash - use email:purge instead
+if echo "$FOLDER" | grep -qi '^trash$' && [ "$PERMANENT" != "true" ]; then
+  echo "Error: Cannot move Trash messages to Trash"
+  echo "Use: shimmer email:delete --permanent -f Trash <id>"
+  echo "  or: shimmer email:purge to permanently empty Trash"
   exit 1
 fi
 
@@ -66,5 +69,12 @@ if [ "$ALL" = "true" ]; then
   echo "Deleting ${#IDS[@]} message(s) from $FOLDER..."
 fi
 
-himalaya message delete -a "$AGENT" -f "$FOLDER" "${IDS[@]}"
-echo "Moved ${#IDS[@]} message(s) to Trash"
+if [ "$PERMANENT" = "true" ]; then
+  # Flag messages as deleted in-place, then expunge — never touches Trash
+  himalaya flag add -a "$AGENT" -f "$FOLDER" "${IDS[@]}" deleted
+  himalaya folder expunge -a "$AGENT" "$FOLDER"
+  echo "Permanently deleted ${#IDS[@]} message(s) from $FOLDER"
+else
+  himalaya message delete -a "$AGENT" -f "$FOLDER" "${IDS[@]}"
+  echo "Moved ${#IDS[@]} message(s) to Trash"
+fi

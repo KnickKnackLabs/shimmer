@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+#MISE description="Show per-folder email sizes and largest messages"
+#USAGE flag "-f --folder <folder>" help="Show details for a specific folder only"
+#USAGE flag "--top <n>" help="Number of largest messages to show per folder (default: 5)"
+
+set -e
+
+FOLDER="${usage_folder:-}"
+TOP="${usage_top:-5}"
+
+# shellcheck source=scripts/imap-init.sh
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/imap-init.sh"
+
+if [ -n "$FOLDER" ]; then
+  FOLDERS=("$FOLDER")
+else
+  FOLDERS=(INBOX Sent Trash Archive)
+fi
+
+# Query each folder separately for reliable parsing
+for F in "${FOLDERS[@]}"; do
+  RESULT=$({
+    sleep 0.3
+    echo "a LOGIN ${AGENT}@ricon.family $PASS"
+    sleep 0.3
+    echo "b SELECT \"$F\""
+    sleep 0.3
+    echo "c FETCH 1:* (UID RFC822.SIZE)"
+    sleep 0.5
+    echo "d LOGOUT"
+  } | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
+
+  COUNT=$(echo "$RESULT" | grep "EXISTS" | grep -oE '[0-9]+' | head -1)
+  COUNT="${COUNT:-0}"
+
+  if [ "$COUNT" = "0" ]; then
+    printf "%-10s %6s  (%s messages)\n" "$F:" "0KB" "0"
+    continue
+  fi
+
+  # Extract "id size" pairs — IMAP response: * <seq> FETCH (UID <uid> RFC822.SIZE <size>)
+  ID_SIZES=$(echo "$RESULT" | grep "RFC822.SIZE" | awk -F'[* ()]+' '{
+    id=""; size=""
+    for (i=1; i<=NF; i++) {
+      if ($i == "FETCH") id = $(i-1)
+      if ($i == "RFC822.SIZE") size = $(i+1)
+    }
+    if (id && size) print id, size
+  }')
+
+  TOTAL=$(echo "$ID_SIZES" | awk '{sum += $2} END {print sum+0}')
+  TOTAL_KB=$((TOTAL / 1024))
+
+  if [ "$TOTAL_KB" -ge 1024 ]; then
+    TOTAL_DISPLAY="$((TOTAL_KB / 1024))MB"
+  else
+    TOTAL_DISPLAY="${TOTAL_KB}KB"
+  fi
+
+  printf "%-10s %6s  (%s messages)\n" "$F:" "$TOTAL_DISPLAY" "$COUNT"
+
+  # Show top N largest with message IDs
+  echo "$ID_SIZES" | sort -k2 -rn | head -"$TOP" | while read -r ID S; do
+    S_KB=$((S / 1024))
+    if [ "$S_KB" -ge 1024 ]; then
+      printf "           └ #%-4s %dMB\n" "$ID" "$((S_KB / 1024))"
+    elif [ "$S_KB" -gt 0 ]; then
+      printf "           └ #%-4s %dKB\n" "$ID" "$S_KB"
+    fi
+  done
+done
+
+# Show quota if multi-folder
+if [ -z "$usage_folder" ]; then
+  QUOTA_OUTPUT=$({
+    sleep 0.3
+    echo "a LOGIN ${AGENT}@ricon.family $PASS"
+    sleep 0.3
+    echo "b GETQUOTAROOT INBOX"
+    sleep 0.3
+    echo "c LOGOUT"
+  } | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
+
+  QUOTA_LINE=$(echo "$QUOTA_OUTPUT" | grep "^\* QUOTA")
+  if [ -n "$QUOTA_LINE" ]; then
+    USED_KB=$(echo "$QUOTA_LINE" | grep -oE 'STORAGE [0-9]+ [0-9]+' | awk '{print $2}')
+    LIMIT_KB=$(echo "$QUOTA_LINE" | grep -oE 'STORAGE [0-9]+ [0-9]+' | awk '{print $3}')
+    USED_MB=$((USED_KB / 1024))
+    LIMIT_MB=$((LIMIT_KB / 1024))
+    PERCENT=$((USED_KB * 100 / LIMIT_KB))
+    echo ""
+    echo "Quota: ${USED_MB}MB / ${LIMIT_MB}MB (${PERCENT}%)"
+  fi
+fi

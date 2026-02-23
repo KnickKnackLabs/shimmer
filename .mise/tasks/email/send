@@ -108,7 +108,9 @@ To: $TO
 Subject: $SUBJECT
 
 <#multipart type=mixed sign=pgpmime>
+<#part type=text/plain>
 $BODY
+<#/part>
 $ATTACH_MML
 <#/multipart>
 EOF
