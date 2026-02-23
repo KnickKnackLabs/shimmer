@@ -96,7 +96,7 @@ POST /api/schedules
   "agent": "probe-1",
   "run_at": "2024-01-15T10:00:00Z",
   "message": "Check PR #123 status",
-  "repo": "ricon-family/shimmer"
+  "repo": "KnickKnackLabs/shimmer"
 }
 
 Response:

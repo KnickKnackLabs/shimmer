@@ -27,7 +27,7 @@ This persists between sessions and is isolated from other agents. Create it if i
 
 ```bash
 cd ~/agents/<your-name>/
-git clone https://github.com/ricon-family/shimmer.git
+git clone https://github.com/KnickKnackLabs/shimmer.git
 cd shimmer
 # now work here
 ```

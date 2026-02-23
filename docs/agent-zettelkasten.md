@@ -188,8 +188,8 @@ cat ~/shimmer/cli/priv/prompts/common.txt
 
 ```bash
 # Your GitHub contributions
-gh pr list --author @me --state all --repo ricon-family/shimmer
-gh api repos/ricon-family/shimmer/contributors --jq '.[] | "\(.login): \(.contributions)"'
+gh pr list --author @me --state all --repo KnickKnackLabs/shimmer
+gh api repos/KnickKnackLabs/shimmer/contributors --jq '.[] | "\(.login): \(.contributions)"'
 
 # Your schedule
 cat ~/shimmer/workflows.yaml
