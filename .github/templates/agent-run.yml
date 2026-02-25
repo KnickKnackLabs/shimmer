@@ -166,6 +166,13 @@ jobs:
             exit 1
           fi
 
+          # Add dispatch context (who triggered this run)
+          if [ -n "$GITHUB_TRIGGERING_ACTOR" ]; then
+            echo "" >> "$PROMPT_FILE"
+            echo "## Dispatch Context" >> "$PROMPT_FILE"
+            echo "This session was triggered by: $GITHUB_TRIGGERING_ACTOR" >> "$PROMPT_FILE"
+          fi
+
           echo "file=$PROMPT_FILE" >> $GITHUB_OUTPUT
 
       - name: Run CLI
