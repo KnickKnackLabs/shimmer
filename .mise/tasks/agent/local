@@ -28,4 +28,7 @@ fi
 PROMPT=$(cat "$AGENT_FILE")
 
 cd "${SHIMMER_CALLER_PWD:-.}"
-exec claude --append-system-prompt "$PROMPT"
+exec claude --append-system-prompt "$PROMPT
+
+## Session Context
+This is a local interactive session started via \`shimmer agent:local\`. A human is present and directing you."
