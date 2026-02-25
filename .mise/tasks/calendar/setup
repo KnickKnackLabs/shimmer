@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#MISE description="Setup calendar (calendula) for an agent (one-time local setup)"
+#USAGE arg "<agent>" help="Agent name (e.g., quick, brownie)"
+
+set -e
+
+AGENT="${usage_agent:?}"
+EMAIL="${AGENT}@ricon.family"
+DAV_HOST="dav.mxroute.com"
+
+CONFIG_DIR="${HOME}/.config/calendula"
+CONFIG_FILE="${CONFIG_DIR}/config.toml"
+
+# Check if calendula is available
+if ! command -v calendula &> /dev/null; then
+  echo "ERROR: calendula command not found."
+  echo "Install with: mise install (calendula is managed by mise)"
+  exit 1
+fi
+
+# Check if already configured
+if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+  echo "Calendar already configured for $EMAIL"
+  echo "Config: $CONFIG_FILE"
+  echo ""
+  echo "To reconfigure, delete or edit the config file:"
+  echo "  rm $CONFIG_FILE"
+  echo "  \$EDITOR $CONFIG_FILE"
+  exit 0
+fi
+
+# Get password: env var > 1Password > error
+if [ -z "$EMAIL_PASSWORD" ]; then
+  if command -v op &> /dev/null && op account get &> /dev/null; then
+    echo "Fetching email password from 1Password..."
+    EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault Agents --fields password --reveal 2>/dev/null || true)
+    if [ -n "$EMAIL_PASSWORD" ]; then
+      echo "Using password from 1Password"
+    fi
+  fi
+fi
+
+if [ -z "$EMAIL_PASSWORD" ]; then
+  echo "ERROR: Could not get email password for $AGENT"
+  echo ""
+  echo "Options:"
+  echo "  1. Sign into 1Password: op signin"
+  echo "  2. Set EMAIL_PASSWORD env var manually"
+  exit 1
+fi
+
+mkdir -p "$CONFIG_DIR"
+
+# Escape password for TOML basic string: backslash first, then quotes
+ESCAPED_PASSWORD=$(printf '%s' "$EMAIL_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+# Build the account config block
+ACCOUNT_CONFIG=$(cat <<ACCOUNT_EOF
+[accounts.$AGENT]
+default = true
+
+caldav.discover.host = "$DAV_HOST"
+caldav.discover.port = 443
+caldav.discover.scheme = "https"
+
+caldav.auth.basic.username = "$EMAIL"
+caldav.auth.basic.password.raw = "$ESCAPED_PASSWORD"
+ACCOUNT_EOF
+)
+
+# Write or append config
+if [ -f "$CONFIG_FILE" ]; then
+  # Config exists - remove default=true from other accounts and append new one
+  sed -i.bak 's/^default = true$/default = false/' "$CONFIG_FILE"
+  rm -f "${CONFIG_FILE}.bak"
+  printf '\n%s\n' "$ACCOUNT_CONFIG" >> "$CONFIG_FILE"
+else
+  # Fresh config
+  printf '%s\n' "$ACCOUNT_CONFIG" > "$CONFIG_FILE"
+fi
+
+echo ""
+echo "Calendar configured for $EMAIL"
+echo "  Config: $CONFIG_FILE"
+echo "  CalDAV: https://$DAV_HOST"
+echo ""
+echo "Test with: calendula calendars list"

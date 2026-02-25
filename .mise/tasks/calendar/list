@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="List available calendars"
+
+set -e
+
+if ! command -v calendula &> /dev/null; then
+  echo "ERROR: calendula not found. Run: mise install" >&2
+  exit 1
+fi
+
+calendula calendars list "$@"
