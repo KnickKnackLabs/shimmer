@@ -251,7 +251,7 @@ if [ -n "$RUN_URL" ]; then
 else
   echo ""
   echo "[auto] Could not get run URL. Check manually:"
-  echo "      https://github.com/ricon-family/shimmer/actions/workflows/test-agent-identity.yml"
+  echo "      https://github.com/KnickKnackLabs/shimmer/actions/workflows/test-agent-identity.yml"
 fi
 
 wait_for_enter

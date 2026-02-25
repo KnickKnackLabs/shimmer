@@ -45,7 +45,7 @@ Narrow tokens for specific work contexts (repos, orgs). Created as needed.
 
 ```
 <agent>              # Personal token (full access)
-<agent>-shimmer      # Project token (ricon-family/shimmer)
+<agent>-shimmer      # Project token (KnickKnackLabs/shimmer)
 <agent>-wallpapers   # Project token (KnickKnackLabs/wallpapers)
 ```
 

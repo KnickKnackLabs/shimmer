@@ -3,7 +3,7 @@
 #MISE hide=true
 # Usage: REPO=$(.mise/tasks/_get-repo-slug [dir])
 #
-# Returns the repo slug (e.g., "ricon-family/shimmer") for the given directory.
+# Returns the repo slug (e.g., "KnickKnackLabs/shimmer") for the given directory.
 # Checks in order:
 # 1. .project.toml in target dir
 # 2. gh repo view (from git remote)

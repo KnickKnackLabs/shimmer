@@ -44,7 +44,7 @@ When working on any repository (including shimmer itself), clone it to your work
 
 ```bash
 cd ~/agents/<agent>/
-git clone https://github.com/ricon-family/shimmer.git
+git clone https://github.com/KnickKnackLabs/shimmer.git
 cd shimmer
 ```
 

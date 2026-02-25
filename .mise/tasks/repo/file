@@ -10,7 +10,7 @@ REPO="${usage_repo:-}"
 
 # Known projects
 PROJECTS=(
-  "ricon-family/shimmer"
+  "KnickKnackLabs/shimmer"
   "ricon-family/fold"
   "ricon-family/zettelkasten"
   "ricon-family/food-life"

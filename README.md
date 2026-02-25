@@ -8,7 +8,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/ricon-family/shimmer.git ~/shimmer
+git clone https://github.com/KnickKnackLabs/shimmer.git ~/shimmer
 cd ~/shimmer && mise trust && mise install
 
 # Add to your shell config (~/.zshrc or ~/.bashrc)

@@ -22,7 +22,7 @@ This is yours - repos, scratch files, whatever you need. It persists between ses
 ## 2. Clone Shimmer (our tooling repo)
 
 \`\`\`bash
-git clone https://github.com/ricon-family/shimmer.git ~/agents/${USERNAME}/shimmer
+git clone https://github.com/KnickKnackLabs/shimmer.git ~/agents/${USERNAME}/shimmer
 \`\`\`
 
 ## 3. Set your SHIMMER_DIR

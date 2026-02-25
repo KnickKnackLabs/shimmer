@@ -149,7 +149,7 @@ https://github.com/orgs/ricon-family/projects/4/settings
 | Code changes requested | Status → In Progress | PR needs updates, still actively worked |
 | Pull request linked to issue | Status → In Review | PR submitted for review |
 | Auto-archive | `is:closed updated:<@today-14d` | Clean up old closed items after 2 weeks |
-| Auto-add | ricon-family/shimmer `is:issue is:open` | Auto-add open issues from this repo |
+| Auto-add | KnickKnackLabs/shimmer `is:issue is:open` | Auto-add open issues from this repo |
 
 **Views created:**
 - [x] Backlog (table, group by Priority, columns: Title, Assignees, Status, Iteration)
@@ -163,7 +163,7 @@ https://github.com/orgs/ricon-family/projects/4/settings
 Remove label that overlaps with Issue Types.
 
 ```bash
-gh label delete bug --repo ricon-family/shimmer --yes
+gh label delete bug --repo KnickKnackLabs/shimmer --yes
 ```
 
 ### 6. Delete `enhancement` label
@@ -173,5 +173,5 @@ gh label delete bug --repo ricon-family/shimmer --yes
 Remove label that overlaps with Issue Types (use "Feature" type instead).
 
 ```bash
-gh label delete enhancement --repo ricon-family/shimmer --yes
+gh label delete enhancement --repo KnickKnackLabs/shimmer --yes
 ```

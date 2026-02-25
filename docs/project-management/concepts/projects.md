@@ -163,8 +163,8 @@ gh project edit 4 --owner ricon-family --readme "# Project README\n\nMarkdown co
 gh project edit 4 --owner ricon-family --visibility PUBLIC  # or PRIVATE
 
 # Link/unlink project to repo or team
-gh project link 4 --owner ricon-family --repo ricon-family/shimmer
-gh project unlink 4 --owner ricon-family --repo ricon-family/shimmer
+gh project link 4 --owner ricon-family --repo KnickKnackLabs/shimmer
+gh project unlink 4 --owner ricon-family --repo KnickKnackLabs/shimmer
 ```
 
 ### Item Management
@@ -175,7 +175,7 @@ gh project item-list 4 --owner ricon-family --format json
 gh project item-list 4 --owner ricon-family --limit 100  # default 30
 
 # Add existing issue/PR to project by URL
-gh project item-add 4 --owner ricon-family --url https://github.com/ricon-family/shimmer/issues/123
+gh project item-add 4 --owner ricon-family --url https://github.com/KnickKnackLabs/shimmer/issues/123
 
 # Create draft issue (lives only in project until converted)
 gh project item-create 4 --owner ricon-family --title "Draft task" --body "Description"
@@ -329,7 +329,7 @@ Source: https://docs.github.com/en/issues/planning-and-tracking-with-projects/ma
 **Linking to repository**:
 - Project appears in repo's Projects tab
 - Can set default repo (new issues from project go there)
-- CLI: `gh project link 4 --owner ricon-family --repo ricon-family/shimmer`
+- CLI: `gh project link 4 --owner ricon-family --repo KnickKnackLabs/shimmer`
 
 **Linking to team**:
 - Team gets read access (additive to existing permissions)

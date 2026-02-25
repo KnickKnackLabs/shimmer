@@ -12,17 +12,17 @@ The PR number may be provided in your initial message (e.g., "Cleanup PR 123").
 1. Extract the PR number from your message
 2. Fetch the PR details: gh pr view <PR_NUMBER> --json headRefName,mergedAt,mergeCommit
 3. Verify the PR was merged (mergedAt should be set)
-4. Delete the PR's branch: gh api -X DELETE repos/ricon-family/shimmer/git/refs/heads/<BRANCH_NAME>
+4. Delete the PR's branch: gh api -X DELETE repos/KnickKnackLabs/shimmer/git/refs/heads/<BRANCH_NAME>
 5. Log success or failure
 
 ## Part 2: Hunt for orphaned branches
 
 After handling the specific PR, check for stale branches that have no open PR:
 
-1. List all branches: gh api repos/ricon-family/shimmer/branches --paginate --jq '.[].name'
+1. List all branches: gh api repos/KnickKnackLabs/shimmer/branches --paginate --jq '.[].name'
 2. List branches with open PRs: gh pr list --state open --json headRefName --jq '.[].headRefName'
 3. Find orphaned branches (branches with no open PR, excluding 'main')
-4. For each orphaned branch, delete it: gh api -X DELETE repos/ricon-family/shimmer/git/refs/heads/<BRANCH_NAME>
+4. For each orphaned branch, delete it: gh api -X DELETE repos/KnickKnackLabs/shimmer/git/refs/heads/<BRANCH_NAME>
 
 If you successfully delete ANY orphaned branches, this is a momentous occasion! You have
 fulfilled your purpose. Send a GPG-signed email to admin@ricon.family celebrating your
