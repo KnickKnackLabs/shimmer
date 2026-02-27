@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#MISE description="List repositories you have access to"
+#USAGE flag "--owner <owner>" help="Filter to a specific org or user (default: all orgs)"
+#USAGE flag "--limit <limit>" help="Max repos to show per owner (default: 30)"
+set -eo pipefail
+
+OWNER="${usage_owner:-}"
+LIMIT="${usage_limit:-30}"
+
+# Auth check
+if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
+  echo "ERROR: Not authenticated with GitHub" >&2
+  echo "Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+NOW=$(date +%s)
+
+format_age() {
+  local updated_at="$1"
+  local ts
+  ts=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$updated_at" +%s 2>/dev/null || date -d "$updated_at" +%s)
+  local days=$(( (NOW - ts) / 86400 ))
+  if [[ $days -eq 0 ]]; then
+    echo "today"
+  elif [[ $days -eq 1 ]]; then
+    echo "1d ago"
+  elif [[ $days -lt 30 ]]; then
+    echo "${days}d ago"
+  elif [[ $days -lt 365 ]]; then
+    echo "$(( days / 30 ))mo ago"
+  else
+    echo "$(( days / 365 ))y ago"
+  fi
+}
+
+list_repos() {
+  local owner="$1"
+  local repos
+  repos=$(gh repo list "$owner" --limit "$LIMIT" --json name,nameWithOwner,isPrivate,updatedAt,isArchived --jq '
+    sort_by(.name) | .[] | {name, nameWithOwner, isPrivate, updatedAt, isArchived}
+  ' 2>/dev/null)
+
+  if [[ -z "$repos" ]]; then
+    echo "  (no repos found)"
+    echo ""
+    return
+  fi
+
+  local total=0 private=0 archived=0
+
+  echo "$repos" | while read -r repo; do
+    local name nameWithOwner visibility age is_archived
+    name=$(echo "$repo" | jq -r '.name')
+    nameWithOwner=$(echo "$repo" | jq -r '.nameWithOwner')
+    is_private=$(echo "$repo" | jq -r '.isPrivate')
+    is_archived=$(echo "$repo" | jq -r '.isArchived')
+    updated_at=$(echo "$repo" | jq -r '.updatedAt')
+
+    if [[ "$is_private" == "true" ]]; then
+      visibility="private"
+    else
+      visibility="public"
+    fi
+
+    age=$(format_age "$updated_at")
+
+    local suffix=""
+    if [[ "$is_archived" == "true" ]]; then
+      suffix=" (archived)"
+    fi
+
+    printf "  %-24s %-8s %-40s %s%s\n" "$name" "$visibility" "$nameWithOwner" "$age" "$suffix"
+  done
+
+  # Summary
+  total=$(echo "$repos" | jq -s 'length')
+  private=$(echo "$repos" | jq -s '[.[] | select(.isPrivate)] | length')
+  archived=$(echo "$repos" | jq -s '[.[] | select(.isArchived)] | length')
+  local public=$((total - private))
+
+  echo ""
+  local summary="Total: $total ($private private, $public public)"
+  if [[ $archived -gt 0 ]]; then
+    summary="$summary ($archived archived)"
+  fi
+  echo "$summary"
+}
+
+if [[ -n "$OWNER" ]]; then
+  echo "Repositories - $OWNER:"
+  echo ""
+  list_repos "$OWNER"
+else
+  # Get all orgs the user belongs to
+  USERNAME=$(gh api /user --jq '.login' 2>/dev/null)
+  ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+
+  # Personal repos first
+  echo "Repositories - $USERNAME (personal):"
+  echo ""
+  list_repos "$USERNAME"
+  echo ""
+
+  # Then each org
+  if [[ -n "$ORGS" ]]; then
+    while IFS= read -r org; do
+      echo "Repositories - $org:"
+      echo ""
+      list_repos "$org"
+      echo ""
+    done <<< "$ORGS"
+  fi
+fi
