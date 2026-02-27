@@ -4,7 +4,7 @@
 set -e
 
 # Use caller's directory if available, otherwise pwd
-CURRENT_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+CURRENT_DIR="${CALLER_PWD:-$(pwd)}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -23,7 +23,7 @@ JOB="${usage_job:-}"
 MODEL="${usage_model:-}"
 
 # Get the caller's directory (where shimmer was invoked from)
-CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 
 # Build system prompt if not provided
 if [ -z "$SYSTEM_PROMPT_FILE" ]; then

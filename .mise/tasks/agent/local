@@ -27,7 +27,7 @@ fi
 # against shell injection — special chars are not re-evaluated.
 PROMPT=$(cat "$AGENT_FILE")
 
-cd "${SHIMMER_CALLER_PWD:-.}"
+cd "${CALLER_PWD:-.}"
 exec claude --append-system-prompt "$PROMPT
 
 ## Session Context

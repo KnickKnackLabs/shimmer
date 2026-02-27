@@ -11,7 +11,7 @@ if [[ -z "$PARENT" ]]; then
 fi
 
 # Determine target directory and repo
-TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
 REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR")
 
