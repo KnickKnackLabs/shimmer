@@ -103,7 +103,7 @@ else
   if [[ "$PATH_ARG" == /* ]] || [[ "$PATH_ARG" == ~* ]]; then
     PATH_ARG="${PATH_ARG/#\~/$HOME}"
   else
-    CALLER_DIR="${SHIMMER_CALLER_PWD:-.}"
+    CALLER_DIR="${CALLER_PWD:-.}"
     PATH_ARG="$CALLER_DIR/$PATH_ARG"
   fi
 fi
@@ -204,7 +204,7 @@ cat > "$PATH_ARG/.mise/tasks/shell" << EOF
 #!/usr/bin/env bash
 #MISE description="Output shell configuration for global $COMMAND_ARG command (use with eval)"
 REPO_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")/../.." && pwd)"
-echo "alias $COMMAND_ARG='SHIMMER_CALLER_PWD=\"\\\$PWD\" mise -C \"\$REPO_DIR\" run'"
+echo "alias $COMMAND_ARG='CALLER_PWD=\"\\\$PWD\" mise -C \"\$REPO_DIR\" run'"
 EOF
 chmod +x "$PATH_ARG/.mise/tasks/shell"
 echo "  Created: .mise/tasks/shell"

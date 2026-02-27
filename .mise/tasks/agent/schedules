@@ -4,7 +4,7 @@
 set -e
 
 # Get the caller's directory (where shimmer was invoked from)
-CALLER_DIR="${SHIMMER_CALLER_PWD:-$(pwd)}"
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 cd "$CALLER_DIR"
 
 # Check for workflows.yaml

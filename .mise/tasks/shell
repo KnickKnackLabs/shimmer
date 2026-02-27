@@ -14,7 +14,7 @@ if [ ! -d "\$REPO" ]; then
   echo "shimmer: re-run 'eval \"\\\$(mise -C /path/to/shimmer run -q shell)\"' to fix" >&2
   exit 1
 fi
-SHIMMER_CALLER_PWD="\${SHIMMER_CALLER_PWD:-\$PWD}" exec mise -C "\$REPO" run "\$@"
+CALLER_PWD="\${CALLER_PWD:-\$PWD}" exec mise -C "\$REPO" run "\$@"
 SCRIPT
 chmod +x "$BIN"
 
@@ -25,4 +25,4 @@ case ":$PATH:" in
 esac
 
 # Shell alias (captures caller's PWD for interactive use)
-echo "alias shimmer='SHIMMER_CALLER_PWD=\"\$PWD\" mise -C \"$REPO_DIR\" run'"
+echo "alias shimmer='CALLER_PWD=\"\$PWD\" mise -C \"$REPO_DIR\" run'"

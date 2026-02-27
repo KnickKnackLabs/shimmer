@@ -9,7 +9,7 @@ set -e
 if [ -n "${usage_repo:-}" ]; then
   REPO="$usage_repo"
 else
-  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
   cd "$TARGET_DIR"
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 fi

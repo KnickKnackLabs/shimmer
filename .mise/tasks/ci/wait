@@ -13,7 +13,7 @@ SCRIPT_DIR="$(dirname "$0")"
 if [[ -n "${usage_repo:-}" ]]; then
   REPO="$usage_repo"
 else
-  TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-.}}"
+  TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
   REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR")
 fi
 
