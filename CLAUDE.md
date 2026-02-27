@@ -141,7 +141,7 @@ CI runs have limited time. Use `shimmer ci:time-remaining` to check how much tim
 
 - Run `shimmer code:check` before pushing to verify tests, formatting, and linting pass
 - After creating or updating a PR, verify all CI checks pass with `shimmer ci:wait-for-checks`
-- PRs are merged with squash and the branch is deleted
+- PRs are merged with regular merge commits (`gh pr merge --merge`) and the branch is deleted
 - Check CONTRIBUTING.md for review guidelines
 
 ## GitHub Actions
