@@ -22,13 +22,13 @@ echo ""
 TOTAL=0
 while IFS= read -r org; do
   TOTAL=$((TOTAL + 1))
-  INFO=$(gh api "/orgs/$org" --jq '{description, public_repos, total_private_repos, public_members_count}' 2>/dev/null || echo '{}')
+  INFO=$(gh api "/orgs/$org" --jq '{description, public_repos, total_private_repos}' 2>/dev/null || echo '{}')
   ROLE=$(gh api "/user/memberships/orgs/$org" --jq '.role' 2>/dev/null || echo "member")
+  MEMBERS=$(gh api "/orgs/$org/members" --jq 'length' 2>/dev/null || echo "0")
 
   DESC=$(echo "$INFO" | jq -r '.description // empty')
   PUBLIC_REPOS=$(echo "$INFO" | jq -r '.public_repos // 0')
   PRIVATE_REPOS=$(echo "$INFO" | jq -r '.total_private_repos // 0')
-  MEMBERS=$(echo "$INFO" | jq -r '.public_members_count // 0')
   REPO_COUNT=$((PUBLIC_REPOS + PRIVATE_REPOS))
 
   printf "  %-24s %-8s %3d repos  %3d members" "$org" "$ROLE" "$REPO_COUNT" "$MEMBERS"
