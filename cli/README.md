@@ -45,10 +45,10 @@ Most agent runs go through `mise run agent:run`, which handles:
 
 ## Adding a New Agent
 
-Agent identities live in the consuming repo's `agents/` directory (e.g., `fold/agents/c0da.txt`). Jobs live in `.jobs/` (e.g., `grow-heal-love/.jobs/referral-check.txt`).
+Agent identities live in the consuming repo's `agents/` directory (e.g., `fold/agents/c0da/CLAUDE.md`). Jobs live in `.jobs/` (e.g., `grow-heal-love/.jobs/referral-check.txt`).
 
 To add a new agent:
-1. Create `agents/<name>.txt` with agent identity
+1. Create `agents/<name>/CLAUDE.md` with agent identity
 2. Create or reuse jobs in `.jobs/`
 3. Run via `mise run agent:run --agent <name> --job <job>`
 

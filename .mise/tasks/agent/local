@@ -17,7 +17,7 @@ if [ -z "$AGENT_HOME" ]; then
 fi
 
 # Find agent identity file
-AGENT_FILE="${AGENT_HOME}/agents/${AGENT}.txt"
+AGENT_FILE="${AGENT_HOME}/agents/${AGENT}/CLAUDE.md"
 if [ ! -f "$AGENT_FILE" ]; then
   echo "Agent identity not found: $AGENT_FILE" >&2
   exit 1

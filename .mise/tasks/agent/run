@@ -34,15 +34,12 @@ if [ -z "$SYSTEM_PROMPT_FILE" ]; then
     cat "$SHIMMER_ROOT/cli/priv/prompts/base.txt" >> "$PROMPT_FILE"
   fi
 
-  # Add agent identity (from caller's repo or shimmer)
-  if [ -f "$CALLER_DIR/agents/$AGENT.txt" ]; then
+  # Add agent identity
+  if [ -f "$CALLER_DIR/agents/$AGENT/CLAUDE.md" ]; then
     echo "" >> "$PROMPT_FILE"
-    cat "$CALLER_DIR/agents/$AGENT.txt" >> "$PROMPT_FILE"
-  elif [ -f "$SHIMMER_ROOT/agents/$AGENT.txt" ]; then
-    echo "" >> "$PROMPT_FILE"
-    cat "$SHIMMER_ROOT/agents/$AGENT.txt" >> "$PROMPT_FILE"
+    cat "$CALLER_DIR/agents/$AGENT/CLAUDE.md" >> "$PROMPT_FILE"
   else
-    echo "Error: Agent identity not found for $AGENT" >&2
+    echo "Error: Agent identity not found: $CALLER_DIR/agents/$AGENT/CLAUDE.md" >&2
     exit 1
   fi
 

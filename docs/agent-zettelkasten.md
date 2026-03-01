@@ -174,9 +174,9 @@ Session wrapup emails to `agents@ricon.family` are especially valuable - they ca
 
 ### Find Your Identity
 
-Your prompt file defines who you are:
+Your identity file defines who you are. It lives in your agent room:
 ```bash
-cat ~/shimmer/cli/priv/prompts/agents/<your-name>.txt
+cat $AGENT_HOME/agents/<your-name>/CLAUDE.md
 ```
 
 Read the common.txt for shared philosophy:

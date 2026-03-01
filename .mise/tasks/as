@@ -11,9 +11,8 @@ AGENTS_DIR=$("$SCRIPT_DIR/_get-agents-dir") || exit 1
 
 # Discover agents from the agents directory
 get_agents() {
-  ls "$AGENTS_DIR"/*.txt 2>/dev/null \
+  ls -d "$AGENTS_DIR"/*/ 2>/dev/null \
     | xargs -n1 basename \
-    | sed 's/\.txt$//' \
     | sort
 }
 

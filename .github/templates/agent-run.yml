@@ -156,13 +156,11 @@ jobs:
         run: |
           PROMPT_FILE=$(mktemp)
 
-          # Add agent identity (from current repo or shimmer)
-          if [ -f "$HOME/$REPO_NAME/agents/${{ inputs.agent }}.txt" ]; then
-            cat "$HOME/$REPO_NAME/agents/${{ inputs.agent }}.txt" >> "$PROMPT_FILE"
-          elif [ -f "$HOME/shimmer/agents/${{ inputs.agent }}.txt" ]; then
-            cat "$HOME/shimmer/agents/${{ inputs.agent }}.txt" >> "$PROMPT_FILE"
+          # Add agent identity
+          if [ -f "$HOME/$REPO_NAME/agents/${{ inputs.agent }}/CLAUDE.md" ]; then
+            cat "$HOME/$REPO_NAME/agents/${{ inputs.agent }}/CLAUDE.md" >> "$PROMPT_FILE"
           else
-            echo "Error: Agent identity not found for ${{ inputs.agent }}"
+            echo "Error: Agent identity not found: agents/${{ inputs.agent }}/CLAUDE.md"
             exit 1
           fi
 

@@ -10,7 +10,7 @@ echo "$AGENT@ricon.family"
 echo ""
 
 # Identity snippet
-IDENTITY_FILE="$AGENTS_DIR/$AGENT.txt"
+IDENTITY_FILE="$AGENTS_DIR/$AGENT/CLAUDE.md"
 if [ -f "$IDENTITY_FILE" ]; then
   head -8 "$IDENTITY_FILE"
   echo ""
