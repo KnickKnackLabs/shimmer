@@ -48,12 +48,7 @@ echo "  shimmer email:list -n 3"
 echo "  shimmer email:read <id>"
 echo ""
 echo "After logging in, you'll be redirected to the token creation page."
-echo "All scopes will be pre-selected."
-echo ""
-echo "After creating the token:"
-echo "  1. Copy the token value"
-echo "  2. shimmer github:token:store $AGENT <token>"
-echo "  3. shimmer agent:sync-secrets"
+echo "All scopes will be pre-selected. Click 'Generate token' and copy the value."
 echo ""
 
 # Open incognito browser (macOS)
