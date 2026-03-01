@@ -71,20 +71,23 @@ if [ "$NEEDS_VERIFICATION" = "y" ] || [ "$NEEDS_VERIFICATION" = "Y" ]; then
   echo "[auto] Checking ${AGENT}'s email for verification code..."
   echo ""
 
+  # Set agent identity so email tasks resolve the right account
+  export GIT_AUTHOR_EMAIL="${AGENT}@ricon.family"
+
   # Show recent emails
-  ENVELOPES=$(himalaya envelope list -a "$AGENT" 2>/dev/null || true)
+  ENVELOPES=$(mise run -q email:list -n 5 2>/dev/null || true)
   if [ -n "$ENVELOPES" ]; then
-    echo "$ENVELOPES" | head -10
+    echo "$ENVELOPES"
     echo ""
     read -r -p "Enter the email ID to read (or Enter to skip): " EMAIL_ID
     echo ""
     if [ -n "$EMAIL_ID" ]; then
-      himalaya message read -a "$AGENT" "$EMAIL_ID" 2>/dev/null || true
+      mise run -q email:read "$EMAIL_ID" 2>/dev/null || true
       echo ""
     fi
   else
     echo "[WARN] Could not fetch emails. Check manually:"
-    echo "  himalaya envelope list -a $AGENT"
+    echo "  shimmer email:list"
     echo ""
   fi
 fi
