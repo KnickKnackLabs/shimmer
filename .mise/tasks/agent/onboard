@@ -6,10 +6,14 @@
 set -e
 
 AGENT="${usage_agent_name:?Usage: mise run agent:onboard <agent-name>}"
-AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 EMAIL="${AGENT}@ricon.family"
 GITHUB_USERNAME="${AGENT}-ricon"
 VAULT="Agents"
+
+# Target caller's repo for GitHub secrets (not shimmer's)
+TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+cd "$TARGET_DIR"
 
 wait_for_enter() {
   echo ""

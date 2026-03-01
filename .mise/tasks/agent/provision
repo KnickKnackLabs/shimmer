@@ -8,8 +8,12 @@ set -e
 AGENT="${usage_agent_name:?Usage: mise run agent:provision <agent-name> [--force]}"
 FORCE="${usage_force:-}"
 EMAIL="${AGENT}@ricon.family"
-UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
+UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 VAULT="Agents"
+
+# Target caller's repo for GitHub secrets (not shimmer's)
+TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+cd "$TARGET_DIR"
 
 echo "=== Provisioning agent: $AGENT ==="
 echo ""
