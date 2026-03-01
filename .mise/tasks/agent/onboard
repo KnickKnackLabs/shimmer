@@ -184,7 +184,7 @@ wait_for_enter
 echo "STEP 7: Store PAT"
 echo "------------------------------------------------------------"
 echo ""
-read -r -p "Paste the PAT token: " PAT_TOKEN
+read -r -p "Paste the PAT token (Enter to skip if already stored): " PAT_TOKEN
 echo ""
 
 if [ -n "$PAT_TOKEN" ]; then
@@ -196,7 +196,7 @@ if [ -n "$PAT_TOKEN" ]; then
 
   echo "[auto] Done!"
 else
-  echo "[WARN] No token provided, skipping storage"
+  echo "[auto] Skipped (using existing PAT)"
 fi
 
 # Set display name on GitHub profile

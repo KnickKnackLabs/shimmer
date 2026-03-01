@@ -47,16 +47,8 @@ echo "If GitHub requests device verification, check the agent's email:"
 echo "  shimmer email:list -n 3"
 echo "  shimmer email:read <id>"
 echo ""
-echo "After logging in, you'll be redirected to the token creation page."
-echo "All scopes will be pre-selected. Click 'Generate token' and copy the value."
+echo "[YOU] Open this URL in an incognito/private window:"
+echo "      $LOGIN_URL"
 echo ""
-
-# Open incognito browser (macOS)
-if [ -d "/Applications/Google Chrome.app" ]; then
-  open -na "Google Chrome" --args --incognito "$LOGIN_URL"
-elif [ -d "/Applications/Firefox.app" ]; then
-  open -na "Firefox" --args -private-window "$LOGIN_URL"
-else
-  echo "Open this URL in an incognito/private window:"
-  echo "$LOGIN_URL"
-fi
+echo "      After logging in, you'll be redirected to the token creation page."
+echo "      All scopes will be pre-selected. Click 'Generate token' and copy the value."
