@@ -27,9 +27,8 @@ validate_agent_home() {
 
 # Discover agents from AGENT_HOME
 get_agents() {
-  ls "$AGENT_HOME/agents"/*.txt 2>/dev/null \
+  ls -d "$AGENT_HOME/agents"/*/ 2>/dev/null \
     | xargs -n1 basename \
-    | sed 's/\.txt$//' \
     | sort
 }
 

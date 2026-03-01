@@ -32,9 +32,8 @@ MODEL="${usage_model:-}"
 AGENTS_FLAG="${usage_agents:-}"
 
 # Discover or filter agents
-ALL_AGENTS=$(ls "$AGENT_HOME/agents"/*.txt 2>/dev/null \
+ALL_AGENTS=$(ls -d "$AGENT_HOME/agents"/*/ 2>/dev/null \
   | xargs -n1 basename \
-  | sed 's/\.txt$//' \
   | sort)
 
 if [ -n "$AGENTS_FLAG" ]; then

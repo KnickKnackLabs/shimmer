@@ -73,9 +73,9 @@ Generated workflows call the reusable `agent-run.yml` workflow, which:
            schedule: "0 */6 * * *"
    ```
 
-2. Ensure the agent has prompts in `cli/priv/prompts/agents/<agent>.txt`
+2. Ensure the agent has an identity in the caller repo's `agents/<agent>/CLAUDE.md`
 
-3. Ensure the job has a prompt in `cli/priv/prompts/jobs/<job>.txt`
+3. Ensure the job has a prompt in `.jobs/<job>.txt`
 
 4. Generate and commit:
    ```bash

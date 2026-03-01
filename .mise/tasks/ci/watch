@@ -5,11 +5,11 @@
 
 set -e
 
-# Discover agents from prompt files (source of truth for agents)
+# Discover agents from the caller's agents directory
 get_agents() {
-  ls cli/priv/prompts/agents/*.txt 2>/dev/null \
+  local agents_dir="${CALLER_PWD:-.}/agents"
+  ls -d "$agents_dir"/*/ 2>/dev/null \
     | xargs -n1 basename \
-    | sed 's/\.txt$//' \
     | sort
 }
 
