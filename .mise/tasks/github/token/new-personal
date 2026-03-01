@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Open browser to create a full-access personal token for an agent"
 #USAGE arg "<agent>" help="Agent name (e.g., k7r2, brownie)"
+#MISE raw=true
 
 set -e
 
@@ -43,12 +44,50 @@ echo "Credentials:"
 echo "  Username: $USERNAME"
 echo "  Password: $PASSWORD"
 echo ""
-echo "If GitHub requests device verification, check the agent's email:"
-echo "  shimmer email:list -n 3"
-echo "  shimmer email:read <id>"
+
+# Ask before opening browser
+read -r -p "Open incognito browser to GitHub login? (Y/n): " OPEN_BROWSER
 echo ""
-echo "[YOU] Open this URL in an incognito/private window:"
-echo "      $LOGIN_URL"
+if [ "$OPEN_BROWSER" != "n" ] && [ "$OPEN_BROWSER" != "N" ]; then
+  if [ -d "/Applications/Google Chrome.app" ]; then
+    open -na "Google Chrome" --args --incognito "$LOGIN_URL"
+  elif [ -d "/Applications/Firefox.app" ]; then
+    open -na "Firefox" --args -private-window "$LOGIN_URL"
+  else
+    echo "No supported browser found. Open this URL in an incognito window:"
+    echo "  $LOGIN_URL"
+    echo ""
+  fi
+else
+  echo "Open this URL in an incognito/private window:"
+  echo "  $LOGIN_URL"
+  echo ""
+fi
+
+# Device verification flow
+read -r -p "Is GitHub asking for device verification? (y/N): " NEEDS_VERIFICATION
 echo ""
-echo "      After logging in, you'll be redirected to the token creation page."
-echo "      All scopes will be pre-selected. Click 'Generate token' and copy the value."
+if [ "$NEEDS_VERIFICATION" = "y" ] || [ "$NEEDS_VERIFICATION" = "Y" ]; then
+  echo "[auto] Checking ${AGENT}'s email for verification code..."
+  echo ""
+
+  # Show recent emails
+  ENVELOPES=$(himalaya envelope list -a "$AGENT" 2>/dev/null || true)
+  if [ -n "$ENVELOPES" ]; then
+    echo "$ENVELOPES" | head -10
+    echo ""
+    read -r -p "Enter the email ID to read (or Enter to skip): " EMAIL_ID
+    echo ""
+    if [ -n "$EMAIL_ID" ]; then
+      himalaya message read -a "$AGENT" "$EMAIL_ID" 2>/dev/null || true
+      echo ""
+    fi
+  else
+    echo "[WARN] Could not fetch emails. Check manually:"
+    echo "  himalaya envelope list -a $AGENT"
+    echo ""
+  fi
+fi
+
+echo "After logging in, you'll be redirected to the token creation page."
+echo "All scopes will be pre-selected. Click 'Generate token' and copy the value."
