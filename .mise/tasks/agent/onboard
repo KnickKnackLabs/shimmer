@@ -8,7 +8,6 @@ set -e
 AGENT="${usage_agent_name:?Usage: mise run agent:onboard <agent-name>}"
 AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 EMAIL="${AGENT}@ricon.family"
-GITHUB_USERNAME="${AGENT}-ricon"
 VAULT="Agents"
 
 # Remember shimmer's directory for mise run calls after cd
@@ -38,6 +37,7 @@ fi
 # Get credentials from 1Password
 echo "Fetching credentials from 1Password..."
 EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
+GITHUB_USERNAME=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields username 2>/dev/null || echo "")
 GITHUB_PASSWORD=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
 GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
 GITHUB_COUNTRY=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields country 2>/dev/null || echo "")
