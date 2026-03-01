@@ -37,13 +37,23 @@ fi
 # === GPG Key ===
 echo "--- GPG Key ---"
 if gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
-  echo "[auto] Key for $EMAIL already exists"
-  if [ "$FORCE" != "true" ]; then
-    echo "       Use --force to regenerate"
+  echo "[auto] Key for $EMAIL already in keyring"
+  if [ "$FORCE" = "true" ]; then
+    echo "[auto] --force: regenerating key..."
+    EXISTING_FP=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep -A1 "^pub" | tail -1 | tr -d ' ')
+    gpg --batch --yes --delete-secret-and-public-key "$EXISTING_FP" 2>/dev/null || true
   fi
-else
-  echo "[auto] Generating GPG key for $EMAIL..."
-  gpg --batch --gen-key << KEYSPEC
+fi
+
+if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
+  # Check 1Password for existing key to import
+  STORED_PRIVATE_KEY=$(op item get "${AGENT} - GPG" --vault "$VAULT" --fields "Private Key" 2>/dev/null || echo "")
+  if [[ -n "$STORED_PRIVATE_KEY" ]]; then
+    echo "[auto] Importing GPG key from 1Password..."
+    echo "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
+  else
+    echo "[auto] Generating new GPG key for $EMAIL..."
+    gpg --batch --gen-key << KEYSPEC
 Key-Type: RSA
 Key-Length: 4096
 Name-Real: $AGENT
@@ -52,9 +62,10 @@ Expire-Date: 0
 %no-protection
 %commit
 KEYSPEC
+  fi
 fi
 
-# Sign with org key
+# Sign with org key (idempotent — re-signing is a no-op)
 FINGERPRINT=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep -A1 "^pub" | tail -1 | tr -d ' ')
 echo "[auto] Signing with org key..."
 gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1 || true
@@ -79,24 +90,68 @@ item_exists() {
   op item get "$1" --vault "$VAULT" &> /dev/null
 }
 
+ensure_item() {
+  local title="$1"; shift
+  if item_exists "$title"; then
+    echo "[auto] $title already exists"
+    return 1  # signal: already existed
+  else
+    echo "[auto] Creating $title..."
+    op item create --title "$title" --vault "$VAULT" "$@" > /dev/null
+    return 0  # signal: newly created
+  fi
+}
+
 # Email item
-if item_exists "${AGENT} - Email"; then
-  echo "[auto] ${AGENT} - Email already exists"
-else
-  echo "[auto] Creating ${AGENT} - Email..."
+ensure_item "${AGENT} - Email" \
+  --category login \
+  --url "https://mail.ricon.family" \
+  username="$AGENT" \
+  "email[text]=$EMAIL" \
+  --generate-password=20,letters,digits || true
+
+# GitHub item
+ensure_item "${AGENT} - GitHub" \
+  --category login \
+  --url "https://github.com" \
+  username="${AGENT}-ricon" \
+  "email[text]=$EMAIL" \
+  "country[text]=United States of America" \
+  --generate-password=20,letters,digits || true
+
+# Matrix item
+ensure_item "${AGENT} - Matrix" \
+  --category login \
+  --url "https://matrix.ricon.family" \
+  username="@${AGENT}:ricon.family" \
+  --generate-password=20,letters,digits || true
+
+# Identity item (with admin override passphrase)
+if ! item_exists "${AGENT} - Identity"; then
+  echo "[auto] Creating ${AGENT} - Identity..."
+  WORD1=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+  WORD2=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+  PASSPHRASE="$WORD1 $WORD2"
   op item create \
-    --category login \
-    --title "${AGENT} - Email" \
+    --category "Secure Note" \
+    --title "${AGENT} - Identity" \
     --vault "$VAULT" \
-    --url "https://mail.ricon.family" \
-    username="$AGENT" \
-    "email[text]=$EMAIL" \
-    --generate-password=20,letters,digits > /dev/null
+    "passphrase[password]=$PASSPHRASE" \
+    "notes[text]=Admin override passphrase for $AGENT. Used by shimmer --passphrase flag." > /dev/null
+else
+  echo "[auto] ${AGENT} - Identity already exists"
 fi
 
-# GPG item
+# GPG item — store after key operations, update if exists
 if item_exists "${AGENT} - GPG"; then
-  echo "[auto] ${AGENT} - GPG already exists"
+  echo "[auto] Updating ${AGENT} - GPG..."
+  op item edit "${AGENT} - GPG" --vault "$VAULT" \
+    "Key ID[text]=$KEY_ID" \
+    "Fingerprint[text]=$FINGERPRINT" \
+    "Email[text]=$EMAIL" \
+    "Private Key[text]=$PRIVATE_KEY" \
+    "Public Key[text]=$PUBLIC_KEY" \
+    "GitHub Title[text]=$EMAIL" > /dev/null
 else
   echo "[auto] Creating ${AGENT} - GPG..."
   op item create \
@@ -109,53 +164,6 @@ else
     "Private Key[text]=$PRIVATE_KEY" \
     "Public Key[text]=$PUBLIC_KEY" \
     "GitHub Title[text]=$EMAIL" > /dev/null
-fi
-
-# GitHub item
-if item_exists "${AGENT} - GitHub"; then
-  echo "[auto] ${AGENT} - GitHub already exists"
-else
-  echo "[auto] Creating ${AGENT} - GitHub..."
-  op item create \
-    --category login \
-    --title "${AGENT} - GitHub" \
-    --vault "$VAULT" \
-    --url "https://github.com" \
-    username="${AGENT}-ricon" \
-    "email[text]=$EMAIL" \
-    "country[text]=United States of America" \
-    --generate-password=20,letters,digits > /dev/null
-fi
-
-# Matrix item
-if item_exists "${AGENT} - Matrix"; then
-  echo "[auto] ${AGENT} - Matrix already exists"
-else
-  echo "[auto] Creating ${AGENT} - Matrix..."
-  op item create \
-    --category login \
-    --title "${AGENT} - Matrix" \
-    --vault "$VAULT" \
-    --url "https://matrix.ricon.family" \
-    username="@${AGENT}:ricon.family" \
-    --generate-password=20,letters,digits > /dev/null
-fi
-
-# Identity item (with admin override passphrase)
-if item_exists "${AGENT} - Identity"; then
-  echo "[auto] ${AGENT} - Identity already exists"
-else
-  echo "[auto] Creating ${AGENT} - Identity..."
-  # Generate a memorable two-word passphrase
-  WORD1=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
-  WORD2=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
-  PASSPHRASE="$WORD1 $WORD2"
-  op item create \
-    --category "Secure Note" \
-    --title "${AGENT} - Identity" \
-    --vault "$VAULT" \
-    "passphrase[password]=$PASSPHRASE" \
-    "notes[text]=Admin override passphrase for $AGENT. Used by shimmer --passphrase flag." > /dev/null
 fi
 
 echo ""
