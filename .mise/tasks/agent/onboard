@@ -11,6 +11,9 @@ EMAIL="${AGENT}@ricon.family"
 GITHUB_USERNAME="${AGENT}-ricon"
 VAULT="Agents"
 
+# Remember shimmer's directory for mise run calls after cd
+SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # Target caller's repo for GitHub secrets (not shimmer's)
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
@@ -96,7 +99,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  mise run email:setup "$AGENT" > /dev/null 2>&1
+  (cd "$SHIMMER_DIR" && mise run email:setup "$AGENT") > /dev/null 2>&1
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
@@ -173,7 +176,7 @@ echo "[auto] Opening browser to create full-access personal token..."
 echo ""
 
 # Run github:token:new-personal (shows credentials, opens incognito browser)
-mise run -q github:token:new-personal "$AGENT"
+(cd "$SHIMMER_DIR" && mise run -q github:token:new-personal "$AGENT")
 
 wait_for_enter
 
