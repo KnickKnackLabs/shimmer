@@ -233,32 +233,19 @@ wait_for_enter
 # STEP 9: Verify
 echo "STEP 9: Verify Setup"
 echo "------------------------------------------------------------"
-echo "[auto] Triggering test workflow..."
+echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
+echo ""
 
-if ! gh workflow run test-agent-identity.yml -f agent="$AGENT" 2>&1; then
-  echo ""
-  echo "[WARN] Failed to trigger test workflow. You may need to trigger it manually:"
-  echo "       gh workflow run test-agent-identity.yml -f agent=$AGENT"
-  echo ""
-fi
-sleep 2
-
-# Get the run URL
-RUN_URL=$(gh run list --workflow=test-agent-identity.yml --limit=1 --json url --jq '.[0].url' 2>/dev/null || true)
-
-if [ -n "$RUN_URL" ]; then
-  echo ""
-  echo "[YOU] Review the workflow run:"
-  echo "      $RUN_URL"
-  echo ""
-  echo "      Wait for it to complete, then check:"
-  echo "      - Commit was created and signed"
-  echo "      - Signature shows 'Good signature from $EMAIL'"
-else
-  echo ""
-  echo "[auto] Could not get run URL. Check manually:"
-  echo "      https://github.com/KnickKnackLabs/shimmer/actions/workflows/test-agent-identity.yml"
-fi
+# Set agent identity and run welcome to verify the full local identity chain
+PAT=$(op item get "$AGENT - GitHub" --vault "$VAULT" --fields PAT --reveal 2>/dev/null || true)
+(
+  export GH_TOKEN="$PAT"
+  export GIT_AUTHOR_EMAIL="$EMAIL"
+  export GIT_COMMITTER_EMAIL="$EMAIL"
+  export GIT_AUTHOR_NAME="$AGENT"
+  export GIT_COMMITTER_NAME="$AGENT"
+  cd "$SHIMMER_DIR" && mise run -q welcome
+)
 
 wait_for_enter
 
