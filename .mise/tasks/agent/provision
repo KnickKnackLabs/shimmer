@@ -145,32 +145,30 @@ else
   echo "[auto] ${AGENT} - Identity already exists"
 fi
 
-# GPG item — only write to 1Password when key was newly generated
-if [[ "$GPG_NEWLY_GENERATED" == "true" ]]; then
-  if item_exists "${AGENT} - GPG"; then
-    echo "[auto] Updating ${AGENT} - GPG..."
-    op item edit "${AGENT} - GPG" --vault "$VAULT" \
-      "Key ID[text]=$KEY_ID" \
-      "Fingerprint[text]=$FINGERPRINT" \
-      "Email[text]=$EMAIL" \
-      "Private Key[text]=$PRIVATE_KEY" \
-      "Public Key[text]=$PUBLIC_KEY" \
-      "GitHub Title[text]=$EMAIL" > /dev/null
-  else
-    echo "[auto] Creating ${AGENT} - GPG..."
-    op item create \
-      --category "Secure Note" \
-      --title "${AGENT} - GPG" \
-      --vault "$VAULT" \
-      "Key ID[text]=$KEY_ID" \
-      "Fingerprint[text]=$FINGERPRINT" \
-      "Email[text]=$EMAIL" \
-      "Private Key[text]=$PRIVATE_KEY" \
-      "Public Key[text]=$PUBLIC_KEY" \
-      "GitHub Title[text]=$EMAIL" > /dev/null
-  fi
+# GPG item — write to 1Password if key was newly generated or item is missing
+if [[ "$GPG_NEWLY_GENERATED" == "true" ]] && item_exists "${AGENT} - GPG"; then
+  echo "[auto] Updating ${AGENT} - GPG..."
+  op item edit "${AGENT} - GPG" --vault "$VAULT" \
+    "Key ID[text]=$KEY_ID" \
+    "Fingerprint[text]=$FINGERPRINT" \
+    "Email[text]=$EMAIL" \
+    "Private Key[text]=$PRIVATE_KEY" \
+    "Public Key[text]=$PUBLIC_KEY" \
+    "GitHub Title[text]=$EMAIL" > /dev/null
+elif ! item_exists "${AGENT} - GPG"; then
+  echo "[auto] Creating ${AGENT} - GPG..."
+  op item create \
+    --category "Secure Note" \
+    --title "${AGENT} - GPG" \
+    --vault "$VAULT" \
+    "Key ID[text]=$KEY_ID" \
+    "Fingerprint[text]=$FINGERPRINT" \
+    "Email[text]=$EMAIL" \
+    "Private Key[text]=$PRIVATE_KEY" \
+    "Public Key[text]=$PUBLIC_KEY" \
+    "GitHub Title[text]=$EMAIL" > /dev/null
 else
-  echo "[auto] ${AGENT} - GPG unchanged (key not regenerated)"
+  echo "[auto] ${AGENT} - GPG unchanged"
 fi
 
 echo ""
