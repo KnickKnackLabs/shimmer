@@ -5,6 +5,9 @@
 
 set -eo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../_secret-keys"
+
 AGENT="${usage_agent:-${1:?Usage: 1password:get <agent> <key>}}"
 KEY="${usage_key:-${2:?Usage: 1password:get <agent> <key>}}"
 
@@ -19,58 +22,45 @@ if ! op account get &>/dev/null; then
   exit 1
 fi
 
+if ! resolve_key "$KEY"; then
+  echo "ERROR: Unknown key: $KEY" >&2
+  echo "       Known keys: $(print_known_keys)" >&2
+  exit 1
+fi
+
 VAULT="Agents"
+ITEM="${AGENT} - ${OP_ITEM_SUFFIX}"
 
-case "$KEY" in
-  github-pat)
-    ITEM="${AGENT} - GitHub"
-    FIELD="PAT"
-    ;;
-  github-password)
-    ITEM="${AGENT} - GitHub"
-    FIELD="password"
-    ;;
-  gpg-private-key)
-    ITEM="${AGENT} - GPG"
-    FIELD="Private Key"
-    ;;
-  gpg-public-key)
-    ITEM="${AGENT} - GPG"
-    FIELD="Public Key"
-    ;;
-  gpg-key-id)
-    ITEM="${AGENT} - GPG"
-    FIELD="Key ID"
-    ;;
-  gpg-fingerprint)
-    ITEM="${AGENT} - GPG"
-    FIELD="Fingerprint"
-    ;;
-  email-password)
-    ITEM="${AGENT} - Email"
-    FIELD="password"
-    ;;
-  matrix-password)
-    ITEM="${AGENT} - Matrix"
-    FIELD="password"
-    ;;
-  passphrase)
-    ITEM="${AGENT} - Identity"
-    FIELD="passphrase"
-    ;;
-  *)
-    echo "ERROR: Unknown key: $KEY" >&2
-    echo "       Known keys: github-pat, github-password, gpg-private-key, gpg-public-key," >&2
-    echo "                   gpg-key-id, gpg-fingerprint, email-password, matrix-password, passphrase" >&2
-    exit 1
-    ;;
-esac
+# Capture op output and exit code separately to distinguish failure modes
+OP_STDERR=$(mktemp)
+trap 'rm -f "$OP_STDERR"' EXIT
 
-VALUE=$(op item get "$ITEM" --vault "$VAULT" --fields "$FIELD" --reveal --format json 2>/dev/null | jq -r '.value' 2>/dev/null || true)
+OP_OUTPUT=$(op item get "$ITEM" --vault "$VAULT" --fields "$OP_FIELD_GET" --reveal --format json 2>"$OP_STDERR") || {
+  OP_EXIT=$?
+  OP_ERR=$(cat "$OP_STDERR")
 
-if [ -z "$VALUE" ]; then
-  echo "ERROR: Could not retrieve key=$KEY for agent=$AGENT from 1Password" >&2
-  echo "       Item: $ITEM / Field: $FIELD" >&2
+  if echo "$OP_ERR" | grep -qi "isn't a item\|not found\|does not exist\|no item"; then
+    echo "ERROR: Item not found in 1Password: $ITEM (vault=$VAULT)" >&2
+    echo "       Create it with: shimmer 1password:set $AGENT $KEY" >&2
+  elif echo "$OP_ERR" | grep -qi "not currently signed in\|session expired\|unauthorized\|authentication"; then
+    echo "ERROR: 1Password authentication failed. Run: op signin" >&2
+  else
+    echo "ERROR: op item get failed (exit $OP_EXIT) for key=$KEY agent=$AGENT" >&2
+    echo "       Item: $ITEM / Field: $OP_FIELD_GET" >&2
+    [ -n "$OP_ERR" ] && echo "       op stderr: $OP_ERR" >&2
+  fi
+  exit 1
+}
+
+VALUE=$(echo "$OP_OUTPUT" | jq -r '.value' 2>/dev/null) || {
+  echo "ERROR: Failed to parse op output as JSON for key=$KEY agent=$AGENT" >&2
+  echo "       Raw output: $OP_OUTPUT" >&2
+  exit 1
+}
+
+if [ -z "$VALUE" ] || [ "$VALUE" = "null" ]; then
+  echo "ERROR: Empty value for key=$KEY agent=$AGENT in 1Password" >&2
+  echo "       Item: $ITEM / Field: $OP_FIELD_GET" >&2
   exit 1
 fi
 

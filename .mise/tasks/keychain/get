@@ -20,5 +20,6 @@ ENCODED=$(security find-generic-password -a "$AGENT" -s "$SERVICE" -w 2>/dev/nul
   exit 1
 }
 
-# Decode base64 (keychain:set encodes to avoid macOS hex-mangling of multi-line values)
-printf '%s' "$ENCODED" | base64 -d
+# Decode base64 (keychain:set encodes to avoid macOS hex-mangling of multi-line values).
+# Use --decode for portability: works on both macOS /usr/bin/base64 and GNU coreutils.
+printf '%s' "$ENCODED" | base64 --decode

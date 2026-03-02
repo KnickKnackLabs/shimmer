@@ -104,8 +104,12 @@ echo "--- Secret Store ($PROVIDER) ---"
 export SHIMMER_SECRETS_PROVIDER="$PROVIDER"
 store() {
   local key="$1"; local value="$2"
-  printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key" || true
+  if ! printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"; then
+    echo "  WARN: Failed to store $key — check provider ($PROVIDER) configuration" >&2
+    STORE_FAILURES=$((STORE_FAILURES + 1))
+  fi
 }
+STORE_FAILURES=0
 
 if [ "$GPG_NEWLY_GENERATED" = "true" ] || \
    ! mise run -q secret:get "$AGENT" gpg-private-key &>/dev/null; then
@@ -119,6 +123,12 @@ else
 fi
 
 echo ""
-echo "=== $AGENT provisioned ==="
+if [ "$STORE_FAILURES" -gt 0 ]; then
+  echo "=== $AGENT provisioned (with $STORE_FAILURES secret store warning(s)) ==="
+  echo ""
+  echo "Some secrets failed to store. Check provider ($PROVIDER) configuration and retry."
+else
+  echo "=== $AGENT provisioned ==="
+fi
 echo ""
 echo "Next: mise run agent:onboard $AGENT"

@@ -73,7 +73,10 @@ PAT=$(mise run -q secret:get "$AGENT" github-pat) || {
   exit 1
 }
 
-# Output export statements for eval
+# Output export statements for eval.
+# NOTE: GH_HOST is hardcoded to github.com — all shimmer agents currently target
+# github.com. If an agent ever needs to target a GHE instance, this should become
+# configurable (e.g., per-agent config or secret store field).
 echo "export GH_HOST='github.com'"
 echo "export GH_TOKEN='$PAT'"
 echo "export GIT_AUTHOR_EMAIL='$EMAIL'"

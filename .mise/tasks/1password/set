@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-#MISE description="Store a secret in 1Password"
+#MISE description="Store a secret in 1Password (creates item if it doesn't exist)"
 #USAGE arg "<agent>" help="Agent name (e.g., zeke, baby-joel)"
 #USAGE arg "<key>" help="Secret key (e.g., github-pat, gpg-private-key, email-password)"
 #USAGE flag "-v --value <value>" help="Value to store (or pipe via stdin)"
 
 set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../_secret-keys"
 
 AGENT="${usage_agent:-${1:?Usage: 1password:set <agent> <key>}}"
 KEY="${usage_key:-${2:?Usage: 1password:set <agent> <key>}}"
@@ -35,39 +38,33 @@ if [ -z "$VALUE" ]; then
   exit 1
 fi
 
-VAULT="Agents"
-
-case "$KEY" in
-  github-pat)
-    ITEM="${AGENT} - GitHub"; FIELD="PAT[password]" ;;
-  github-password)
-    ITEM="${AGENT} - GitHub"; FIELD="password" ;;
-  gpg-private-key)
-    ITEM="${AGENT} - GPG"; FIELD="Private Key[text]" ;;
-  gpg-public-key)
-    ITEM="${AGENT} - GPG"; FIELD="Public Key[text]" ;;
-  gpg-key-id)
-    ITEM="${AGENT} - GPG"; FIELD="Key ID[text]" ;;
-  gpg-fingerprint)
-    ITEM="${AGENT} - GPG"; FIELD="Fingerprint[text]" ;;
-  email-password)
-    ITEM="${AGENT} - Email"; FIELD="password" ;;
-  matrix-password)
-    ITEM="${AGENT} - Matrix"; FIELD="password" ;;
-  passphrase)
-    ITEM="${AGENT} - Identity"; FIELD="passphrase[password]" ;;
-  *)
-    echo "ERROR: Unknown key: $KEY" >&2
-    echo "       Known keys: github-pat, github-password, gpg-private-key, gpg-public-key," >&2
-    echo "                   gpg-key-id, gpg-fingerprint, email-password, matrix-password, passphrase" >&2
-    exit 1
-    ;;
-esac
-
-op item edit "$ITEM" --vault "$VAULT" "${FIELD}=${VALUE}" >/dev/null 2>&1 || {
-  echo "ERROR: Could not update key=$KEY for agent=$AGENT in 1Password" >&2
-  echo "       Item: $ITEM / Field: $FIELD" >&2
+if ! resolve_key "$KEY"; then
+  echo "ERROR: Unknown key: $KEY" >&2
+  echo "       Known keys: $(print_known_keys)" >&2
   exit 1
-}
+fi
+
+VAULT="Agents"
+ITEM="${AGENT} - ${OP_ITEM_SUFFIX}"
+
+# Try edit first (item exists); fall back to create (item doesn't exist)
+if op item get "$ITEM" --vault "$VAULT" &>/dev/null; then
+  # Item exists — edit the field
+  op item edit "$ITEM" --vault "$VAULT" "${OP_FIELD_SET}=${VALUE}" >/dev/null 2>&1 || {
+    echo "ERROR: Failed to update key=$KEY for agent=$AGENT in 1Password" >&2
+    echo "       Item: $ITEM / Field: $OP_FIELD_SET" >&2
+    exit 1
+  }
+else
+  # Item doesn't exist — create it with the field
+  op item create --vault "$VAULT" \
+    --category "$OP_ITEM_CATEGORY" \
+    --title "$ITEM" \
+    "${OP_FIELD_SET}=${VALUE}" >/dev/null 2>&1 || {
+    echo "ERROR: Failed to create item for key=$KEY agent=$AGENT in 1Password" >&2
+    echo "       Item: $ITEM / Category: $OP_ITEM_CATEGORY" >&2
+    exit 1
+  }
+fi
 
 echo "Stored: agent=$AGENT key=$KEY (1Password: $ITEM)"
