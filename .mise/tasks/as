@@ -74,6 +74,7 @@ PAT=$("$SCRIPT_DIR/secret/get" "$AGENT" github-pat) || {
 }
 
 # Output export statements for eval
+echo "export GH_HOST='github.com'"
 echo "export GH_TOKEN='$PAT'"
 echo "export GIT_AUTHOR_EMAIL='$EMAIL'"
 echo "export GIT_COMMITTER_EMAIL='$EMAIL'"
