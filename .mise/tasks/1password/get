@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#MISE description="Retrieve a secret from 1Password"
+#USAGE arg "<agent>" help="Agent name (e.g., zeke, baby-joel)"
+#USAGE arg "<key>" help="Secret key (e.g., github-pat, gpg-private-key, email-password)"
+
+set -eo pipefail
+
+AGENT="${usage_agent:-${1:?Usage: 1password:get <agent> <key>}}"
+KEY="${usage_key:-${2:?Usage: 1password:get <agent> <key>}}"
+
+if ! command -v op &>/dev/null; then
+  echo "ERROR: 1Password CLI (op) not found." >&2
+  echo "       Install from: https://developer.1password.com/docs/cli" >&2
+  exit 1
+fi
+
+if ! op account get &>/dev/null; then
+  echo "ERROR: Not signed in to 1Password. Run: op signin" >&2
+  exit 1
+fi
+
+VAULT="Agents"
+
+case "$KEY" in
+  github-pat)
+    ITEM="${AGENT} - GitHub"
+    FIELD="PAT"
+    ;;
+  github-password)
+    ITEM="${AGENT} - GitHub"
+    FIELD="password"
+    ;;
+  gpg-private-key)
+    ITEM="${AGENT} - GPG"
+    FIELD="Private Key"
+    ;;
+  gpg-public-key)
+    ITEM="${AGENT} - GPG"
+    FIELD="Public Key"
+    ;;
+  gpg-key-id)
+    ITEM="${AGENT} - GPG"
+    FIELD="Key ID"
+    ;;
+  gpg-fingerprint)
+    ITEM="${AGENT} - GPG"
+    FIELD="Fingerprint"
+    ;;
+  email-password)
+    ITEM="${AGENT} - Email"
+    FIELD="password"
+    ;;
+  matrix-password)
+    ITEM="${AGENT} - Matrix"
+    FIELD="password"
+    ;;
+  passphrase)
+    ITEM="${AGENT} - Identity"
+    FIELD="passphrase"
+    ;;
+  *)
+    echo "ERROR: Unknown key: $KEY" >&2
+    echo "       Known keys: github-pat, github-password, gpg-private-key, gpg-public-key," >&2
+    echo "                   gpg-key-id, gpg-fingerprint, email-password, matrix-password, passphrase" >&2
+    exit 1
+    ;;
+esac
+
+VALUE=$(op item get "$ITEM" --vault "$VAULT" --fields "$FIELD" --reveal --format json 2>/dev/null | jq -r '.value' 2>/dev/null || true)
+
+if [ -z "$VALUE" ]; then
+  echo "ERROR: Could not retrieve key=$KEY for agent=$AGENT from 1Password" >&2
+  echo "       Item: $ITEM / Field: $FIELD" >&2
+  exit 1
+fi
+
+printf '%s' "$VALUE"

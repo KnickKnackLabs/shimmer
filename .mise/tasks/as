@@ -57,7 +57,6 @@ if [ -z "$AGENT" ]; then
 fi
 
 EMAIL="${AGENT}@ricon.family"
-VAULT="Agents"
 
 # Validate agent
 if ! get_agents | grep -qx "$AGENT"; then
@@ -67,26 +66,12 @@ if ! get_agents | grep -qx "$AGENT"; then
   exit 1
 fi
 
-# Check 1Password CLI
-if ! command -v op &> /dev/null; then
-  echo "ERROR: 1Password CLI (op) not found." >&2
+# Fetch GitHub PAT via secret provider
+PAT=$("$SCRIPT_DIR/secret/get" "$AGENT" github-pat) || {
+  echo "" >&2
+  echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
   exit 1
-fi
-
-if ! op account get &> /dev/null; then
-  echo "ERROR: Not signed in to 1Password. Run: op signin" >&2
-  exit 1
-fi
-
-# Fetch GitHub PAT from 1Password
-ITEM="${AGENT} - GitHub"
-PAT=$(op item get "$ITEM" --vault "$VAULT" --fields PAT --reveal 2>/dev/null || true)
-
-if [ -z "$PAT" ]; then
-  echo "ERROR: Could not find PAT in 1Password item '$ITEM'" >&2
-  echo "Make sure the agent has been fully onboarded with mise run agent:onboard $AGENT" >&2
-  exit 1
-fi
+}
 
 # Output export statements for eval
 echo "export GH_TOKEN='$PAT'"

@@ -4,11 +4,12 @@
 
 set -e
 
-AGENT="${1:?Usage: mise run gpg:setup <agent>}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT="${usage_agent:-${1:?Usage: mise run gpg:setup <agent>}}"
 EMAIL="${AGENT}@ricon.family"
 
 # Check if gpg is available
-if ! command -v gpg &> /dev/null; then
+if ! command -v gpg &>/dev/null; then
   echo "ERROR: gpg command not found. Please install GnuPG."
   exit 1
 fi
@@ -17,48 +18,30 @@ fi
 if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
   echo "GPG key for $EMAIL already imported"
 else
-  # Get private key: env var > 1Password > error
-  if [ -z "$GPG_PRIVATE_KEY" ]; then
-    if command -v op &> /dev/null && op account get &> /dev/null; then
-      echo "Fetching GPG key from 1Password..."
-      # 1Password returns the key with quotes, strip them
-      GPG_PRIVATE_KEY=$(op item get "${AGENT} - GPG" --vault Agents --fields "Private Key" --reveal 2>/dev/null | tr -d '"' || true)
-      if [ -n "$GPG_PRIVATE_KEY" ]; then
-        echo "Using key from 1Password"
-      fi
-    fi
-  fi
-
-  if [ -z "$GPG_PRIVATE_KEY" ]; then
-    echo "ERROR: Could not get GPG key for $AGENT"
-    echo ""
-    echo "Options:"
-    echo "  1. Sign into 1Password: op signin"
-    echo "  2. Set GPG_PRIVATE_KEY env var manually"
+  # Get private key via secret provider
+  GPG_PRIVATE_KEY=$("$SCRIPT_DIR/../secret/get" "$AGENT" gpg-private-key) || {
+    echo "" >&2
+    echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
     exit 1
-  fi
+  }
 
-  # Import the private key
-  echo "Importing GPG key for $EMAIL..."
-  echo "Key length: ${#GPG_PRIVATE_KEY} chars"
-  echo "First line: $(echo "$GPG_PRIVATE_KEY" | head -1)"
-  echo "Number of lines: $(echo "$GPG_PRIVATE_KEY" | wc -l)"
   if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
-    echo "ERROR: GPG_PRIVATE_KEY seems too short or empty"
+    echo "ERROR: Retrieved GPG key seems too short or empty"
     exit 1
   fi
 
-  # Write to temp file and import (more reliable than piping)
+  # Import via temp file (more reliable than piping)
+  echo "Importing GPG key for $EMAIL..."
   TMPKEY=$(mktemp)
-  echo "$GPG_PRIVATE_KEY" > "$TMPKEY"
+  trap 'rm -f "$TMPKEY"' EXIT
+  printf '%s' "$GPG_PRIVATE_KEY" > "$TMPKEY"
   gpg --batch --import "$TMPKEY"
-  rm -f "$TMPKEY"
 
-  # Trust the key (so gpg doesn't complain about untrusted key)
+  # Set ultimate trust
   echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true
 fi
 
-# Get the key ID (single location, after import if needed)
+# Get the key ID
 KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
 
 if [ -z "$KEY_ID" ]; then
