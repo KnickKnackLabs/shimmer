@@ -4,7 +4,6 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT="${usage_agent:-${1:?Usage: mise run gpg:setup <agent>}}"
 EMAIL="${AGENT}@ricon.family"
 
