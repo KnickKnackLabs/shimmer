@@ -67,7 +67,7 @@ if ! get_agents | grep -qx "$AGENT"; then
 fi
 
 # Fetch GitHub PAT via secret provider
-PAT=$("$SCRIPT_DIR/secret/get" "$AGENT" github-pat) || {
+PAT=$(mise run -q secret:get "$AGENT" github-pat) || {
   echo "" >&2
   echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
   exit 1

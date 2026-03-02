@@ -8,8 +8,6 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 AGENT="${usage_agent_name:?Usage: mise run agent:provision <agent-name> [--force]}"
 FORCE="${usage_force:-}"
 SKIP_ORG_SIGN="${usage_skip_org_sign:-}"
@@ -53,7 +51,7 @@ fi
 
 if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   # Try to import from secret store first (idempotent re-provision)
-  STORED_PRIVATE_KEY=$("$SCRIPT_DIR/../secret/get" "$AGENT" gpg-private-key 2>/dev/null || true)
+  STORED_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key 2>/dev/null || true)
   if [ -n "$STORED_PRIVATE_KEY" ]; then
     echo "[auto] Importing GPG key from secret store ($PROVIDER)..."
     printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
@@ -104,15 +102,13 @@ echo ""
 echo "--- Secret Store ($PROVIDER) ---"
 
 export SHIMMER_SECRETS_PROVIDER="$PROVIDER"
-SECRET_SET="$SCRIPT_DIR/../secret/set"
-
 store() {
   local key="$1"; local value="$2"
-  printf '%s' "$value" | "$SECRET_SET" "$AGENT" "$key" || true
+  printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key" || true
 }
 
 if [ "$GPG_NEWLY_GENERATED" = "true" ] || \
-   ! "$SCRIPT_DIR/../secret/get" "$AGENT" gpg-private-key &>/dev/null; then
+   ! mise run -q secret:get "$AGENT" gpg-private-key &>/dev/null; then
   echo "[auto] Storing GPG keys..."
   store gpg-private-key "$PRIVATE_KEY"
   store gpg-public-key "$PUBLIC_KEY"
