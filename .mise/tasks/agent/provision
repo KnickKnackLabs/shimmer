@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Provision a new agent (GPG key, GitHub secrets, secret store)"
+#MISE description="Provision a new agent (credentials, GPG key, GitHub secrets)"
 #USAGE arg "<agent-name>" help="Name of the agent to provision"
 #USAGE flag "--force" help="Regenerate existing GPG key"
 #USAGE flag "-p --secrets <provider>" help="Secret provider: 1password or keychain (overrides SHIMMER_SECRETS_PROVIDER)"
@@ -35,6 +35,45 @@ if [ -z "$PROVIDER" ]; then
   echo "       Set SHIMMER_SECRETS_PROVIDER=keychain|1password, or use --secrets <provider>" >&2
   exit 1
 fi
+
+# === Account Credentials ===
+# Generate passwords for services that onboard will set up interactively.
+# Only generates if not already stored (idempotent).
+echo "--- Account Credentials ---"
+
+generate_password() {
+  openssl rand -base64 18 | tr -d '/+=' | head -c 20
+}
+
+generate_passphrase() {
+  # Two random words, like the old provision flow
+  if [ -f /usr/share/dict/words ]; then
+    WORD1=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+    WORD2=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
+    echo "$WORD1 $WORD2"
+  else
+    # Fallback if no dictionary available (e.g. CI)
+    openssl rand -base64 24 | head -c 24
+  fi
+}
+
+CREDENTIAL_KEYS=(email-password github-password matrix-password passphrase)
+
+for key in "${CREDENTIAL_KEYS[@]}"; do
+  if mise run -q secret:get "$AGENT" "$key" &>/dev/null; then
+    echo "[auto] $key already stored"
+  else
+    if [ "$key" = "passphrase" ]; then
+      value=$(generate_passphrase)
+    else
+      value=$(generate_password)
+    fi
+    echo "[auto] Generating and storing $key..."
+    printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"
+  fi
+done
+
+echo ""
 
 # === GPG Key ===
 echo "--- GPG Key ---"
