@@ -36,6 +36,8 @@ if [ -z "$PROVIDER" ]; then
   exit 1
 fi
 
+export SHIMMER_SECRETS_PROVIDER="$PROVIDER"
+
 # === Account Credentials ===
 # Generate passwords for services that onboard will set up interactively.
 # Only generates if not already stored (idempotent).
@@ -140,7 +142,6 @@ fi
 echo ""
 echo "--- Secret Store ($PROVIDER) ---"
 
-export SHIMMER_SECRETS_PROVIDER="$PROVIDER"
 store() {
   local key="$1"; local value="$2"
   if ! printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"; then
