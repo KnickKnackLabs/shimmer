@@ -34,11 +34,15 @@ if ! op account get &> /dev/null; then
   exit 1
 fi
 
-# Get credentials from 1Password
+# Get credentials from 1Password.
+# Standard secrets use the secret:* provider interface; account metadata fields
+# (username, email, country) are 1Password-specific and read directly via op.
 echo "Fetching credentials from 1Password..."
-EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
+export SHIMMER_SECRETS_PROVIDER=1password
+EMAIL_PASSWORD=$(mise run -q secret:get "$AGENT" email-password 2>/dev/null || echo "")
+GITHUB_PASSWORD=$(mise run -q secret:get "$AGENT" github-password 2>/dev/null || echo "")
+# Account metadata fields — not part of secret:* abstraction (1Password item fields only)
 GITHUB_USERNAME=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields username 2>/dev/null || echo "")
-GITHUB_PASSWORD=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
 GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
 GITHUB_COUNTRY=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields country 2>/dev/null || echo "")
 
@@ -164,7 +168,7 @@ echo "      Click: New GPG key"
 echo "      Title: $EMAIL"
 echo "      Key:"
 echo ""
-op item get "${AGENT} - GPG" --vault "$VAULT" --fields "Public Key" 2>/dev/null
+mise run -q secret:get "$AGENT" gpg-public-key 2>/dev/null || echo "(no GPG public key found — run agent:provision first)"
 echo ""
 
 wait_for_enter
@@ -188,8 +192,8 @@ read -r -p "Paste the PAT token (Enter to skip if already stored): " PAT_TOKEN
 echo ""
 
 if [ -n "$PAT_TOKEN" ]; then
-  echo "[auto] Storing in 1Password..."
-  op item edit "$AGENT - GitHub" --vault Agents "PAT[password]=$PAT_TOKEN" > /dev/null 2>&1 || true
+  echo "[auto] Storing in secret store..."
+  printf '%s' "$PAT_TOKEN" | mise run -q secret:set "$AGENT" github-pat
 
   echo "[auto] Storing as GitHub secret ${AGENT_UPPER}_GITHUB_PAT..."
   echo "$PAT_TOKEN" | gh secret set "${AGENT_UPPER}_GITHUB_PAT"
@@ -209,7 +213,7 @@ wait_for_enter
 echo "STEP 8: Matrix Setup"
 echo "------------------------------------------------------------"
 
-MATRIX_PASSWORD=$(op item get "${AGENT} - Matrix" --vault "$VAULT" --fields password --reveal 2>/dev/null || echo "")
+MATRIX_PASSWORD=$(mise run -q secret:get "$AGENT" matrix-password 2>/dev/null || echo "")
 MATRIX_USER="@${AGENT}:ricon.family"
 
 if [ -z "$MATRIX_PASSWORD" ]; then
@@ -237,7 +241,7 @@ echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
 echo ""
 
 # Set agent identity and run welcome to verify the full local identity chain
-PAT=$(op item get "$AGENT - GitHub" --vault "$VAULT" --fields PAT --reveal 2>/dev/null || true)
+PAT=$(mise run -q secret:get "$AGENT" github-pat 2>/dev/null || true)
 (
   export GH_TOKEN="$PAT"
   export GIT_AUTHOR_EMAIL="$EMAIL"

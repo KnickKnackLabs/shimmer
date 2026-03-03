@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#MISE description="Retrieve a secret from macOS Keychain"
+#USAGE arg "<agent>" help="Agent name (e.g., zeke, baby-joel)"
+#USAGE arg "<key>" help="Secret key (e.g., github-pat, gpg-private-key, email-password)"
+
+set -eo pipefail
+
+AGENT="${usage_agent:-${1:?Usage: keychain:get <agent> <key>}}"
+KEY="${usage_key:-${2:?Usage: keychain:get <agent> <key>}}"
+SERVICE="shimmer-${KEY}"
+
+if ! command -v security &>/dev/null; then
+  echo "ERROR: macOS 'security' command not found (not on macOS?)" >&2
+  exit 1
+fi
+
+ENCODED=$(security find-generic-password -a "$AGENT" -s "$SERVICE" -w 2>/dev/null) || {
+  echo "ERROR: No keychain entry found for agent=$AGENT key=$KEY" >&2
+  echo "       Store with: shimmer keychain:set $AGENT $KEY" >&2
+  exit 1
+}
+
+# Decode base64 (keychain:set encodes to avoid macOS hex-mangling of multi-line values).
+# Use --decode for portability: works on both macOS /usr/bin/base64 and GNU coreutils.
+printf '%s' "$ENCODED" | base64 --decode
