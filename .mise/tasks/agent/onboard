@@ -192,11 +192,8 @@ read -r -p "Paste the PAT token (Enter to skip if already stored): " PAT_TOKEN
 echo ""
 
 if [ -n "$PAT_TOKEN" ]; then
-  echo "[auto] Storing in secret store (1password)..."
-  printf '%s' "$PAT_TOKEN" | mise run -q secret:set "$AGENT" github-pat || {
-    echo "  WARN: Failed to store PAT via secret:set — trying direct op edit..." >&2
-    op item edit "$AGENT - GitHub" --vault Agents "PAT[password]=$PAT_TOKEN" > /dev/null 2>&1 || true
-  }
+  echo "[auto] Storing in secret store..."
+  printf '%s' "$PAT_TOKEN" | mise run -q secret:set "$AGENT" github-pat
 
   echo "[auto] Storing as GitHub secret ${AGENT_UPPER}_GITHUB_PAT..."
   echo "$PAT_TOKEN" | gh secret set "${AGENT_UPPER}_GITHUB_PAT"
