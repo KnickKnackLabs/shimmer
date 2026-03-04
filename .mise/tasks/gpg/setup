@@ -17,12 +17,14 @@ fi
 if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
   echo "GPG key for $EMAIL already imported"
 else
-  # Get private key via secret provider
-  GPG_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key) || {
-    echo "" >&2
-    echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
-    exit 1
-  }
+  # Get private key: env var (CI) > secret provider (local)
+  if [ -z "$GPG_PRIVATE_KEY" ]; then
+    GPG_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key) || {
+      echo "" >&2
+      echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
+      exit 1
+    }
+  fi
 
   if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
     echo "ERROR: Retrieved GPG key seems too short or empty"
