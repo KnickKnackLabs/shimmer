@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+#MISE description="Fork a Claude Code session"
+#USAGE arg "<session-id>" help="Session ID to fork"
+
+set -e
+
+SESSION_ID="$usage_session_id"
+CLAUDE_DIR="$HOME/.claude"
+PROJECTS_DIR="$CLAUDE_DIR/projects"
+
+# --- Validation ---
+
+command -v jq >/dev/null 2>&1 || { echo "Error: jq is required" >&2; exit 1; }
+command -v uuidgen >/dev/null 2>&1 || { echo "Error: uuidgen is required" >&2; exit 1; }
+
+if ! [[ "$SESSION_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+  echo "Error: Invalid session ID format (expected UUID)" >&2
+  exit 1
+fi
+
+if [ ! -d "$PROJECTS_DIR" ]; then
+  echo "Error: No Claude projects directory at $PROJECTS_DIR" >&2
+  exit 1
+fi
+
+# --- Discovery ---
+
+MATCHES=()
+for PROJECT in "$PROJECTS_DIR"/*/; do
+  if [ -f "${PROJECT}${SESSION_ID}.jsonl" ]; then
+    MATCHES+=("$PROJECT")
+  fi
+done
+
+case ${#MATCHES[@]} in
+  0)
+    echo "Error: Session $SESSION_ID not found" >&2
+    exit 1
+    ;;
+  1)
+    PROJECT_DIR="${MATCHES[0]}"
+    ;;
+  *)
+    echo "Error: Session found in multiple projects (ambiguous):" >&2
+    printf '  %s\n' "${MATCHES[@]}" >&2
+    exit 1
+    ;;
+esac
+
+# --- Fork ---
+
+NEW_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+
+# Copy session JSONL
+cp "${PROJECT_DIR}${SESSION_ID}.jsonl" "${PROJECT_DIR}${NEW_ID}.jsonl"
+
+# Copy session directory if it exists (subagents, tool-results)
+if [ -d "${PROJECT_DIR}${SESSION_ID}" ]; then
+  cp -r "${PROJECT_DIR}${SESSION_ID}" "${PROJECT_DIR}${NEW_ID}"
+fi
+
+# Update sessions index
+INDEX_FILE="${PROJECT_DIR}sessions-index.json"
+if [ -f "$INDEX_FILE" ]; then
+  SOURCE_ENTRY=$(jq --arg sid "$SESSION_ID" '.entries[] | select(.sessionId == $sid)' "$INDEX_FILE")
+  if [ -n "$SOURCE_ENTRY" ]; then
+    NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+    NOW_MTIME="$(date +%s)000"
+    NEW_PATH="${PROJECT_DIR}${NEW_ID}.jsonl"
+
+    jq --arg new_id "$NEW_ID" \
+       --arg new_path "$NEW_PATH" \
+       --arg now "$NOW_ISO" \
+       --argjson mtime "$NOW_MTIME" \
+       --arg orig_id "$SESSION_ID" \
+       '(.entries[] | select(.sessionId == $orig_id)) as $src |
+        .entries += [$src + {
+          sessionId: $new_id,
+          fullPath: $new_path,
+          fileMtime: $mtime,
+          created: $now,
+          modified: $now
+        }]' "$INDEX_FILE" > "${INDEX_FILE}.tmp" \
+      && mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
+  else
+    echo "Note: Source session not in index; fork may not appear in session picker" >&2
+  fi
+fi
+
+# --- Output ---
+
+echo "$NEW_ID"
+echo "Forked $SESSION_ID → $NEW_ID" >&2
+echo "Resume with: claude --resume $NEW_ID" >&2
