@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#MISE description="Download a blob from storage"
+#USAGE arg "<key>" help="Object key to download"
+#USAGE arg "[dest]" help="Local destination path (default: stdout)"
+
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../_blob-env"
+
+KEY="$usage_key"
+DEST="${usage_dest:-}"
+
+if [ -z "$DEST" ]; then
+  # Output to stdout
+  mc cat "${BLOB_TARGET}/${KEY}"
+else
+  mc cp -q "${BLOB_TARGET}/${KEY}" "$DEST"
+  echo "Downloaded: ${KEY} -> ${DEST}" >&2
+fi

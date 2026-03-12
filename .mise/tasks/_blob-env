@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#MISE description="Shared blob storage environment setup"
+#MISE hide=true
+# Source this file from blob tasks to get agent, alias, and bucket info.
+#
+# Usage:
+#   source "$(dirname "${BASH_SOURCE[0]}")/_blob-env"
+#
+# After sourcing, these variables are set:
+#   BLOB_AGENT    — detected agent name
+#   BLOB_ALIAS    — mc alias name (same as agent name)
+#   BLOB_BUCKET   — B2 bucket name
+#   BLOB_TARGET   — full mc target prefix (alias/bucket)
+
+# Detect agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  BLOB_AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  BLOB_AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "ERROR: No agent identity detected." >&2
+  echo "       Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+BLOB_ALIAS="$BLOB_AGENT"
+
+# Get bucket name: env var > secret provider
+if [ -n "${B2_BUCKET:-}" ]; then
+  BLOB_BUCKET="$B2_BUCKET"
+else
+  BLOB_BUCKET=$(mise run -q secret:get "$BLOB_AGENT" b2-bucket 2>/dev/null) || {
+    echo "ERROR: Could not determine B2 bucket for $BLOB_AGENT" >&2
+    echo "       Set B2_BUCKET env var or store via: shimmer secret:set $BLOB_AGENT b2-bucket" >&2
+    exit 1
+  }
+fi
+
+if [ -z "$BLOB_BUCKET" ]; then
+  echo "ERROR: B2 bucket is empty for $BLOB_AGENT" >&2
+  echo "       Store via: shimmer secret:set $BLOB_AGENT b2-bucket" >&2
+  exit 1
+fi
+
+BLOB_TARGET="${BLOB_ALIAS}/${BLOB_BUCKET}"
+
+# Verify mc is available
+if ! command -v mc &>/dev/null; then
+  echo "ERROR: mc (MinIO client) not found." >&2
+  echo "       Install with: mise install (mc is managed by mise)" >&2
+  exit 1
+fi
+
+# Verify alias is configured
+if ! mc alias list "$BLOB_ALIAS" 2>/dev/null | grep -q "$BLOB_ALIAS"; then
+  echo "ERROR: mc alias '$BLOB_ALIAS' not configured." >&2
+  echo "       Run: shimmer blob:setup $BLOB_AGENT" >&2
+  exit 1
+fi

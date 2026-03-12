@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#MISE description="Setup blob storage (mc alias) for an agent (one-time local setup)"
+#USAGE arg "<agent>" help="Agent name (e.g., junior, quick)"
+
+set -e
+
+AGENT="${usage_agent:-${1:?Usage: shimmer blob:setup <agent>}}"
+
+# Check if mc is available
+if ! command -v mc &>/dev/null; then
+  echo "ERROR: mc (MinIO client) not found."
+  echo "Install with: mise install (mc is managed by mise)"
+  exit 1
+fi
+
+MC_ALIAS="$AGENT"
+
+# Check if already configured
+if mc alias list "$MC_ALIAS" 2>/dev/null | grep -q "$MC_ALIAS"; then
+  echo "Blob storage already configured for $AGENT (mc alias: $MC_ALIAS)"
+  echo ""
+  echo "To reconfigure:"
+  echo "  mc alias remove $MC_ALIAS"
+  echo "  shimmer blob:setup $AGENT"
+  exit 0
+fi
+
+# Get B2 credentials: env var > secret provider > error
+
+# Endpoint
+if [ -z "${B2_ENDPOINT:-}" ]; then
+  B2_ENDPOINT=$(mise run -q secret:get "$AGENT" b2-endpoint 2>/dev/null) || true
+fi
+if [ -z "${B2_ENDPOINT:-}" ]; then
+  echo "ERROR: Could not get B2 endpoint for $AGENT" >&2
+  echo "" >&2
+  echo "Options:" >&2
+  echo "  1. Set B2_ENDPOINT env var" >&2
+  echo "  2. Store via: shimmer secret:set $AGENT b2-endpoint" >&2
+  exit 1
+fi
+
+# Key ID
+if [ -z "${B2_KEY_ID:-}" ]; then
+  B2_KEY_ID=$(mise run -q secret:get "$AGENT" b2-key-id 2>/dev/null) || true
+fi
+if [ -z "${B2_KEY_ID:-}" ]; then
+  echo "ERROR: Could not get B2 key ID for $AGENT" >&2
+  echo "" >&2
+  echo "Options:" >&2
+  echo "  1. Set B2_KEY_ID env var" >&2
+  echo "  2. Store via: shimmer secret:set $AGENT b2-key-id" >&2
+  exit 1
+fi
+
+# Application key
+if [ -z "${B2_APPLICATION_KEY:-}" ]; then
+  B2_APPLICATION_KEY=$(mise run -q secret:get "$AGENT" b2-application-key 2>/dev/null) || true
+fi
+if [ -z "${B2_APPLICATION_KEY:-}" ]; then
+  echo "ERROR: Could not get B2 application key for $AGENT" >&2
+  echo "" >&2
+  echo "Options:" >&2
+  echo "  1. Set B2_APPLICATION_KEY env var" >&2
+  echo "  2. Store via: shimmer secret:set $AGENT b2-application-key" >&2
+  exit 1
+fi
+
+# Configure mc alias
+echo "Configuring mc alias '$MC_ALIAS'..."
+mc alias set "$MC_ALIAS" "$B2_ENDPOINT" "$B2_KEY_ID" "$B2_APPLICATION_KEY" --api s3v4
+
+echo ""
+echo "Blob storage configured for $AGENT"
+echo "  Alias: $MC_ALIAS"
+echo "  Endpoint: $B2_ENDPOINT"
+echo ""
+echo "Test with: shimmer blob:welcome"
