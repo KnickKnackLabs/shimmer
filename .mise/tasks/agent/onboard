@@ -263,6 +263,7 @@ else
 
   echo "[auto] Verifying blob storage..."
   (
+    # blob:welcome uses GIT_AUTHOR_EMAIL for agent detection
     export GIT_AUTHOR_EMAIL="$EMAIL"
     export B2_BUCKET="$B2_BUCKET"
     cd "$SHIMMER_DIR" && mise run -q blob:welcome
