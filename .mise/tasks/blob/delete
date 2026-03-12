@@ -10,4 +10,4 @@ source "$SCRIPT_DIR/../_blob-env"
 KEY="$usage_key"
 
 mc rm "${BLOB_TARGET}/${KEY}"
-echo "Deleted: ${KEY}"
+echo "Deleted: ${KEY}" >&2

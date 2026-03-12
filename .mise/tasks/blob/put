@@ -21,4 +21,4 @@ else
   mc cp -q "$FILE" "${BLOB_TARGET}/${KEY}"
 fi
 
-echo "Uploaded: ${KEY}"
+echo "Uploaded: ${KEY}" >&2

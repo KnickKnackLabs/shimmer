@@ -58,7 +58,7 @@ fi
 echo "  Bucket:   $BUCKET"
 
 # Show object count and total size
-STATS=$(mc ls --json "${MC_ALIAS}/${BUCKET}" 2>/dev/null | jq -s '{count: length, size: (map(.size // 0) | add)}' 2>/dev/null) || STATS=""
+STATS=$(mc ls --recursive --json "${MC_ALIAS}/${BUCKET}" 2>/dev/null | jq -s '{count: length, size: (map(.size // 0) | add)}' 2>/dev/null) || STATS=""
 if [ -n "$STATS" ]; then
   OBJ_COUNT=$(echo "$STATS" | jq -r '.count')
   TOTAL_SIZE=$(echo "$STATS" | jq -r '.size // 0')

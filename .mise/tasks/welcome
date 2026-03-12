@@ -173,7 +173,7 @@ if [ -n "$AGENT" ]; then
       B2_BUCKET_VAL=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || B2_BUCKET_VAL=""
     fi
     if [ -n "$B2_BUCKET_VAL" ]; then
-      OBJ_COUNT=$(mc ls --json "${AGENT}/${B2_BUCKET_VAL}" 2>/dev/null | jq -s 'length' 2>/dev/null || echo "?")
+      OBJ_COUNT=$(mc ls --recursive --json "${AGENT}/${B2_BUCKET_VAL}" 2>/dev/null | jq -s 'length' 2>/dev/null || echo "?")
       print_status "Blob" "✓" "${OBJ_COUNT} objects" "shimmer blob:welcome"
     else
       print_status "Blob" "⚠" "alias set, no bucket" "shimmer secret:set $AGENT b2-bucket"
