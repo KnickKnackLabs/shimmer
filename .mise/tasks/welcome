@@ -165,6 +165,22 @@ if [ -n "$AGENT" ]; then
   else
     print_status "Zettel" "✗" "none yet" "shimmer zettel:welcome"
   fi
+
+  # Blob storage check
+  if command -v mc &>/dev/null && mc alias list "$AGENT" 2>/dev/null | grep -q "$AGENT"; then
+    B2_BUCKET_VAL="${B2_BUCKET:-}"
+    if [ -z "$B2_BUCKET_VAL" ]; then
+      B2_BUCKET_VAL=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || B2_BUCKET_VAL=""
+    fi
+    if [ -n "$B2_BUCKET_VAL" ]; then
+      OBJ_COUNT=$(mc ls --json "${AGENT}/${B2_BUCKET_VAL}" 2>/dev/null | jq -s 'length' 2>/dev/null || echo "?")
+      print_status "Blob" "✓" "${OBJ_COUNT} objects" "shimmer blob:welcome"
+    else
+      print_status "Blob" "⚠" "alias set, no bucket" "shimmer secret:set $AGENT b2-bucket"
+    fi
+  else
+    print_status "Blob" "✗" "not configured" "shimmer blob:setup $AGENT"
+  fi
 else
   print_status "GPG" "?" "set identity first"
   print_status "Email" "?" "set identity first"

@@ -85,6 +85,12 @@ echo "export GIT_AUTHOR_NAME='$AGENT'"
 echo "export GIT_COMMITTER_NAME='$AGENT'"
 echo "export AGENT_HOME='$(dirname "$AGENTS_DIR")'"
 
+# Optional: B2 blob storage bucket (don't fail if not configured)
+B2_BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || true
+if [ -n "$B2_BUCKET" ]; then
+  echo "export B2_BUCKET='$B2_BUCKET'"
+fi
+
 # Print info to stderr so it doesn't interfere with eval
 echo "# Agent identity set: $AGENT ($EMAIL)" >&2
 echo "# Verify with: shimmer whoami" >&2
