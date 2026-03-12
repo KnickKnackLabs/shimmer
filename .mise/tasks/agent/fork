@@ -2,7 +2,8 @@
 #MISE description="Fork a Claude Code session"
 #USAGE arg "<session-id>" help="Session ID to fork"
 
-set -e
+set -eu
+shopt -s nullglob
 
 SESSION_ID="$usage_session_id"
 CLAUDE_DIR="$HOME/.claude"
@@ -51,12 +52,19 @@ esac
 
 NEW_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
+# Clean up on failure
+cleanup() {
+  rm -f "${PROJECT_DIR}${NEW_ID}.jsonl"
+  rm -rf "${PROJECT_DIR}${NEW_ID}"
+}
+trap cleanup ERR
+
 # Copy session JSONL
-cp "${PROJECT_DIR}${SESSION_ID}.jsonl" "${PROJECT_DIR}${NEW_ID}.jsonl"
+cp -a "${PROJECT_DIR}${SESSION_ID}.jsonl" "${PROJECT_DIR}${NEW_ID}.jsonl"
 
 # Copy session directory if it exists (subagents, tool-results)
 if [ -d "${PROJECT_DIR}${SESSION_ID}" ]; then
-  cp -r "${PROJECT_DIR}${SESSION_ID}" "${PROJECT_DIR}${NEW_ID}"
+  cp -a "${PROJECT_DIR}${SESSION_ID}" "${PROJECT_DIR}${NEW_ID}"
 fi
 
 # Update sessions index
