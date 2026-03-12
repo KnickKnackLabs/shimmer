@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#MISE description="Blob storage status overview"
+
+set -e
+
+# Determine current agent from environment or git config
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  AGENT=""
+fi
+
+echo ""
+echo "Blob Storage"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Persistent object storage backed by Backblaze B2."
+echo ""
+
+if [ -z "$AGENT" ]; then
+  echo "  No agent identity detected. Run: eval \$(shimmer as <agent>)"
+  echo ""
+  exit 0
+fi
+
+MC_ALIAS="$AGENT"
+
+# Check if configured
+if ! mc alias list "$MC_ALIAS" 2>/dev/null | grep -q "$MC_ALIAS"; then
+  echo "  Status: not configured"
+  echo ""
+  echo "  Run: shimmer blob:setup $AGENT"
+  echo ""
+  exit 0
+fi
+
+echo "  Agent:    $AGENT"
+echo "  Alias:    $MC_ALIAS"
+
+# Get bucket name
+BUCKET=""
+if [ -n "${B2_BUCKET:-}" ]; then
+  BUCKET="$B2_BUCKET"
+else
+  BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || BUCKET=""
+fi
+
+if [ -z "$BUCKET" ]; then
+  echo "  Bucket:   not set"
+  echo ""
+  echo "  Store via: shimmer secret:set $AGENT b2-bucket"
+  echo ""
+  exit 0
+fi
+
+echo "  Bucket:   $BUCKET"
+
+# Show object count and total size
+STATS=$(mc ls --recursive --json "${MC_ALIAS}/${BUCKET}" 2>/dev/null | jq -s '{count: length, size: (map(.size // 0) | add)}' 2>/dev/null) || STATS=""
+if [ -n "$STATS" ]; then
+  OBJ_COUNT=$(echo "$STATS" | jq -r '.count')
+  TOTAL_SIZE=$(echo "$STATS" | jq -r '.size // 0')
+  # Human-readable size
+  if [ "$TOTAL_SIZE" -gt 1073741824 ] 2>/dev/null; then
+    SIZE_HR="$(echo "scale=1; $TOTAL_SIZE / 1073741824" | bc) GB"
+  elif [ "$TOTAL_SIZE" -gt 1048576 ] 2>/dev/null; then
+    SIZE_HR="$(echo "scale=1; $TOTAL_SIZE / 1048576" | bc) MB"
+  elif [ "$TOTAL_SIZE" -gt 1024 ] 2>/dev/null; then
+    SIZE_HR="$(echo "scale=1; $TOTAL_SIZE / 1024" | bc) KB"
+  else
+    SIZE_HR="${TOTAL_SIZE} bytes"
+  fi
+  echo "  Objects:  $OBJ_COUNT ($SIZE_HR)"
+else
+  echo "  Objects:  (could not fetch)"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Quick reference:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  shimmer blob:put <key> <file>       Upload a file"
+echo "  shimmer blob:get <key> [dest]       Download (default: stdout)"
+echo "  shimmer blob:list [prefix]          List objects"
+echo "  shimmer blob:delete <key>           Remove an object"
+echo ""
+echo "  More: shimmer tasks blob"
+echo ""

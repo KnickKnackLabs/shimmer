@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#MISE description="Upload a blob to storage"
+#USAGE arg "<key>" help="Object key (path in bucket, e.g., sessions/2024-01-15.tar.gz)"
+#USAGE arg "[file]" help="Local file to upload (use - for stdin, omit for stdin)"
+
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../_blob-env"
+
+KEY="$usage_key"
+FILE="${usage_file:-}"
+
+if [ -z "$FILE" ] || [ "$FILE" = "-" ]; then
+  # mc pipe handles stdin natively
+  mc pipe -q "${BLOB_TARGET}/${KEY}"
+elif [ ! -f "$FILE" ]; then
+  echo "ERROR: File not found: $FILE" >&2
+  exit 1
+else
+  mc cp -q "$FILE" "${BLOB_TARGET}/${KEY}"
+fi
+
+echo "Uploaded: ${KEY}" >&2
