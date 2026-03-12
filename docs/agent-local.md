@@ -38,6 +38,24 @@ This:
 - Configures IMAP/SMTP for `<agent>@ricon.family`
 - Enables GPG signing for emails
 
+### 3. Blob Storage
+
+Configure mc alias for Backblaze B2 blob storage:
+
+```bash
+mise run blob:setup <agent>
+```
+
+This:
+- Creates an mc alias named after the agent
+- Pulls B2 credentials (endpoint, key ID, application key) from the secret provider
+- Verifies connectivity to the bucket
+
+Verify with:
+```bash
+shimmer blob:welcome
+```
+
 ## Working on Repositories
 
 When working on any repository (including shimmer itself), clone it to your workspace:
@@ -94,6 +112,7 @@ GitHub identity:
 |------|-----------|---------|
 | Import GPG key | Once per machine | `mise run gpg:setup <agent>` |
 | Setup email | Once per machine | `mise run email:setup <agent>` |
+| Setup blob storage | Once per machine | `mise run blob:setup <agent>` |
 | Set identity | Each session | `eval $(mise run as <agent>)` |
 | Verify setup | As needed | `mise run whoami` |
 

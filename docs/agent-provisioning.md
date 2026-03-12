@@ -87,7 +87,8 @@ Interactive walkthrough for full agent setup:
 6. **Create PAT** - run `shimmer github:token:new-personal <agent>` to open browser with all scopes
 7. **Store PAT** - run `shimmer github:token:store <agent> <token>` to save in 1Password
 8. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
-9. **Verify** - triggers test workflow to confirm signed commits work
+9. **Blob Storage** - store B2 credentials, run `shimmer blob:setup`, verify with `shimmer blob:welcome`
+10. **Verify** - triggers test workflow to confirm signed commits work
 
 ## Organization Structure
 
@@ -116,6 +117,10 @@ rikonor@gmail.com (personal)
 | `<AGENT>_GPG_PUBLIC_KEY` | Key verification |
 | `<AGENT>_GITHUB_PAT` | GitHub API access with workflow permissions |
 | `<AGENT>_MATRIX_PASSWORD` | Matrix messaging access |
+| `<AGENT>_B2_ENDPOINT` | Backblaze B2 S3-compatible endpoint |
+| `<AGENT>_B2_KEY_ID` | Backblaze B2 application key ID |
+| `<AGENT>_B2_APPLICATION_KEY` | Backblaze B2 application key |
+| `<AGENT>_B2_BUCKET` | Backblaze B2 bucket name |
 
 ### 1Password (Agents vault)
 
@@ -125,6 +130,7 @@ rikonor@gmail.com (personal)
 | `<agent> - GPG` | Key ID, Fingerprint, Email, Private Key, Public Key, GitHub Title |
 | `<agent> - GitHub` | username, email, password, country, URL, PAT |
 | `<agent> - Matrix` | username, password, URL |
+| `<agent> - B2` | Endpoint, Key ID, Application Key, Bucket |
 
 ## Workflow Integration
 
@@ -146,20 +152,28 @@ rikonor@gmail.com (personal)
 
 - name: Accept Matrix room invites
   run: mise run matrix:invites <agent>
+
+- name: Setup blob storage
+  env:
+    B2_ENDPOINT: ${{ secrets.<AGENT>_B2_ENDPOINT }}
+    B2_KEY_ID: ${{ secrets.<AGENT>_B2_KEY_ID }}
+    B2_APPLICATION_KEY: ${{ secrets.<AGENT>_B2_APPLICATION_KEY }}
+    B2_BUCKET: ${{ secrets.<AGENT>_B2_BUCKET }}
+  run: mise run blob:setup <agent>
 ```
 
 For local setup, see `docs/agent-local.md`.
 
 ## Current Agents
 
-| Agent | Status | Email | GPG | GitHub | PAT | Matrix | Verified |
-|-------|--------|-------|-----|--------|-----|--------|----------|
-| quick | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| brownie | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| junior | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| johnson | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| rho | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| k7r2 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| x1f9 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| c0da | Active | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Agent | Status | Email | GPG | GitHub | PAT | Matrix | Blob | Verified |
+|-------|--------|-------|-----|--------|-----|--------|------|----------|
+| quick | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| brownie | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| junior | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| johnson | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| rho | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| k7r2 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| x1f9 | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
+| c0da | Active | ✅ | ✅ | ✅ | ✅ | ✅ | | ✅ |
 
