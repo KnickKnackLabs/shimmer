@@ -11,8 +11,8 @@ if [ -n "$BROWSER_ID" ]; then
   PID_FILE="/tmp/shimmer-browser-id-${BROWSER_ID}.json"
 
   if [ ! -f "$PID_FILE" ]; then
-    echo "No browser found with ID $BROWSER_ID"
-    exit 1
+    echo "No browser found with ID $BROWSER_ID (already closed)"
+    exit 0
   fi
 
   PID=$(jq -r '.pid' "$PID_FILE" 2>/dev/null || echo "")
