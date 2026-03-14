@@ -23,8 +23,11 @@ if [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; then
   exit 1
 fi
 
-# Generate browser ID
+# Generate browser ID (retry on collision)
 ID="b-$(openssl rand -hex 2)"
+while [ -f "/tmp/shimmer-browser-id-${ID}.json" ] && kill -0 "$(jq -r '.pid' "/tmp/shimmer-browser-id-${ID}.json" 2>/dev/null)" 2>/dev/null; do
+  ID="b-$(openssl rand -hex 2)"
+done
 
 # Find a free port starting from agent's base port
 BASE_PORT=$(echo -n "$AGENT" | cksum | awk '{print 9200 + ($1 % 200)}')
