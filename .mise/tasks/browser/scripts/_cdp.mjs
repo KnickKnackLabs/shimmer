@@ -1,6 +1,6 @@
 // _cdp.mjs — CDP connector + action dispatch for browser primitives
 //
-// Usage: node _cdp.mjs --action <name> --agent <agent> [action-specific args]
+// Usage: node _cdp.mjs --action <name> [--agent <agent> | --browser <id>] [action-specific args]
 //
 // Connects to a running Chromium via CDP, performs one action, disconnects.
 // The browser keeps running after disconnect.
@@ -15,6 +15,7 @@ const { values, positionals } = parseArgs({
   options: {
     action:   { type: 'string' },
     agent:    { type: 'string' },
+    browser:  { type: 'string' },
     // content
     selector: { type: 'string' },
     depth:    { type: 'string', default: '1' },
@@ -32,28 +33,56 @@ const { values, positionals } = parseArgs({
 });
 
 const action = values.action;
-const agent = values.agent;
+const browserId = values.browser;
+let agent = values.agent;
 
 if (!action) {
-  console.error('Usage: node _cdp.mjs --action <name> --agent <agent> [args]');
+  console.error('Usage: node _cdp.mjs --action <name> [--agent <agent> | --browser <id>] [args]');
+  process.exit(1);
+}
+
+// --- PID file resolution ---
+
+function pidFileForBrowser(id) {
+  return `/tmp/shimmer-browser-id-${id}.json`;
+}
+
+function pidFileForAgent(agentName) {
+  return `/tmp/shimmer-browser-${agentName}.json`;
+}
+
+function resolvePidFile() {
+  if (browserId) {
+    const pidFile = pidFileForBrowser(browserId);
+    if (!existsSync(pidFile)) {
+      console.error(`No browser found with ID ${browserId}. Run: shimmer browser:launch`);
+      process.exit(1);
+    }
+    return pidFile;
+  }
+  if (agent) {
+    const pidFile = pidFileForAgent(agent);
+    if (!existsSync(pidFile)) {
+      console.error(`No browser running for ${agent}. Run: shimmer browser:launch`);
+      process.exit(1);
+    }
+    return pidFile;
+  }
+  console.error('Either --agent or --browser is required');
   process.exit(1);
 }
 
 // --- CDP connection ---
 
-function pidFilePath(agentName) {
-  return `/tmp/shimmer-browser-${agentName}.json`;
-}
-
-async function connect(agentName) {
-  const pidFile = pidFilePath(agentName);
-  if (!existsSync(pidFile)) {
-    console.error(`No browser running for ${agentName}. Run: shimmer browser:launch`);
-    process.exit(1);
-  }
-
+async function connect() {
+  const pidFile = resolvePidFile();
   const info = JSON.parse(readFileSync(pidFile, 'utf-8'));
   const port = info.port;
+
+  // If agent wasn't provided explicitly, read it from the PID file
+  if (!agent) {
+    agent = info.agent;
+  }
 
   const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
   const contexts = browser.contexts();
@@ -86,7 +115,7 @@ if (action === 'goto') {
     console.error('Usage: --action goto <url>');
     process.exit(1);
   }
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   console.log(page.url());
   await browser.close();
@@ -94,7 +123,7 @@ if (action === 'goto') {
 } else if (action === 'content') {
   const selector = values.selector || positionals[0] || 'body';
   const depth = parseInt(values.depth, 10);
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
 
   const html = await page.evaluate(({ selector, depth }) => {
     const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG']);
@@ -164,7 +193,7 @@ if (action === 'goto') {
     console.error('Usage: --action fill --selector <sel> --value <val>');
     process.exit(1);
   }
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
   await page.fill(selector, fillValue);
   await browser.close();
 
@@ -174,12 +203,12 @@ if (action === 'goto') {
     console.error('Usage: --action click --selector <sel>');
     process.exit(1);
   }
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
   await page.click(selector);
   await browser.close();
 
 } else if (action === 'screenshot') {
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
   if (values.stdout) {
     const buf = await page.screenshot({ type: 'png' });
     process.stdout.write(buf);
@@ -198,7 +227,7 @@ if (action === 'goto') {
     console.error('Usage: --action save-auth --site <site>');
     process.exit(1);
   }
-  const { browser, context } = await connect(agent);
+  const { browser, context } = await connect();
   const authPath = authFilePath(agent, site);
   await context.storageState({ path: authPath });
   chmodSync(authPath, 0o600);
@@ -219,7 +248,7 @@ if (action === 'goto') {
   }
 
   // Load auth by adding cookies from the stored state
-  const { browser, context } = await connect(agent);
+  const { browser, context } = await connect();
   const state = JSON.parse(readFileSync(authPath, 'utf-8'));
   if (state.cookies && state.cookies.length > 0) {
     await context.addCookies(state.cookies);
@@ -234,7 +263,7 @@ if (action === 'goto') {
     process.exit(1);
   }
   const timeout = parseInt(values.timeout, 10);
-  const { browser, page } = await connect(agent);
+  const { browser, page } = await connect();
   await page.waitForSelector(selector, { timeout });
   await browser.close();
 

@@ -5,10 +5,37 @@ set -e
 
 FOUND=false
 
-for pidfile in /tmp/shimmer-browser-*.json; do
+for pidfile in /tmp/shimmer-browser-id-*.json; do
   [ -f "$pidfile" ] || continue
   FOUND=true
 
+  ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
+  AGENT=$(jq -r '.agent // "?"' "$pidfile" 2>/dev/null || echo "?")
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
+  PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
+
+  if kill -0 "$PID" 2>/dev/null; then
+    STATUS="running"
+  else
+    STATUS="dead"
+  fi
+
+  echo "$ID  agent=$AGENT  pid=$PID  port=$PORT  $STATUS"
+done
+
+# Also check legacy agent-only PID files (no .id field)
+for pidfile in /tmp/shimmer-browser-*.json; do
+  [ -f "$pidfile" ] || continue
+  # Skip ID-based files (already listed above)
+  case "$pidfile" in /tmp/shimmer-browser-id-*) continue ;; esac
+
+  # Skip if this file has an .id field (it's a pointer to an ID-based file)
+  FILE_ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
+  if [ -n "$FILE_ID" ]; then
+    continue
+  fi
+
+  FOUND=true
   AGENT=$(jq -r '.agent' "$pidfile" 2>/dev/null || basename "$pidfile" | sed 's/shimmer-browser-//;s/\.json//')
   PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
   PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
@@ -19,7 +46,7 @@ for pidfile in /tmp/shimmer-browser-*.json; do
     STATUS="dead"
   fi
 
-  echo "$AGENT  pid=$PID  port=$PORT  $STATUS"
+  echo "(legacy)  agent=$AGENT  pid=$PID  port=$PORT  $STATUS"
 done
 
 if [ "$FOUND" = "false" ]; then
