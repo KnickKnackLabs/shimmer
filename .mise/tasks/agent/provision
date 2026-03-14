@@ -16,6 +16,8 @@ PROVIDER="${usage_secrets:-${SHIMMER_SECRETS_PROVIDER:-}}"
 EMAIL="${AGENT}@ricon.family"
 UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 
+SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # Target caller's repo for GitHub secrets (not shimmer's)
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
@@ -62,7 +64,7 @@ generate_passphrase() {
 CREDENTIAL_KEYS=(email-password github-password matrix-password passphrase)
 
 for key in "${CREDENTIAL_KEYS[@]}"; do
-  if mise run -q secret:get "$AGENT" "$key" &>/dev/null; then
+  if mise run -q -C "$SHIMMER_DIR" secret:get "$AGENT" "$key" &>/dev/null; then
     echo "[auto] $key already stored"
   else
     if [ "$key" = "passphrase" ]; then
@@ -71,7 +73,7 @@ for key in "${CREDENTIAL_KEYS[@]}"; do
       value=$(generate_password)
     fi
     echo "[auto] Generating and storing $key..."
-    printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"
+    printf '%s' "$value" | mise run -q -C "$SHIMMER_DIR" secret:set "$AGENT" "$key"
   fi
 done
 
@@ -92,7 +94,7 @@ fi
 
 if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   # Try to import from secret store first (idempotent re-provision)
-  STORED_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key 2>/dev/null || true)
+  STORED_PRIVATE_KEY=$(mise run -q -C "$SHIMMER_DIR" secret:get "$AGENT" gpg-private-key 2>/dev/null || true)
   if [ -n "$STORED_PRIVATE_KEY" ]; then
     echo "[auto] Importing GPG key from secret store ($PROVIDER)..."
     printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
@@ -144,7 +146,7 @@ echo "--- Secret Store ($PROVIDER) ---"
 
 store() {
   local key="$1"; local value="$2"
-  if ! printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"; then
+  if ! printf '%s' "$value" | mise run -q -C "$SHIMMER_DIR" secret:set "$AGENT" "$key"; then
     echo "  WARN: Failed to store $key — check provider ($PROVIDER) configuration" >&2
     STORE_FAILURES=$((STORE_FAILURES + 1))
   fi
@@ -152,7 +154,7 @@ store() {
 STORE_FAILURES=0
 
 if [ "$GPG_NEWLY_GENERATED" = "true" ] || \
-   ! mise run -q secret:get "$AGENT" gpg-private-key &>/dev/null; then
+   ! mise run -q -C "$SHIMMER_DIR" secret:get "$AGENT" gpg-private-key &>/dev/null; then
   echo "[auto] Storing GPG keys..."
   store gpg-private-key "$PRIVATE_KEY"
   store gpg-public-key "$PUBLIC_KEY"
