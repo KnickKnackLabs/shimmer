@@ -67,7 +67,11 @@ fi
 echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
 echo "  Agent: $AGENT"
 [ -n "$SITE" ] && echo "  Site:  $SITE"
-[ -n "$AUTH_FILE" ] && echo "  Auth:  $AUTH_FILE" || echo "  Auth:  none"
+if [ -n "$AUTH_FILE" ]; then
+  echo "  Auth:  $AUTH_FILE"
+else
+  echo "  Auth:  none"
+fi
 if [ -n "$BROWSER_ID" ]; then
   echo "  Browser: $BROWSER_ID"
 fi

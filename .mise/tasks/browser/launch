@@ -84,7 +84,11 @@ if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
 fi
 
 # Write PID files
-PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"}"
+USER_DATA_DIR_JSON=""
+if [[ -n "${usage_user_data_dir:-}" ]]; then
+  USER_DATA_DIR_JSON=", \"user_data_dir\": \"$usage_user_data_dir\""
+fi
+PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"${USER_DATA_DIR_JSON}}"
 
 # ID-based PID file (canonical)
 echo "$PID_DATA" > "/tmp/shimmer-browser-id-${ID}.json"
