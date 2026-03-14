@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Launch a browser instance for this agent"
 #USAGE flag "--headed" help="Launch in headed mode (visible browser window)"
+#USAGE flag "--user-data-dir <dir>" help="Custom user data directory"
 
 set -e
 
@@ -58,11 +59,18 @@ if [ "${usage_headed:-false}" = "true" ]; then
   HEADLESS_FLAG=""
 fi
 
+USER_DATA_ARGS=()
+if [[ -n "${usage_user_data_dir:-}" ]]; then
+  USER_DATA_ARGS+=("--user-data-dir=$usage_user_data_dir")
+fi
+
 "$CHROMIUM_PATH" \
   --remote-debugging-port="$PORT" \
   --no-first-run \
   --no-default-browser-check \
+  --allow-chrome-scheme-url \
   ${HEADLESS_FLAG:+"$HEADLESS_FLAG"} \
+  "${USER_DATA_ARGS[@]}" \
   &>/dev/null &
 
 BROWSER_PID=$!
@@ -76,7 +84,11 @@ if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
 fi
 
 # Write PID files
-PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"}"
+USER_DATA_DIR_JSON=""
+if [[ -n "${usage_user_data_dir:-}" ]]; then
+  USER_DATA_DIR_JSON=", \"user_data_dir\": \"$usage_user_data_dir\""
+fi
+PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"${USER_DATA_DIR_JSON}}"
 
 # ID-based PID file (canonical)
 echo "$PID_DATA" > "/tmp/shimmer-browser-id-${ID}.json"

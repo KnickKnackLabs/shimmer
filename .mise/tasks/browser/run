@@ -39,24 +39,20 @@ else
   exit 1
 fi
 
-# Determine site from flag or script metadata
+# Determine site from flag or script metadata (optional — scripts don't need auth)
 SITE="${usage_site:-}"
 if [ -z "$SITE" ]; then
   SITE=$(node -e "import('file://$SCRIPT_PATH').then(m => console.log(m.site || ''))" 2>/dev/null || true)
 fi
-if [ -z "$SITE" ]; then
-  echo "Could not determine site. Use --site <site> or export 'site' from your script." >&2
-  exit 1
-fi
 
-# Check auth exists
-AUTH_DIR="$HOME/.config/shimmer/browser/$AGENT"
-AUTH_FILE="$AUTH_DIR/${SITE}.json"
-
-if [ ! -f "$AUTH_FILE" ]; then
-  echo "No auth found for $AGENT @ $SITE" >&2
-  echo "Run: shimmer browser:login $SITE" >&2
-  exit 1
+# Auth is optional — if no site or no auth file, proceed without it
+AUTH_FILE=""
+if [ -n "$SITE" ]; then
+  AUTH_DIR="$HOME/.config/shimmer/browser/$AGENT"
+  AUTH_FILE="$AUTH_DIR/${SITE}.json"
+  if [ ! -f "$AUTH_FILE" ]; then
+    AUTH_FILE=""
+  fi
 fi
 
 # Browser cache (needed for ephemeral mode)
@@ -70,7 +66,12 @@ fi
 
 echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
 echo "  Agent: $AGENT"
-echo "  Site:  $SITE"
+[ -n "$SITE" ] && echo "  Site:  $SITE"
+if [ -n "$AUTH_FILE" ]; then
+  echo "  Auth:  $AUTH_FILE"
+else
+  echo "  Auth:  none"
+fi
 if [ -n "$BROWSER_ID" ]; then
   echo "  Browser: $BROWSER_ID"
 fi
@@ -78,11 +79,11 @@ echo ""
 
 HARNESS_ARGS=(
   --mode run
-  --site "$SITE"
-  --auth-file "$AUTH_FILE"
   --script "$SCRIPT_PATH"
   --headed "$HEADED"
 )
+[ -n "$SITE" ] && HARNESS_ARGS+=(--site "$SITE")
+[ -n "$AUTH_FILE" ] && HARNESS_ARGS+=(--auth-file "$AUTH_FILE")
 
 if [ -n "$BROWSER_ID" ]; then
   HARNESS_ARGS+=(--browser "$BROWSER_ID")

@@ -98,11 +98,7 @@ if (mode === 'login') {
   }
 
 } else if (mode === 'run') {
-  if (!existsSync(authFile)) {
-    console.error(`Auth file not found: ${authFile}`);
-    console.error(`Run: shimmer browser:login ${site}`);
-    process.exit(1);
-  }
+  const hasAuth = authFile && existsSync(authFile);
 
   if (browserId) {
     // --- Persistent browser mode: connect via CDP ---
@@ -125,8 +121,10 @@ if (mode === 'login') {
       const pages = context.pages();
       page = pages[0] || await context.newPage();
     } else {
-      // No context yet — create one with stored auth
-      context = await browser.newContext({ storageState: authFile });
+      // No context yet — create one, with auth if available
+      context = hasAuth
+        ? await browser.newContext({ storageState: authFile })
+        : await browser.newContext();
       page = await context.newPage();
     }
 
@@ -141,16 +139,20 @@ if (mode === 'login') {
       process.exit(1);
     }
 
-    // Save updated auth (cookies may have been refreshed)
-    await context.storageState({ path: authFile });
-    chmodSync(authFile, 0o600);
+    // Save updated auth if we started with it (cookies may have been refreshed)
+    if (hasAuth) {
+      await context.storageState({ path: authFile });
+      chmodSync(authFile, 0o600);
+    }
 
     // Disconnect — browser stays running
     await browser.close();
   } else {
     // --- Ephemeral browser mode (default) ---
     const browser = await chromium.launch({ headless: !headed });
-    const context = await browser.newContext({ storageState: authFile });
+    const context = hasAuth
+      ? await browser.newContext({ storageState: authFile })
+      : await browser.newContext();
     const page = await context.newPage();
 
     const scriptModule = await import(pathToFileURL(scriptPath).href);
@@ -163,9 +165,11 @@ if (mode === 'login') {
       process.exit(1);
     }
 
-    // Save updated auth (cookies may have been refreshed)
-    await context.storageState({ path: authFile });
-    chmodSync(authFile, 0o600);
+    // Save updated auth if we started with it (cookies may have been refreshed)
+    if (hasAuth) {
+      await context.storageState({ path: authFile });
+      chmodSync(authFile, 0o600);
+    }
     await browser.close();
   }
 } else {
