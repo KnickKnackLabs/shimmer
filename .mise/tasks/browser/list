@@ -5,21 +5,56 @@ set -e
 
 FOUND=false
 
+for pidfile in /tmp/shimmer-browser-id-*.json; do
+  [ -f "$pidfile" ] || continue
+
+  ID=$(jq -r '.id // "?"' "$pidfile" 2>/dev/null || echo "?")
+  AGENT=$(jq -r '.agent // "?"' "$pidfile" 2>/dev/null || echo "?")
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
+  PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
+
+  if kill -0 "$PID" 2>/dev/null; then
+    FOUND=true
+    echo "$ID  agent=$AGENT  pid=$PID  port=$PORT  running"
+  else
+    # Clean up stale PID files
+    rm -f "$pidfile"
+    # Also clean agent-default if it points to this dead browser
+    if [ -n "$AGENT" ] && [ "$AGENT" != "?" ]; then
+      AGENT_PID_FILE="/tmp/shimmer-browser-${AGENT}.json"
+      if [ -f "$AGENT_PID_FILE" ]; then
+        AGENT_FILE_ID=$(jq -r '.id // empty' "$AGENT_PID_FILE" 2>/dev/null || echo "")
+        if [ "$AGENT_FILE_ID" = "$ID" ]; then
+          rm -f "$AGENT_PID_FILE"
+        fi
+      fi
+    fi
+  fi
+done
+
+# Also check legacy agent-only PID files (no .id field)
 for pidfile in /tmp/shimmer-browser-*.json; do
   [ -f "$pidfile" ] || continue
-  FOUND=true
+  # Skip ID-based files (already listed above)
+  case "$pidfile" in /tmp/shimmer-browser-id-*) continue ;; esac
+
+  # Skip if this file has an .id field (it's a pointer to an ID-based file)
+  FILE_ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
+  if [ -n "$FILE_ID" ]; then
+    continue
+  fi
 
   AGENT=$(jq -r '.agent' "$pidfile" 2>/dev/null || basename "$pidfile" | sed 's/shimmer-browser-//;s/\.json//')
   PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "?")
   PORT=$(jq -r '.port' "$pidfile" 2>/dev/null || echo "?")
 
   if kill -0 "$PID" 2>/dev/null; then
-    STATUS="running"
+    FOUND=true
+    echo "(legacy)  agent=$AGENT  pid=$PID  port=$PORT  running"
   else
-    STATUS="dead"
+    # Clean up stale legacy PID file
+    rm -f "$pidfile"
   fi
-
-  echo "$AGENT  pid=$PID  port=$PORT  $STATUS"
 done
 
 if [ "$FOUND" = "false" ]; then

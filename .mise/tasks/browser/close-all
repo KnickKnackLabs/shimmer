@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#MISE description="Close all browser instances for this agent"
+
+set -e
+
+# Determine agent identity
+if [ -n "$GIT_AUTHOR_EMAIL" ]; then
+  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
+  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+else
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+CLOSED=0
+
+for pidfile in /tmp/shimmer-browser-id-*.json; do
+  [ -f "$pidfile" ] || continue
+
+  FILE_AGENT=$(jq -r '.agent // empty' "$pidfile" 2>/dev/null || echo "")
+  [ "$FILE_AGENT" = "$AGENT" ] || continue
+
+  PID=$(jq -r '.pid' "$pidfile" 2>/dev/null || echo "")
+  ID=$(jq -r '.id // empty' "$pidfile" 2>/dev/null || echo "")
+
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    kill "$PID" 2>/dev/null || true
+    echo "Closed $ID (pid $PID)"
+    CLOSED=$((CLOSED + 1))
+  fi
+
+  rm -f "$pidfile"
+done
+
+# Clean up agent-default PID file
+rm -f "/tmp/shimmer-browser-${AGENT}.json"
+
+if [ "$CLOSED" -eq 0 ]; then
+  echo "No browsers running for $AGENT"
+else
+  echo "Closed $CLOSED browser(s)"
+fi

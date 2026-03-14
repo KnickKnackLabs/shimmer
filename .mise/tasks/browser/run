@@ -3,12 +3,14 @@
 #USAGE arg "<script>" help="Script name (built-in) or path to .mjs file"
 #USAGE arg "[args...]" var=#true help="Arguments to pass to the script"
 #USAGE flag "-s --site <site>" help="Site to use auth for (default: inferred from script)"
+#USAGE flag "-b --browser <browser>" help="Browser ID to run against (persistent browser)"
 #USAGE flag "--headed" help="Run with visible browser"
 
 set -e
 
 SCRIPT_NAME="${usage_script:?Usage: shimmer browser:run <script> [args...]}"
 HEADED="${usage_headed:-false}"
+BROWSER_ID="${usage_browser:-}"
 # Variadic args come as a shell-escaped string
 eval "SCRIPT_ARGS=(${usage_args:-})"
 
@@ -57,11 +59,11 @@ if [ ! -f "$AUTH_FILE" ]; then
   exit 1
 fi
 
-# Browser cache
+# Browser cache (needed for ephemeral mode)
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/shimmer/browser"
 export PLAYWRIGHT_BROWSERS_PATH="$CACHE_DIR"
 
-if [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; then
+if [ -z "$BROWSER_ID" ] && { [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; }; then
   echo "Chromium not installed. Run: shimmer browser:setup" >&2
   exit 1
 fi
@@ -69,12 +71,23 @@ fi
 echo "Running: $(basename "$SCRIPT_PATH" .mjs)"
 echo "  Agent: $AGENT"
 echo "  Site:  $SITE"
+if [ -n "$BROWSER_ID" ]; then
+  echo "  Browser: $BROWSER_ID"
+fi
 echo ""
 
+HARNESS_ARGS=(
+  --mode run
+  --site "$SITE"
+  --auth-file "$AUTH_FILE"
+  --script "$SCRIPT_PATH"
+  --headed "$HEADED"
+)
+
+if [ -n "$BROWSER_ID" ]; then
+  HARNESS_ARGS+=(--browser "$BROWSER_ID")
+fi
+
 node "$TASK_DIR/scripts/_harness.mjs" \
-  --mode run \
-  --site "$SITE" \
-  --auth-file "$AUTH_FILE" \
-  --script "$SCRIPT_PATH" \
-  --headed "$HEADED" \
+  "${HARNESS_ARGS[@]}" \
   -- "${SCRIPT_ARGS[@]}"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Launch a browser instance for this agent"
+#USAGE flag "--headed" help="Launch in headed mode (visible browser window)"
 
 set -e
 
@@ -22,21 +23,22 @@ if [ ! -d "$CACHE_DIR" ] || ! ls "$CACHE_DIR"/chromium-* &>/dev/null; then
   exit 1
 fi
 
-# Per-agent port: hash agent name to a port in range 9200-9399
-PORT=$(echo -n "$AGENT" | cksum | awk '{print 9200 + ($1 % 200)}')
-PID_FILE="/tmp/shimmer-browser-${AGENT}.json"
+# Generate browser ID (retry on collision)
+ID="b-$(openssl rand -hex 2)"
+while [ -f "/tmp/shimmer-browser-id-${ID}.json" ] && kill -0 "$(jq -r '.pid' "/tmp/shimmer-browser-id-${ID}.json" 2>/dev/null)" 2>/dev/null; do
+  ID="b-$(openssl rand -hex 2)"
+done
 
-# Check if already running
-if [ -f "$PID_FILE" ]; then
-  EXISTING_PID=$(jq -r '.pid' "$PID_FILE" 2>/dev/null || echo "")
-  if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
-    EXISTING_PORT=$(jq -r '.port' "$PID_FILE")
-    echo "Browser already running for $AGENT (pid $EXISTING_PID, port $EXISTING_PORT)"
-    exit 0
+# Find a free port starting from agent's base port
+BASE_PORT=$(echo -n "$AGENT" | cksum | awk '{print 9200 + ($1 % 200)}')
+PORT=$BASE_PORT
+while lsof -i ":$PORT" >/dev/null 2>&1; do
+  PORT=$((PORT + 1))
+  if [ $PORT -ge 9400 ]; then
+    echo "No free ports in range 9200-9399" >&2
+    exit 1
   fi
-  # Stale PID file
-  rm -f "$PID_FILE"
-fi
+done
 
 # Find Chromium binary via Patchright (run from scripts/ where node_modules lives)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,11 +53,16 @@ if [ -z "$CHROMIUM_PATH" ] || [ ! -f "$CHROMIUM_PATH" ]; then
 fi
 
 # Launch Chromium with remote debugging
+HEADLESS_FLAG="--headless=new"
+if [ "${usage_headed:-false}" = "true" ]; then
+  HEADLESS_FLAG=""
+fi
+
 "$CHROMIUM_PATH" \
   --remote-debugging-port="$PORT" \
   --no-first-run \
   --no-default-browser-check \
-  --headless=new \
+  ${HEADLESS_FLAG:+"$HEADLESS_FLAG"} \
   &>/dev/null &
 
 BROWSER_PID=$!
@@ -68,9 +75,18 @@ if ! kill -0 "$BROWSER_PID" 2>/dev/null; then
   exit 1
 fi
 
-# Write PID file
-echo "{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\"}" > "$PID_FILE"
+# Write PID files
+PID_DATA="{\"pid\": $BROWSER_PID, \"port\": $PORT, \"agent\": \"$AGENT\", \"id\": \"$ID\"}"
 
-echo "Browser launched for $AGENT"
-echo "  PID:  $BROWSER_PID"
-echo "  Port: $PORT"
+# ID-based PID file (canonical)
+echo "$PID_DATA" > "/tmp/shimmer-browser-id-${ID}.json"
+
+# Agent-default PID file (backward compat — points to latest browser)
+echo "$PID_DATA" > "/tmp/shimmer-browser-${AGENT}.json"
+
+# Output ID to stdout (for capture), human info to stderr
+echo "$ID"
+echo "Browser launched for $AGENT" >&2
+echo "  ID:   $ID" >&2
+echo "  PID:  $BROWSER_PID" >&2
+echo "  Port: $PORT" >&2
