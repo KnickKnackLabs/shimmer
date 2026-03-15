@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Convert raw codeblocks in HUMAN.md into proper callout threads"
+#MISE description="Tidy HUMAN.md: convert raw codeblocks to callouts, promote/demote thread types"
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,68 +12,127 @@ if [ ! -f "$HUMAN_PATH" ]; then
   exit 1
 fi
 
-# Find raw codeblocks (``` delimited) that contain [Name] messages,
-# convert them to [!note]- callout threads
 HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
 import re, os
-from human_threads import NAME_PAT
+from human_threads import (
+    NAME_PAT, CALLOUT_OPENER,
+    split_header_body, parse_threads,
+    extract_thread_body, extract_authors, thread_waiting_on,
+)
 
 filepath = os.environ["HUMAN_PATH"]
 content = open(filepath).read()
+changes = []
 
-# Find fenced codeblocks: ``` ... ```
-# Only convert ones that contain [Name] message patterns
+# --- Phase 1: Convert raw codeblocks to callout threads ---
+
 codeblock_pat = re.compile(r"^```\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
-name_pat = NAME_PAT
 
 converted = 0
 def replace_codeblock(m):
     global converted
     block_content = m.group(1).strip()
 
-    # Only convert if it contains [Name] message patterns
     lines = block_content.split("\n")
-    has_messages = any(name_pat.match(l.strip()) for l in lines)
+    has_messages = any(NAME_PAT.match(l.strip()) for l in lines)
     if not has_messages:
-        return m.group(0)  # leave non-message codeblocks alone
+        return m.group(0)
 
-    # Placeholder title — agents should rename when they review
     title = "TODO: title this thread"
-
-    # Build callout: [!note]- with the content as callout body
-    # Bold [Name] prefixes and add --- dividers between messages
     callout_lines = [f"> [!note]- {title}"]
     first_message = True
     for l in lines:
         stripped = l.strip()
         if stripped == "":
             callout_lines.append(">")
-        elif name_pat.match(stripped):
-            # Bold the name and add divider before non-first messages
+        elif NAME_PAT.match(stripped):
             if not first_message:
                 callout_lines.append(">")
                 callout_lines.append("> ---")
                 callout_lines.append(">")
-            bolded = name_pat.sub(lambda nm: f"**[{nm.group(1)}]**", stripped)
+            bolded = NAME_PAT.sub(lambda nm: f"**[{nm.group(1)}]**", stripped)
             callout_lines.append(f"> {bolded}")
             first_message = False
         else:
             callout_lines.append(f"> {l}")
 
     converted += 1
-    # Ensure blank line after callout so adjacent blocks stay separated
     return "\n".join(callout_lines) + "\n"
 
-new_content = codeblock_pat.sub(replace_codeblock, content)
+content = codeblock_pat.sub(replace_codeblock, content)
+content = re.sub(r"\n{4,}", "\n\n\n", content)
 
-# Clean up any triple+ blank lines introduced by the trailing newlines
-new_content = re.sub(r"\n{4,}", "\n\n\n", new_content)
-
-if converted == 0:
-    print("No raw codeblocks to convert.")
-else:
-    with open(filepath, "w") as f:
-        f.write(new_content)
+if converted > 0:
     s = "s" if converted != 1 else ""
-    print(f"Converted {converted} codeblock{s} to callout thread{s}.")
+    changes.append(f"converted {converted} codeblock{s}")
+
+# --- Phase 2: Promote/demote thread callout types based on waiting-on ---
+# waiting on Or → warning (bubbles to top after sort)
+# waiting on agent → note (sinks below warnings after sort)
+# success threads are never touched
+
+header, body = split_header_body(content)
+if header is not None:
+    preamble_lines, threads = parse_threads(body)
+
+    promoted = 0
+    demoted = 0
+    new_threads = []
+
+    for kind, lines in threads:
+        if kind == "success":
+            new_threads.append((kind, lines))
+            continue
+
+        body_lines = extract_thread_body(lines)
+        authors = extract_authors(body_lines)
+        waiting = thread_waiting_on(kind, authors)
+
+        new_kind = kind
+        if waiting == "Or" and kind != "warning":
+            new_kind = "warning"
+            promoted += 1
+        elif waiting == "agent" and kind != "note":
+            new_kind = "note"
+            demoted += 1
+
+        if new_kind != kind:
+            # Rewrite the opener line with the new callout type
+            opener = lines[0]
+            m = CALLOUT_OPENER.match(opener)
+            if m:
+                # Preserve the +/- and title after the callout type
+                prefix = opener[:m.start(1)]
+                suffix = opener[m.end(1):]
+                new_opener = prefix + new_kind + suffix
+                # Add 👈 for warnings, remove for demotions
+                if new_kind == "warning" and "\U0001f448" not in new_opener:
+                    new_opener = new_opener.rstrip() + " \U0001f448"
+                elif new_kind != "warning" and "\U0001f448" in new_opener:
+                    new_opener = re.sub(r"\s*\U0001f448\s*", "", new_opener)
+                lines = [new_opener] + lines[1:]
+
+        new_threads.append((new_kind, lines))
+
+    if promoted > 0 or demoted > 0:
+        # Reassemble the file
+        preamble = "\n".join(preamble_lines).rstrip("\n")
+        new_body = preamble + "\n"
+        for _kind, tlines in new_threads:
+            new_body += "\n" + "\n".join(tlines) + "\n"
+        content = header + new_body
+
+    if promoted > 0:
+        changes.append(f"promoted {promoted} to warning")
+    if demoted > 0:
+        changes.append(f"demoted {demoted} to note")
+
+# --- Write if changed ---
+
+if changes:
+    with open(filepath, "w") as f:
+        f.write(content)
+    print(f"Tidied: {', '.join(changes)}.")
+else:
+    print("Nothing to tidy.")
 PYEOF
