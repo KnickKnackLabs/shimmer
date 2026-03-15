@@ -22,3 +22,4 @@ cli/shimmer
 
 # Browser automation (symlink to mise-installed patchright)
 node_modules
+__pycache__/
