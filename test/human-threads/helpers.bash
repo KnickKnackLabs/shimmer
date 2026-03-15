@@ -92,6 +92,39 @@ THREAD_OR_WAITING='> [!note]- Or should respond
 THREAD_NO_AUTHORS='> [!note]- Empty thread
 > No author markers here.'
 
+# Thread with arrow chain authorship convention
+THREAD_ARROW_CHAIN='> [!note]- Rewritten thread (Mar 15)
+> **[Or → x1f9]** This message was clarified by x1f9.
+>
+> ---
+>
+> **[junior]** Looks good to me.'
+
+# Thread with multi-hop arrow chain
+THREAD_MULTI_ARROW='> [!note]- Multi-edit thread
+> **[Or → x1f9 → brownie]** Edited twice.'
+
+# Thread with multi-paragraph content (blank lines inside callout)
+THREAD_MULTI_PARAGRAPH='> [!note]- Long discussion (Mar 15)
+> **[Or]** First paragraph of thought.
+>
+> Second paragraph continues here.
+>
+> Third paragraph with more detail.
+>
+> ---
+>
+> **[junior]** My multi-paragraph reply.
+>
+> Continued thoughts here.'
+
+# Two adjacent threads separated by a blank line
+THREAD_ADJACENT_A='> [!note]- Thread A
+> **[Or]** Content A.'
+
+THREAD_ADJACENT_B='> [!note]- Thread B
+> **[junior]** Content B.'
+
 # A raw codeblock that tidy should convert
 RAW_CODEBLOCK='```
 [Or] Hey, what do you think about this?
