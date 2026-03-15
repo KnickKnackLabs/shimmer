@@ -20,6 +20,9 @@ UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
 
+# After cd, bare `mise run` resolves tasks from cwd (the caller's repo).
+# Use `mise -C "$MISE_PROJECT_ROOT" run -q` to call sibling shimmer tasks.
+
 echo "=== Provisioning agent: $AGENT ==="
 echo ""
 
@@ -62,7 +65,7 @@ generate_passphrase() {
 CREDENTIAL_KEYS=(email-password github-password matrix-password passphrase)
 
 for key in "${CREDENTIAL_KEYS[@]}"; do
-  if mise run -q secret:get "$AGENT" "$key" &>/dev/null; then
+  if mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" "$key" &>/dev/null; then
     echo "[auto] $key already stored"
   else
     if [ "$key" = "passphrase" ]; then
@@ -71,7 +74,7 @@ for key in "${CREDENTIAL_KEYS[@]}"; do
       value=$(generate_password)
     fi
     echo "[auto] Generating and storing $key..."
-    printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"
+    printf '%s' "$value" | mise -C "$MISE_PROJECT_ROOT" run -q secret:set "$AGENT" "$key"
   fi
 done
 
@@ -92,7 +95,7 @@ fi
 
 if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   # Try to import from secret store first (idempotent re-provision)
-  STORED_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key 2>/dev/null || true)
+  STORED_PRIVATE_KEY=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" gpg-private-key 2>/dev/null || true)
   if [ -n "$STORED_PRIVATE_KEY" ]; then
     echo "[auto] Importing GPG key from secret store ($PROVIDER)..."
     printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
@@ -144,7 +147,7 @@ echo "--- Secret Store ($PROVIDER) ---"
 
 store() {
   local key="$1"; local value="$2"
-  if ! printf '%s' "$value" | mise run -q secret:set "$AGENT" "$key"; then
+  if ! printf '%s' "$value" | mise -C "$MISE_PROJECT_ROOT" run -q secret:set "$AGENT" "$key"; then
     echo "  WARN: Failed to store $key — check provider ($PROVIDER) configuration" >&2
     STORE_FAILURES=$((STORE_FAILURES + 1))
   fi
@@ -152,7 +155,7 @@ store() {
 STORE_FAILURES=0
 
 if [ "$GPG_NEWLY_GENERATED" = "true" ] || \
-   ! mise run -q secret:get "$AGENT" gpg-private-key &>/dev/null; then
+   ! mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" gpg-private-key &>/dev/null; then
   echo "[auto] Storing GPG keys..."
   store gpg-private-key "$PRIVATE_KEY"
   store gpg-public-key "$PUBLIC_KEY"
@@ -160,6 +163,28 @@ if [ "$GPG_NEWLY_GENERATED" = "true" ] || \
   store gpg-fingerprint "$FINGERPRINT"
 else
   echo "[auto] GPG keys already stored"
+fi
+
+# === 1Password Metadata ===
+# The secret:set abstraction only stores the bare value. Enrich 1Password items
+# with usernames, URLs, and other metadata that the old provision flow included.
+# This is 1Password-specific; keychain doesn't support this metadata.
+if [ "$PROVIDER" = "1password" ]; then
+  echo ""
+  echo "--- 1Password Metadata ---"
+  VAULT="Agents"
+  op item edit "${AGENT} - Email" --vault "$VAULT" \
+    username="$AGENT" "email[text]=$EMAIL" --url "https://mail.ricon.family" \
+    < /dev/null >/dev/null 2>&1 && echo "[auto] Enriched ${AGENT} - Email" || echo "  WARN: Failed to enrich ${AGENT} - Email"
+  op item edit "${AGENT} - GitHub" --vault "$VAULT" \
+    username="${AGENT}-ricon" "email[text]=$EMAIL" "country[text]=United States of America" --url "https://github.com" \
+    < /dev/null >/dev/null 2>&1 && echo "[auto] Enriched ${AGENT} - GitHub" || echo "  WARN: Failed to enrich ${AGENT} - GitHub"
+  op item edit "${AGENT} - Matrix" --vault "$VAULT" \
+    username="@${AGENT}:ricon.family" --url "https://matrix.ricon.family" \
+    < /dev/null >/dev/null 2>&1 && echo "[auto] Enriched ${AGENT} - Matrix" || echo "  WARN: Failed to enrich ${AGENT} - Matrix"
+  op item edit "${AGENT} - GPG" --vault "$VAULT" \
+    "Email[text]=$EMAIL" "GitHub Title[text]=$EMAIL" \
+    < /dev/null >/dev/null 2>&1 && echo "[auto] Enriched ${AGENT} - GPG" || echo "  WARN: Failed to enrich ${AGENT} - GPG"
 fi
 
 echo ""

@@ -10,12 +10,12 @@ AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 EMAIL="${AGENT}@ricon.family"
 VAULT="Agents"
 
-# Remember shimmer's directory for mise run calls after cd
-SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-
 # Target caller's repo for GitHub secrets (not shimmer's)
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
+
+# After cd, bare `mise run` resolves tasks from cwd (the caller's repo).
+# Use `mise -C "$MISE_PROJECT_ROOT" run -q` to call sibling shimmer tasks.
 
 wait_for_enter() {
   echo ""
@@ -39,8 +39,8 @@ fi
 # (username, email, country) are 1Password-specific and read directly via op.
 echo "Fetching credentials from 1Password..."
 export SHIMMER_SECRETS_PROVIDER=1password
-EMAIL_PASSWORD=$(mise run -q secret:get "$AGENT" email-password 2>/dev/null || echo "")
-GITHUB_PASSWORD=$(mise run -q secret:get "$AGENT" github-password 2>/dev/null || echo "")
+EMAIL_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" email-password 2>/dev/null || echo "")
+GITHUB_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" github-password 2>/dev/null || echo "")
 # Account metadata fields — not part of secret:* abstraction (1Password item fields only)
 GITHUB_USERNAME=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields username 2>/dev/null || echo "")
 GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
@@ -103,7 +103,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  (cd "$SHIMMER_DIR" && mise run email:setup "$AGENT") > /dev/null 2>&1
+  (mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT") > /dev/null 2>&1
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
@@ -168,7 +168,7 @@ echo "      Click: New GPG key"
 echo "      Title: $EMAIL"
 echo "      Key:"
 echo ""
-mise run -q secret:get "$AGENT" gpg-public-key 2>/dev/null || echo "(no GPG public key found — run agent:provision first)"
+mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" gpg-public-key 2>/dev/null || echo "(no GPG public key found — run agent:provision first)"
 echo ""
 
 wait_for_enter
@@ -180,7 +180,7 @@ echo "[auto] Opening browser to create full-access personal token..."
 echo ""
 
 # Run github:token:new-personal (shows credentials, opens incognito browser)
-(cd "$SHIMMER_DIR" && mise run -q github:token:new-personal "$AGENT")
+(mise -C "$MISE_PROJECT_ROOT" run -q github:token:new-personal "$AGENT")
 
 wait_for_enter
 
@@ -193,7 +193,7 @@ echo ""
 
 if [ -n "$PAT_TOKEN" ]; then
   echo "[auto] Storing in secret store..."
-  printf '%s' "$PAT_TOKEN" | mise run -q secret:set "$AGENT" github-pat
+  printf '%s' "$PAT_TOKEN" | mise -C "$MISE_PROJECT_ROOT" run -q secret:set "$AGENT" github-pat
 
   echo "[auto] Storing as GitHub secret ${AGENT_UPPER}_GITHUB_PAT..."
   echo "$PAT_TOKEN" | gh secret set "${AGENT_UPPER}_GITHUB_PAT"
@@ -213,7 +213,7 @@ wait_for_enter
 echo "STEP 8: Matrix Setup"
 echo "------------------------------------------------------------"
 
-MATRIX_PASSWORD=$(mise run -q secret:get "$AGENT" matrix-password 2>/dev/null || echo "")
+MATRIX_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" matrix-password 2>/dev/null || echo "")
 MATRIX_USER="@${AGENT}:ricon.family"
 
 if [ -z "$MATRIX_PASSWORD" ]; then
@@ -238,10 +238,10 @@ wait_for_enter
 echo "STEP 9: Blob Storage"
 echo "------------------------------------------------------------"
 
-B2_ENDPOINT=$(mise run -q secret:get "$AGENT" b2-endpoint 2>/dev/null || echo "")
-B2_KEY_ID=$(mise run -q secret:get "$AGENT" b2-key-id 2>/dev/null || echo "")
-B2_APPLICATION_KEY=$(mise run -q secret:get "$AGENT" b2-application-key 2>/dev/null || echo "")
-B2_BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null || echo "")
+B2_ENDPOINT=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-endpoint 2>/dev/null || echo "")
+B2_KEY_ID=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-key-id 2>/dev/null || echo "")
+B2_APPLICATION_KEY=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-application-key 2>/dev/null || echo "")
+B2_BUCKET=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-bucket 2>/dev/null || echo "")
 
 if [ -z "$B2_ENDPOINT" ] || [ -z "$B2_KEY_ID" ] || [ -z "$B2_APPLICATION_KEY" ] || [ -z "$B2_BUCKET" ]; then
   echo "[WARN] B2 credentials not found in secret store, skipping blob storage setup"
@@ -259,14 +259,14 @@ else
   echo "$B2_BUCKET" | gh secret set "${AGENT_UPPER}_B2_BUCKET"
 
   echo "[auto] Configuring mc alias..."
-  (cd "$SHIMMER_DIR" && B2_ENDPOINT="$B2_ENDPOINT" B2_KEY_ID="$B2_KEY_ID" B2_APPLICATION_KEY="$B2_APPLICATION_KEY" mise run blob:setup "$AGENT")
+  (B2_ENDPOINT="$B2_ENDPOINT" B2_KEY_ID="$B2_KEY_ID" B2_APPLICATION_KEY="$B2_APPLICATION_KEY" mise -C "$MISE_PROJECT_ROOT" run blob:setup "$AGENT")
 
   echo "[auto] Verifying blob storage..."
   (
     # blob:welcome uses GIT_AUTHOR_EMAIL for agent detection
     export GIT_AUTHOR_EMAIL="$EMAIL"
     export B2_BUCKET="$B2_BUCKET"
-    cd "$SHIMMER_DIR" && mise run -q blob:welcome
+    mise -C "$MISE_PROJECT_ROOT" run -q blob:welcome
   )
 fi
 
@@ -279,14 +279,14 @@ echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
 echo ""
 
 # Set agent identity and run welcome to verify the full local identity chain
-PAT=$(mise run -q secret:get "$AGENT" github-pat 2>/dev/null || true)
+PAT=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" github-pat 2>/dev/null || true)
 (
   export GH_TOKEN="$PAT"
   export GIT_AUTHOR_EMAIL="$EMAIL"
   export GIT_COMMITTER_EMAIL="$EMAIL"
   export GIT_AUTHOR_NAME="$AGENT"
   export GIT_COMMITTER_NAME="$AGENT"
-  cd "$SHIMMER_DIR" && mise run -q welcome
+  mise -C "$MISE_PROJECT_ROOT" run -q welcome
 )
 
 wait_for_enter
