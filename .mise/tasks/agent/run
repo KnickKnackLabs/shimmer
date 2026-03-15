@@ -34,12 +34,18 @@ if [ -z "$SYSTEM_PROMPT_FILE" ]; then
     cat "$SHIMMER_ROOT/cli/priv/prompts/base.txt" >> "$PROMPT_FILE"
   fi
 
-  # Add agent identity
-  if [ -f "$CALLER_DIR/agents/$AGENT/CLAUDE.md" ]; then
+  # Add agent identity — resolve via the home's agent:identity task
+  AGENT_IDENTITY_FILE=$(mise -C "$CALLER_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+  if [ -n "$AGENT_IDENTITY_FILE" ] && [ -f "$AGENT_IDENTITY_FILE" ]; then
     echo "" >> "$PROMPT_FILE"
-    cat "$CALLER_DIR/agents/$AGENT/CLAUDE.md" >> "$PROMPT_FILE"
+    cat "$AGENT_IDENTITY_FILE" >> "$PROMPT_FILE"
   else
-    echo "Error: Agent identity not found: $CALLER_DIR/agents/$AGENT/CLAUDE.md" >&2
+    echo "Error: could not resolve agent identity for '$AGENT'." >&2
+    if [ -z "$AGENT_IDENTITY_FILE" ]; then
+      echo "Does $CALLER_DIR provide an agent:identity task?" >&2
+    else
+      echo "File not found: $AGENT_IDENTITY_FILE" >&2
+    fi
     exit 1
   fi
 

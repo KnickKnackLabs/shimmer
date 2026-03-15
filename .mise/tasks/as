@@ -91,6 +91,15 @@ if [ -n "$B2_BUCKET" ]; then
   echo "export B2_BUCKET='$B2_BUCKET'"
 fi
 
+# Resolve agent identity file via the home's agent:identity task
+AGENT_HOME_DIR="$(dirname "$AGENTS_DIR")"
+IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+if [ -n "$IDENTITY" ]; then
+  echo "export AGENT_IDENTITY='$IDENTITY'"
+else
+  echo "# Note: agent home has no agent:identity task — AGENT_IDENTITY not set" >&2
+fi
+
 # Print info to stderr so it doesn't interfere with eval
 echo "# Agent identity set: $AGENT ($EMAIL)" >&2
 echo "# Verify with: shimmer whoami" >&2
