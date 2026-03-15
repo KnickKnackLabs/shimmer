@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#MISE description="Move resolved threads from HUMAN.md to HUMAN.archive.md"
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+
+if [ ! -f "$HUMAN_PATH" ]; then
+  echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
+  exit 1
+fi
+
+# Archive lives next to HUMAN.md
+ARCHIVE_PATH="${HUMAN_PATH%.md}.archive.md"
+
+HUMAN_PATH="$HUMAN_PATH" ARCHIVE_PATH="$ARCHIVE_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+import os
+from datetime import date
+from human_threads import split_header_body, parse_threads
+
+human_path = os.environ["HUMAN_PATH"]
+archive_path = os.environ["ARCHIVE_PATH"]
+
+content = open(human_path).read()
+header, body = split_header_body(content)
+
+if header is None:
+    print("No header marker found.")
+    raise SystemExit(0)
+
+preamble_lines, threads = parse_threads(body)
+
+kept = [(k, l) for k, l in threads if k != "success"]
+resolved = [(k, l) for k, l in threads if k == "success"]
+
+if not resolved:
+    print("No resolved threads to archive.")
+    raise SystemExit(0)
+
+# Append to archive file
+archive_existed = os.path.exists(archive_path)
+with open(archive_path, "a") as f:
+    if not archive_existed:
+        f.write("""\
+<!--
+      .
+    /   \\
+   /     \\
+  | o   o |
+   \\     /
+    |   |     Hardy
+   /|   |\\
+  / |   | \\
+    |   |
+   _|   |_
+  |_______|
+-->
+# HUMAN Archive
+
+Resolved conversation threads, moved from HUMAN.md.
+
+""")
+    f.write(f"## Archived {date.today().isoformat()}\n\n")
+    for _kind, tlines in resolved:
+        f.write("\n".join(tlines) + "\n\n")
+
+# Rewrite HUMAN.md without resolved threads
+preamble = "\n".join(preamble_lines).rstrip("\n")
+new_body = preamble + "\n"
+for _kind, tlines in kept:
+    new_body += "\n" + "\n".join(tlines) + "\n"
+
+with open(human_path, "w") as f:
+    f.write(header + new_body)
+
+s = "s" if len(resolved) != 1 else ""
+print(f"Archived {len(resolved)} resolved thread{s} to {os.path.basename(archive_path)}.")
+PYEOF

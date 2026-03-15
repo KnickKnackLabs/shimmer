@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#MISE description="Convert raw codeblocks in HUMAN.md into proper callout threads"
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+
+if [ ! -f "$HUMAN_PATH" ]; then
+  echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
+  exit 1
+fi
+
+# Find raw codeblocks (``` delimited) that contain [Name] messages,
+# convert them to [!note]- callout threads
+HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+import re, os
+from human_threads import NAME_PAT
+
+filepath = os.environ["HUMAN_PATH"]
+content = open(filepath).read()
+
+# Find fenced codeblocks: ``` ... ```
+# Only convert ones that contain [Name] message patterns
+codeblock_pat = re.compile(r"^```\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
+name_pat = NAME_PAT
+
+converted = 0
+def replace_codeblock(m):
+    global converted
+    block_content = m.group(1).strip()
+
+    # Only convert if it contains [Name] message patterns
+    lines = block_content.split("\n")
+    has_messages = any(name_pat.match(l.strip()) for l in lines)
+    if not has_messages:
+        return m.group(0)  # leave non-message codeblocks alone
+
+    # Placeholder title — agents should rename when they review
+    title = "TODO: title this thread"
+
+    # Build callout: [!note]- with the content as callout body
+    # Bold [Name] prefixes and add --- dividers between messages
+    callout_lines = [f"> [!note]- {title}"]
+    first_message = True
+    for l in lines:
+        stripped = l.strip()
+        if stripped == "":
+            callout_lines.append(">")
+        elif name_pat.match(stripped):
+            # Bold the name and add divider before non-first messages
+            if not first_message:
+                callout_lines.append(">")
+                callout_lines.append("> ---")
+                callout_lines.append(">")
+            bolded = name_pat.sub(lambda nm: f"**[{nm.group(1)}]**", stripped)
+            callout_lines.append(f"> {bolded}")
+            first_message = False
+        else:
+            callout_lines.append(f"> {l}")
+
+    converted += 1
+    # Ensure blank line after callout so adjacent blocks stay separated
+    return "\n".join(callout_lines) + "\n"
+
+new_content = codeblock_pat.sub(replace_codeblock, content)
+
+# Clean up any triple+ blank lines introduced by the trailing newlines
+new_content = re.sub(r"\n{4,}", "\n\n\n", new_content)
+
+if converted == 0:
+    print("No raw codeblocks to convert.")
+else:
+    with open(filepath, "w") as f:
+        f.write(new_content)
+    s = "s" if converted != 1 else ""
+    print(f"Converted {converted} codeblock{s} to callout thread{s}.")
+PYEOF

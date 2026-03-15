@@ -1,0 +1,29 @@
+#!/bin/bash
+#MISE description="Resolve the HUMAN.md path via the home repo's human task"
+#MISE hide=true
+# Usage: HUMAN_PATH=$(.mise/tasks/_get-human-path)
+#
+# Calls the home repo's `human` task to get the HUMAN.md path.
+# Requires CALLER_PWD to be set (or uses current directory).
+# Fails with exit 1 if the home repo doesn't provide a `human` task.
+
+set -eo pipefail
+
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
+
+STDERR_FILE=$(mktemp)
+HUMAN_PATH=$(mise -C "$CALLER_DIR" run -q human 2>"$STDERR_FILE") || true
+
+if [ -z "$HUMAN_PATH" ]; then
+  echo "Error: could not resolve HUMAN.md path." >&2
+  echo "Does $CALLER_DIR provide a 'human' task?" >&2
+  if [ -s "$STDERR_FILE" ]; then
+    echo "" >&2
+    cat "$STDERR_FILE" >&2
+  fi
+  rm -f "$STDERR_FILE"
+  exit 1
+fi
+
+rm -f "$STDERR_FILE"
+echo "$HUMAN_PATH"
