@@ -29,15 +29,25 @@ Async scratchpad for human-agent conversations.
 > - `[!success]-` — resolved thread (green, collapsed)
 >
 > Each message starts with `**[Name]**` (bold) — separated by `> ---` dividers for visual clarity.
-> When an agent rewrites a message for clarity, use arrow notation: `**[Or → x1f9]**`
-> (Or's words, clarified by x1f9). Chains extend naturally: `**[Or → x1f9 → brownie]**`.
 >
-> **Resolving threads:** When condensing a resolved thread, write a short summary
-> from each participant's perspective — one `**[Name]**` entry per participant.
-> The resolving agent writes all entries using arrow notation and puts their
-> own summary last: `**[Or → x1f9]**` Or's role. `**[junior → x1f9]**` junior's role.
-> `**[x1f9]**` What I did to resolve it. (The `*` marker in `threads:list`
-> then naturally shows who resolved the thread.)
+> **Arrow notation (chain of custody):** When someone rewrites or summarizes
+> another person's message, use `**[Original → Editor]**`. This means "Original's
+> words, as written/clarified by Editor." Chains extend: `**[A → B → C]**` means
+> C most recently touched what A originally wrote. If someone disagrees with a
+> rewrite, they can overwrite it: `**[A → B → A]**`.
+>
+> **Closing threads:** When condensing a thread to `[!success]`, summarize each
+> participant's contribution using arrow notation, then add your own summary
+> last (without an arrow — it's your own words). Example:
+>
+> ```
+> **[Or → x1f9]** Summary of Or's contribution.
+> **[junior → x1f9]** Summary of junior's contribution.
+> **[x1f9]** Thread summary and outcome.
+> ```
+>
+> The closing agent's entry comes last, so `shimmer human:threads:list`
+> naturally shows who closed the thread via the `*` (last sender) marker.
 >
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.
