@@ -34,9 +34,10 @@ Async scratchpad for human-agent conversations.
 >
 > **Resolving threads:** When condensing a resolved thread, write a short summary
 > from each participant's perspective — one `**[Name]**` entry per participant.
-> The agent doing the condensing writes all entries using arrow notation:
-> `**[Or → x1f9]**` Summary of Or's role. `**[junior → x1f9]**` Summary of junior's role.
-> This preserves participant visibility in `shimmer human:threads:list`.
+> The resolving agent writes all entries using arrow notation and puts their
+> own summary last: `**[Or → x1f9]**` Or's role. `**[junior → x1f9]**` junior's role.
+> `**[x1f9]**` What I did to resolve it. (The `*` marker in `threads:list`
+> then naturally shows who resolved the thread.)
 >
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.

@@ -39,6 +39,8 @@ else:
         waiting = thread_waiting_on(kind, authors)
 
         # Annotate: + for starter, * for last sender
+        # For resolved threads, * naturally indicates who resolved it
+        # (convention: resolving agent writes their summary last)
         annotated = []
         for name in participants:
             suffix = ""
