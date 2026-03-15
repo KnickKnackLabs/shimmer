@@ -73,7 +73,9 @@ jobs:
       - name: Install shimmer
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_PAT }}
-        run: shiv install shimmer
+        run: |
+          shiv install shimmer
+          shiv install notes
 
       - name: Compute shimmer CLI cache key
         id: shimmer
@@ -139,16 +141,27 @@ jobs:
             echo "No zettelkasten found for ${{ inputs.agent }}, skipping"
           fi
 
+      - name: Unlock encrypted files
+        run: |
+          cd "$HOME/$REPO_NAME"
+          mise trust -q
+          if [ -d ".git-crypt" ]; then
+            notes encrypt:install
+            notes encrypt:unlock || echo "Warning: notes encrypt:unlock failed — encrypted files may not be readable"
+          fi
+
       - name: Build system prompt
         id: prompt
         run: |
           PROMPT_FILE=$(mktemp)
 
-          # Add agent identity
-          if [ -f "$HOME/$REPO_NAME/agents/${{ inputs.agent }}/CLAUDE.md" ]; then
-            cat "$HOME/$REPO_NAME/agents/${{ inputs.agent }}/CLAUDE.md" >> "$PROMPT_FILE"
+          # Add agent identity — resolve via the home's agent:identity task
+          AGENT_IDENTITY_FILE=$(mise -C "$HOME/$REPO_NAME" run -q agent:identity "${{ inputs.agent }}" 2>/dev/null) || true
+          if [ -n "$AGENT_IDENTITY_FILE" ] && [ -f "$AGENT_IDENTITY_FILE" ]; then
+            cat "$AGENT_IDENTITY_FILE" >> "$PROMPT_FILE"
           else
-            echo "Error: Agent identity not found: agents/${{ inputs.agent }}/CLAUDE.md"
+            echo "Error: could not resolve agent identity for '${{ inputs.agent }}'."
+            echo "Does $REPO_NAME provide an agent:identity task?"
             exit 1
           fi
 
