@@ -103,7 +103,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  (mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT") > /dev/null 2>&1
+  mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT" > /dev/null 2>&1
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
@@ -180,7 +180,7 @@ echo "[auto] Opening browser to create full-access personal token..."
 echo ""
 
 # Run github:token:new-personal (shows credentials, opens incognito browser)
-(mise -C "$MISE_PROJECT_ROOT" run -q github:token:new-personal "$AGENT")
+mise -C "$MISE_PROJECT_ROOT" run -q github:token:new-personal "$AGENT"
 
 wait_for_enter
 
