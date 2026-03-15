@@ -9,11 +9,6 @@ teardown() {
   rm -rf "$TEST_HOME"
 }
 
-# Note: `list` uses gum for table rendering, so we test the underlying
-# Python parsing by checking what gum receives (the raw tab-separated output).
-# If gum is not available, the task will fail at the gum step — that's OK
-# for CI environments without gum. These tests verify the parsing is correct.
-
 # ============ Basic listing ============
 
 @test "list: shows thread titles" {
