@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#MISE description="Move resolved threads from HUMAN.md to HUMAN.archive.md"
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+
+if [ ! -f "$HUMAN_PATH" ]; then
+  echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
+  exit 1
+fi
+
+# Archive lives next to HUMAN.md
+ARCHIVE_PATH="${HUMAN_PATH%.md}.archive.md"
+
+# Extract resolved threads, append to archive, remove from HUMAN.md
+HUMAN_PATH="$HUMAN_PATH" ARCHIVE_PATH="$ARCHIVE_PATH" python3 << 'PYEOF'
+import re, os
+from datetime import date
+
+human_path = os.environ["HUMAN_PATH"]
+archive_path = os.environ["ARCHIVE_PATH"]
+
+content = open(human_path).read()
+
+# Split at header marker
+marker = "--- HEADER END ---"
+idx = content.find(marker)
+if idx < 0:
+    print("No header marker found.")
+    raise SystemExit(0)
+
+header = content[:idx + len(marker)]
+body = content[idx + len(marker):]
+
+# Walk body line-by-line, separate resolved threads from everything else
+callout_opener = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*")
+
+lines = body.split("\n")
+preamble_lines = []
+kept_threads = []      # (kind, [lines])
+resolved_threads = []  # (kind, [lines])
+current_kind = None
+current_lines = []
+
+i = 0
+while i < len(lines):
+    line = lines[i]
+    m = callout_opener.match(line)
+
+    if m:
+        # Save previous thread
+        if current_kind is not None:
+            while current_lines and current_lines[-1].strip() == "":
+                current_lines.pop()
+            target = resolved_threads if current_kind == "success" else kept_threads
+            target.append((current_kind, list(current_lines)))
+
+        current_kind = m.group(1)
+        current_lines = [line]
+        i += 1
+
+    elif current_kind is not None:
+        stripped = line.rstrip()
+        if stripped.startswith("> ") or stripped == ">":
+            current_lines.append(line)
+            i += 1
+        elif stripped == "":
+            # Peek ahead
+            j = i + 1
+            while j < len(lines) and lines[j].strip() == "":
+                j += 1
+            if j < len(lines):
+                next_line = lines[j]
+                next_is_continuation = (
+                    (next_line.startswith("> ") or next_line.rstrip() == ">")
+                    and not callout_opener.match(next_line)
+                )
+                if next_is_continuation:
+                    current_lines.append(line)
+                    i += 1
+                else:
+                    i += 1
+                    while current_lines and current_lines[-1].strip() == "":
+                        current_lines.pop()
+                    target = resolved_threads if current_kind == "success" else kept_threads
+                    target.append((current_kind, list(current_lines)))
+                    current_kind = None
+                    current_lines = []
+            else:
+                i += 1
+        else:
+            while current_lines and current_lines[-1].strip() == "":
+                current_lines.pop()
+            target = resolved_threads if current_kind == "success" else kept_threads
+            target.append((current_kind, list(current_lines)))
+            current_kind = None
+            current_lines = []
+    else:
+        preamble_lines.append(line)
+        i += 1
+
+# Flush last thread
+if current_kind is not None:
+    while current_lines and current_lines[-1].strip() == "":
+        current_lines.pop()
+    target = resolved_threads if current_kind == "success" else kept_threads
+    target.append((current_kind, list(current_lines)))
+
+if not resolved_threads:
+    print("No resolved threads to archive.")
+    raise SystemExit(0)
+
+# Append to archive file
+archive_existed = os.path.exists(archive_path)
+with open(archive_path, "a") as f:
+    if not archive_existed:
+        f.write("<!--\n")
+        f.write("      .\n")
+        f.write("    /   \\\n")
+        f.write("   /     \\\n")
+        f.write("  | o   o |\n")
+        f.write("   \\     /\n")
+        f.write("    |   |     Hardy\n")
+        f.write("   /|   |\\\n")
+        f.write("  / |   | \\\n")
+        f.write("    |   |\n")
+        f.write("   _|   |_\n")
+        f.write("  |_______|\n")
+        f.write("-->\n")
+        f.write("# HUMAN Archive\n\n")
+        f.write("Resolved conversation threads, moved from HUMAN.md.\n\n")
+    f.write(f"## Archived {date.today().isoformat()}\n\n")
+    for _kind, tlines in resolved_threads:
+        f.write("\n".join(tlines) + "\n\n")
+
+# Rewrite HUMAN.md without resolved threads
+preamble = "\n".join(preamble_lines).rstrip("\n")
+new_body = preamble + "\n"
+for _kind, tlines in kept_threads:
+    new_body += "\n" + "\n".join(tlines) + "\n"
+
+result = header + new_body
+
+with open(human_path, "w") as f:
+    f.write(result)
+
+s = "s" if len(resolved_threads) != 1 else ""
+print(f"Archived {len(resolved_threads)} resolved thread{s} to {os.path.basename(archive_path)}.")
+PYEOF

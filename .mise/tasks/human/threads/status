@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#MISE description="Quick summary of HUMAN.md thread counts by status"
+set -eo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+
+if [ ! -f "$HUMAN_PATH" ]; then
+  echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
+  exit 1
+fi
+
+# Parse threads and count by waiting status
+HUMAN_PATH="$HUMAN_PATH" python3 << 'PYEOF'
+import re, os
+
+content = open(os.environ["HUMAN_PATH"]).read()
+
+marker = "--- HEADER END ---"
+idx = content.find(marker)
+if idx >= 0:
+    content = content[idx + len(marker):]
+
+callout_pat = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*(.*)", re.MULTILINE)
+name_pat = re.compile(r"^(?:\*\*)?\[([A-Za-z][A-Za-z -]*?)\](?:\*\*)?")
+
+counts = {"agent": 0, "or": 0, "resolved": 0, "unknown": 0}
+
+for m in callout_pat.finditer(content):
+    kind = m.group(1)
+
+    if kind == "success":
+        counts["resolved"] += 1
+        continue
+
+    # Collect body
+    body_lines = []
+    for line in content[m.end():].split("\n"):
+        stripped = line.rstrip()
+        if stripped.startswith("> "):
+            body_lines.append(stripped[2:])
+        elif stripped == ">":
+            body_lines.append("")
+        elif stripped == "":
+            continue
+        else:
+            break
+
+    # Find last author
+    authors = []
+    for l in body_lines:
+        nm = name_pat.match(l)
+        if nm:
+            authors.append(nm.group(1))
+
+    if not authors:
+        counts["unknown"] += 1
+    elif authors[-1] == "Or":
+        counts["agent"] += 1
+    else:
+        counts["or"] += 1
+
+parts = []
+if counts["agent"] > 0:
+    parts.append(f'{counts["agent"]} waiting on agent')
+if counts["or"] > 0:
+    parts.append(f'{counts["or"]} waiting on Or')
+if counts["resolved"] > 0:
+    parts.append(f'{counts["resolved"]} resolved')
+if counts["unknown"] > 0:
+    parts.append(f'{counts["unknown"]} no messages')
+
+total = sum(counts.values())
+print(f"{total} threads: {', '.join(parts)}")
+PYEOF
