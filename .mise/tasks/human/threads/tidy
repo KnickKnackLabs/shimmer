@@ -14,8 +14,9 @@ fi
 
 # Find raw codeblocks (``` delimited) that contain [Name] messages,
 # convert them to [!note]- callout threads
-HUMAN_PATH="$HUMAN_PATH" python3 << 'PYEOF'
+HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
 import re, os
+from human_threads import NAME_PAT
 
 filepath = os.environ["HUMAN_PATH"]
 content = open(filepath).read()
@@ -23,7 +24,7 @@ content = open(filepath).read()
 # Find fenced codeblocks: ``` ... ```
 # Only convert ones that contain [Name] message patterns
 codeblock_pat = re.compile(r"^```\s*\n(.*?)^```\s*$", re.MULTILINE | re.DOTALL)
-name_pat = re.compile(r"^\*{0,2}\[([A-Za-z][A-Za-z -]*?)\]\*{0,2}")
+name_pat = NAME_PAT
 
 converted = 0
 def replace_codeblock(m):

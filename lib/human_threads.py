@@ -14,7 +14,7 @@ HEADER_MARKER = "--- HEADER END ---"
 CALLOUT_OPENER = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*")
 # Matches [Name] or **[Name]** or **[Name1 → Name2]** etc.
 # Uses greedy match and includes digits for names like x1f9, k7r2.
-NAME_PAT = re.compile(r"^(?:\*\*)?\[([A-Za-z0-9][A-Za-z0-9 →-]*)\](?:\*\*)?")
+NAME_PAT = re.compile(r"^(?:\*\*)?\[([A-Za-z0-9][A-Za-z0-9 →\-]*)\](?:\*\*)?")
 ARROW_SEP = re.compile(r"\s*→\s*")
 
 
