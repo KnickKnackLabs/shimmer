@@ -72,6 +72,9 @@ if converted > 0:
 # success threads are never touched
 
 header, body = split_header_body(content)
+if header is None:
+    import sys
+    print("No header marker found — skipping promote/demote.", file=sys.stderr)
 if header is not None:
     preamble_lines, threads = parse_threads(body)
 

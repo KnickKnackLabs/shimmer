@@ -19,8 +19,8 @@ $RAW_CODEBLOCK
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "converted 1 codeblock"
 
-  # Should now be a callout (promoted to warning since junior spoke last)
-  grep -q '> \[!warning\]-\|> \[!note\]-' "$HUMAN_PATH"
+  # Should be a warning callout (junior spoke last → waiting on Or → promoted)
+  grep -q '> \[!warning\]-' "$HUMAN_PATH"
   # Should have bolded names
   grep -q '\*\*\[Or\]\*\*' "$HUMAN_PATH"
   grep -q '\*\*\[junior\]\*\*' "$HUMAN_PATH"
