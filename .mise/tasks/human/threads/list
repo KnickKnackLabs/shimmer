@@ -12,91 +12,54 @@ if [ ! -f "$HUMAN_PATH" ]; then
   exit 1
 fi
 
-# Parse threads: callout type, title, participants, last author, waiting-on
-# Output: tab-separated rows for gum table
-output=$(HUMAN_PATH="$HUMAN_PATH" python3 << 'PYEOF'
-import re, os
+output=$(HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+import os
+from human_threads import (
+    split_header_body, parse_threads, extract_thread_body,
+    extract_authors, thread_title, thread_waiting_on,
+)
 
 content = open(os.environ["HUMAN_PATH"]).read()
-
-# Only parse content after the header marker
-marker = "--- HEADER END ---"
-idx = content.find(marker)
-if idx >= 0:
-    content = content[idx + len(marker):]
-
-# Match callout openers
-callout_pat = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*(.*)", re.MULTILINE)
-
-threads = []
-for m in callout_pat.finditer(content):
-    kind = m.group(1)
-    title = m.group(2).strip()
-    # Strip pointing hand emoji from title
-    title = re.sub("\U0001f448\\s*", "", title).strip()
-
-    # Collect body: lines starting with "> " until a non-callout line
-    body_lines = []
-    for line in content[m.end():].split("\n"):
-        stripped = line.rstrip()
-        if stripped.startswith("> "):
-            body_lines.append(stripped[2:])
-        elif stripped == ">":
-            body_lines.append("")
-        elif stripped == "":
-            continue
-        else:
-            break
-
-    # Extract [Name] or **[Name]** markers in order of appearance
-    name_pat = re.compile(r"^(?:\*\*)?\[([A-Za-z][A-Za-z -]*?)\](?:\*\*)?")
-    authors = []
-    for l in body_lines:
-        nm = name_pat.match(l)
-        if nm:
-            authors.append(nm.group(1))
-
-    participants = sorted(set(authors)) if authors else []
-    last_author = authors[-1] if authors else "—"
-
-    # Determine who the thread is waiting on
-    if kind == "success":
-        waiting = "resolved"
-    elif not authors:
-        waiting = "—"
-    elif last_author == "Or":
-        waiting = "agent"
-    else:
-        waiting = "Or"
-
-    # Status indicator
-    if kind == "warning":
-        status = "\U0001f448"
-    elif kind == "success":
-        status = "\u2713"
-    else:
-        status = " "
-
-    threads.append({
-        "status": status,
-        "title": title,
-        "participants": ", ".join(participants) if participants else "—",
-        "last_author": last_author,
-        "waiting": waiting,
-    })
+header, body = split_header_body(content)
+_, threads = parse_threads(body)
 
 if not threads:
     print("NO_THREADS")
 else:
-    # Tab-separated for gum table
-    print("\t".join([" ", "Thread", "Participants", "Last", "Waiting on"]))
-    for t in threads:
+    # Participants column encodes roles: + = started thread, * = last sender
+    print("\t".join([" ", "Thread", "Participants", "Waiting on"]))
+    for kind, lines in threads:
+        title = thread_title(lines[0])
+        body_lines = extract_thread_body(lines)
+        authors = extract_authors(body_lines)
+
+        unique = sorted(set(authors)) if authors else []
+        first_author = authors[0] if authors else None
+        last_author = authors[-1] if authors else None
+        waiting = thread_waiting_on(kind, authors)
+
+        # Annotate: + for starter, * for last sender
+        annotated = []
+        for name in unique:
+            suffix = ""
+            if name == first_author:
+                suffix += "+"
+            if name == last_author:
+                suffix += "*"
+            annotated.append(name + suffix)
+
+        if kind == "warning":
+            status = "\U0001f448"
+        elif kind == "success":
+            status = "\u2713"
+        else:
+            status = " "
+
         print("\t".join([
-            t["status"],
-            t["title"],
-            t["participants"],
-            t["last_author"],
-            t["waiting"],
+            status,
+            title,
+            ", ".join(annotated) if annotated else "\u2014",
+            waiting,
         ]))
 PYEOF
 )
@@ -106,4 +69,5 @@ if [ "$output" = "NO_THREADS" ]; then
 else
   echo "$output" | gum table --print --separator "	" --border rounded \
     --border.foreground 240 --header.foreground 81
+  gum style --faint "  + started thread  * last sender"
 fi

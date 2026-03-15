@@ -11,12 +11,19 @@ set -eo pipefail
 
 CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 
-HUMAN_PATH=$(mise -C "$CALLER_DIR" run -q human 2>/dev/null) || true
+STDERR_FILE=$(mktemp)
+HUMAN_PATH=$(mise -C "$CALLER_DIR" run -q human 2>"$STDERR_FILE") || true
 
 if [ -z "$HUMAN_PATH" ]; then
   echo "Error: could not resolve HUMAN.md path." >&2
   echo "Does $CALLER_DIR provide a 'human' task?" >&2
+  if [ -s "$STDERR_FILE" ]; then
+    echo "" >&2
+    cat "$STDERR_FILE" >&2
+  fi
+  rm -f "$STDERR_FILE"
   exit 1
 fi
 
+rm -f "$STDERR_FILE"
 echo "$HUMAN_PATH"

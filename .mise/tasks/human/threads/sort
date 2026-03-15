@@ -12,109 +12,19 @@ if [ ! -f "$HUMAN_PATH" ]; then
   exit 1
 fi
 
-# Parse threads line-by-line, sort by callout type, write back
-HUMAN_PATH="$HUMAN_PATH" python3 << 'PYEOF'
-import re, os
+HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+import os
+from human_threads import split_header_body, parse_threads
 
 filepath = os.environ["HUMAN_PATH"]
 content = open(filepath).read()
 
-# Split at header marker
-marker = "--- HEADER END ---"
-idx = content.find(marker)
-if idx < 0:
+header, body = split_header_body(content)
+if header is None:
     print("No header marker found, nothing to sort.")
     raise SystemExit(0)
 
-header = content[:idx + len(marker)]
-body = content[idx + len(marker):]
-
-# Walk the body line-by-line, splitting into:
-# - preamble (text before first thread, e.g. the "Raw thoughts" line)
-# - thread blocks (callout opener + all "> " continuation lines)
-#
-# A new thread starts when we see: > [!note|warning|success]
-# A thread continues while lines start with "> " or ">"
-# A blank line between two callout-continuation lines is part of the thread
-# A blank line followed by a non-callout line (or another opener) ends the thread
-
-callout_opener = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*")
-
-lines = body.split("\n")
-preamble_lines = []
-threads = []       # list of (kind, [lines])
-current_kind = None
-current_lines = []
-
-i = 0
-while i < len(lines):
-    line = lines[i]
-    m = callout_opener.match(line)
-
-    if m:
-        # Save previous thread if any
-        if current_kind is not None:
-            # Trim trailing blank lines from previous thread
-            while current_lines and current_lines[-1].strip() == "":
-                current_lines.pop()
-            threads.append((current_kind, list(current_lines)))
-
-        # Start new thread
-        current_kind = m.group(1)
-        current_lines = [line]
-        i += 1
-
-    elif current_kind is not None:
-        # Inside a thread — continuation or end?
-        stripped = line.rstrip()
-        if stripped.startswith("> ") or stripped == ">":
-            current_lines.append(line)
-            i += 1
-        elif stripped == "":
-            # Blank line — peek ahead: if next non-blank is a callout continuation
-            # ("> " but NOT a new opener), include the blank. Otherwise end thread.
-            j = i + 1
-            while j < len(lines) and lines[j].strip() == "":
-                j += 1
-            if j < len(lines):
-                next_line = lines[j]
-                next_is_continuation = (
-                    (next_line.startswith("> ") or next_line.rstrip() == ">")
-                    and not callout_opener.match(next_line)
-                )
-                if next_is_continuation:
-                    # Blank line is inside the thread
-                    current_lines.append(line)
-                    i += 1
-                else:
-                    # Blank line ends the thread
-                    i += 1  # skip the blank
-                    while current_lines and current_lines[-1].strip() == "":
-                        current_lines.pop()
-                    threads.append((current_kind, list(current_lines)))
-                    current_kind = None
-                    current_lines = []
-            else:
-                # EOF after blank
-                i += 1
-        else:
-            # Non-callout, non-blank line ends the thread
-            while current_lines and current_lines[-1].strip() == "":
-                current_lines.pop()
-            threads.append((current_kind, list(current_lines)))
-            current_kind = None
-            current_lines = []
-            # Don't advance i — re-process this line as preamble/other
-    else:
-        # Not in a thread yet — preamble
-        preamble_lines.append(line)
-        i += 1
-
-# Flush last thread
-if current_kind is not None:
-    while current_lines and current_lines[-1].strip() == "":
-        current_lines.pop()
-    threads.append((current_kind, list(current_lines)))
+preamble_lines, threads = parse_threads(body)
 
 if not threads:
     print("No threads found, nothing to sort.")
@@ -130,12 +40,9 @@ sorted_body = preamble + "\n"
 for _kind, tlines in threads:
     sorted_body += "\n" + "\n".join(tlines) + "\n"
 
-result = header + sorted_body
-
 with open(filepath, "w") as f:
-    f.write(result)
+    f.write(header + sorted_body)
 
-# Report
 order_names = {"warning": "\U0001f448 warning", "note": "note", "success": "\u2713 success"}
 counts = {}
 for kind, _ in threads:

@@ -29,6 +29,7 @@ Async scratchpad for human-agent conversations.
 > - `[!success]-` — resolved thread (green, collapsed)
 >
 > Each message starts with `**[Name]**` (bold) — separated by `> ---` dividers for visual clarity.
+> When condensing a resolved thread, sign the summary: `**[Name]** Summary text here.`
 >
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.
