@@ -103,7 +103,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT" > /dev/null 2>&1
+  mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT" > /dev/null
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
@@ -148,11 +148,11 @@ if echo "$MEMBERSHIP" | grep -q '"state":"active"'; then
   echo "[auto] $GITHUB_USERNAME is already an active org member"
 else
   echo "[auto] Inviting $GITHUB_USERNAME to ricon-family org..."
-  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1 || true
+  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
 fi
 
 echo "[auto] Adding to agents team (grants write access)..."
-gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1 || true
+gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
 
 echo ""
 echo "[YOU] Accept the org invitation as $GITHUB_USERNAME:"
@@ -205,7 +205,7 @@ fi
 
 # Set display name on GitHub profile
 echo "[auto] Setting GitHub display name to '$AGENT'..."
-GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent 2>/dev/null || true
+GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent || true
 
 wait_for_enter
 

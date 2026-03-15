@@ -52,7 +52,7 @@ ITEM="${AGENT} - ${OP_ITEM_SUFFIX}"
 # since the value is already captured in $VALUE.
 if op item get "$ITEM" --vault "$VAULT" < /dev/null &>/dev/null; then
   # Item exists — edit the field
-  op item edit "$ITEM" --vault "$VAULT" "${OP_FIELD_SET}=${VALUE}" < /dev/null >/dev/null 2>&1 || {
+  op item edit "$ITEM" --vault "$VAULT" "${OP_FIELD_SET}=${VALUE}" < /dev/null >/dev/null || {
     echo "ERROR: Failed to update key=$KEY for agent=$AGENT in 1Password" >&2
     echo "       Item: $ITEM / Field: $OP_FIELD_SET" >&2
     exit 1
@@ -62,7 +62,7 @@ else
   op item create --vault "$VAULT" \
     --category "$OP_ITEM_CATEGORY" \
     --title "$ITEM" \
-    "${OP_FIELD_SET}=${VALUE}" < /dev/null >/dev/null 2>&1 || {
+    "${OP_FIELD_SET}=${VALUE}" < /dev/null >/dev/null || {
     echo "ERROR: Failed to create item for key=$KEY agent=$AGENT in 1Password" >&2
     echo "       Item: $ITEM / Category: $OP_ITEM_CATEGORY" >&2
     exit 1
