@@ -29,7 +29,14 @@ Async scratchpad for human-agent conversations.
 > - `[!success]-` — resolved thread (green, collapsed)
 >
 > Each message starts with `**[Name]**` (bold) — separated by `> ---` dividers for visual clarity.
-> When condensing a resolved thread, sign the summary: `**[Name]** Summary text here.`
+> When an agent rewrites a message for clarity, use arrow notation: `**[Or → x1f9]**`
+> (Or's words, clarified by x1f9). Chains extend naturally: `**[Or → x1f9 → brownie]**`.
+>
+> **Resolving threads:** When condensing a resolved thread, write a short summary
+> from each participant's perspective — one `**[Name]**` entry per participant.
+> The agent doing the condensing writes all entries using arrow notation:
+> `**[Or → x1f9]**` Summary of Or's role. `**[junior → x1f9]**` Summary of junior's role.
+> This preserves participant visibility in `shimmer human:threads:list`.
 >
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.

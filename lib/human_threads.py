@@ -12,7 +12,10 @@ import re
 HEADER_MARKER = "--- HEADER END ---"
 
 CALLOUT_OPENER = re.compile(r"^> \[!(note|warning|success)\][+-]?\s*")
-NAME_PAT = re.compile(r"^(?:\*\*)?\[([A-Za-z][A-Za-z -]*?)\](?:\*\*)?")
+# Matches [Name] or **[Name]** or **[Name1 → Name2]** etc.
+# Uses greedy match and includes digits for names like x1f9, k7r2.
+NAME_PAT = re.compile(r"^(?:\*\*)?\[([A-Za-z0-9][A-Za-z0-9 →-]*)\](?:\*\*)?")
+ARROW_SEP = re.compile(r"\s*→\s*")
 
 
 def split_header_body(content):
@@ -123,14 +126,62 @@ def extract_thread_body(thread_lines):
     return body_lines
 
 
+def parse_author_chain(raw):
+    """Parse an author tag into a list of names.
+
+    'Or' -> ['Or']
+    'Or → x1f9' -> ['Or', 'x1f9']
+    'Or → x1f9 → brownie' -> ['Or', 'x1f9', 'brownie']
+    """
+    return [name.strip() for name in ARROW_SEP.split(raw) if name.strip()]
+
+
 def extract_authors(body_lines):
-    """Extract [Name] or **[Name]** markers from body lines, in order."""
+    """Extract author names from body lines, in order of appearance.
+
+    Supports arrow chain convention: **[Or → x1f9]** yields both names.
+    The returned list is flattened — each message contributes its chain's
+    last name as the "effective author" for waiting-on logic, but all
+    names in all chains appear in the participants set.
+    """
     authors = []
     for line in body_lines:
         m = NAME_PAT.match(line)
         if m:
-            authors.append(m.group(1))
+            chain = parse_author_chain(m.group(1))
+            # The effective author of a message is the last in the chain
+            # (the person who most recently touched it)
+            if chain:
+                authors.append(chain[-1])
     return authors
+
+
+def extract_all_participants(body_lines):
+    """Extract all unique participant names from body lines.
+
+    Unlike extract_authors which returns effective authors (last in chain),
+    this returns every name that appears in any author chain.
+    """
+    participants = set()
+    for line in body_lines:
+        m = NAME_PAT.match(line)
+        if m:
+            for name in parse_author_chain(m.group(1)):
+                participants.add(name)
+    return sorted(participants)
+
+
+def extract_thread_starter(body_lines):
+    """Return the original author of the first message in a thread.
+
+    For a chain like [Or → x1f9], returns 'Or' (the original author).
+    """
+    for line in body_lines:
+        m = NAME_PAT.match(line)
+        if m:
+            chain = parse_author_chain(m.group(1))
+            return chain[0] if chain else None
+    return None
 
 
 def thread_title(opener_line):

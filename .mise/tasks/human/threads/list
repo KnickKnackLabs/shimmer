@@ -16,7 +16,8 @@ output=$(HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEO
 import os
 from human_threads import (
     split_header_body, parse_threads, extract_thread_body,
-    extract_authors, thread_title, thread_waiting_on,
+    extract_authors, extract_all_participants, extract_thread_starter,
+    thread_title, thread_waiting_on,
 )
 
 content = open(os.environ["HUMAN_PATH"]).read()
@@ -32,17 +33,16 @@ else:
         title = thread_title(lines[0])
         body_lines = extract_thread_body(lines)
         authors = extract_authors(body_lines)
-
-        unique = sorted(set(authors)) if authors else []
-        first_author = authors[0] if authors else None
+        participants = extract_all_participants(body_lines)
+        starter = extract_thread_starter(body_lines)
         last_author = authors[-1] if authors else None
         waiting = thread_waiting_on(kind, authors)
 
         # Annotate: + for starter, * for last sender
         annotated = []
-        for name in unique:
+        for name in participants:
             suffix = ""
-            if name == first_author:
+            if name == starter:
                 suffix += "+"
             if name == last_author:
                 suffix += "*"
