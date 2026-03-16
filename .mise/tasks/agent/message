@@ -65,8 +65,14 @@ fi
 gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $MODEL_ARG
 
 # Wait briefly for GitHub to register the run, then get the URL and ID
+# Filter by triggering user to avoid races when multiple agents dispatch simultaneously
 sleep 2
-RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 1 --json url,databaseId 2>/dev/null)
+GH_USER=$(gh api user -q .login 2>/dev/null || true)
+USER_FILTER=""
+if [ -n "$GH_USER" ]; then
+  USER_FILTER="--user $GH_USER"
+fi
+RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 1 $USER_FILTER --json url,databaseId 2>/dev/null)
 RUN_URL=$(echo "$RUN_INFO" | jq -r '.[0].url // empty')
 RUN_ID=$(echo "$RUN_INFO" | jq -r '.[0].databaseId // empty')
 
