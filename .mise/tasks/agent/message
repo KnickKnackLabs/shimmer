@@ -3,27 +3,9 @@
 #USAGE arg "<agent>" help="Agent to message (e.g., quick, brownie)"
 #USAGE arg "<message>" help="Message for the agent"
 #USAGE flag "--model <model>" help="Claude model to use"
+#USAGE flag "--repo <repo>" help="Target repository (owner/name) — skip local agent home validation"
 
 set -e
-
-if [ -z "${AGENT_HOME:-}" ]; then
-  echo "Error: AGENT_HOME not set" >&2
-  echo "Run: eval \$(shimmer as <agent>)" >&2
-  exit 1
-fi
-
-# Validate this is an agent home
-validate_agent_home() {
-  if [ ! -d "$AGENT_HOME/agents" ]; then
-    echo "Error: No agents/ directory in $AGENT_HOME" >&2
-    exit 1
-  fi
-
-  if [ ! -f "$AGENT_HOME/.github/workflows/agent-message.yml" ]; then
-    echo "Error: No agent-message.yml workflow in $AGENT_HOME" >&2
-    exit 1
-  fi
-}
 
 # Discover agents from AGENT_HOME
 get_agents() {
@@ -39,19 +21,40 @@ get_repo() {
     | sed 's/\.git$//'
 }
 
-validate_agent_home
-
 AGENT="$usage_agent"
 MESSAGE="$usage_message"
 MODEL="${usage_model:-}"
-REPO=$(get_repo)
 WORKFLOW="agent-message.yml"
 
-# Validate agent
-if ! get_agents | grep -qx "$AGENT"; then
-  echo "Unknown agent: $AGENT"
-  echo "Available agents: $(get_agents | tr '\n' ' ')"
-  exit 1
+if [ -n "${usage_repo:-}" ]; then
+  # Remote mode: target a different repo, skip local validation
+  REPO="$usage_repo"
+else
+  # Local mode: use AGENT_HOME (original behavior)
+  if [ -z "${AGENT_HOME:-}" ]; then
+    echo "Error: AGENT_HOME not set (use --repo for remote agent homes)" >&2
+    echo "Run: eval \$(shimmer as <agent>)" >&2
+    exit 1
+  fi
+
+  if [ ! -d "$AGENT_HOME/agents" ]; then
+    echo "Error: No agents/ directory in $AGENT_HOME" >&2
+    exit 1
+  fi
+
+  if [ ! -f "$AGENT_HOME/.github/workflows/agent-message.yml" ]; then
+    echo "Error: No agent-message.yml workflow in $AGENT_HOME" >&2
+    exit 1
+  fi
+
+  REPO=$(get_repo)
+
+  # Validate agent exists locally
+  if ! get_agents | grep -qx "$AGENT"; then
+    echo "Unknown agent: $AGENT"
+    echo "Available agents: $(get_agents | tr '\n' ' ')"
+    exit 1
+  fi
 fi
 
 MODEL_ARG=""
