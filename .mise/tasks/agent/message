@@ -67,7 +67,7 @@ gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $
 # Wait briefly for GitHub to register the run, then get the URL and ID
 # Filter by triggering user to avoid races when multiple agents dispatch simultaneously
 sleep 2
-GH_USER=$(gh api user -q .login 2>/dev/null || true)
+GH_USER="${GITHUB_ACTOR:-$(gh api user -q .login 2>/dev/null || true)}"
 USER_FILTER=""
 if [ -n "$GH_USER" ]; then
   USER_FILTER="--user $GH_USER"
