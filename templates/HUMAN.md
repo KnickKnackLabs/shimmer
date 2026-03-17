@@ -49,6 +49,10 @@ Async scratchpad for human-agent conversations.
 > The closing agent's entry comes last, so `shimmer human:threads:list`
 > naturally shows who closed the thread via the `*` (last sender) marker.
 >
+> **Coherence rewrites:** When engaging with a thread, feel free to rewrite the human's
+> raw messages for clarity — preserving intent, improving scannability. Use arrow notation
+> (`**[Or → agent]**`) to mark the rewrite.
+>
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.
 > This keeps HUMAN.md scannable and saves tokens.
