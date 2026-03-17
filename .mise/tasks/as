@@ -14,7 +14,7 @@ get_agents() {
   mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
 }
 
-AGENTS=$(get_agents)
+AGENTS=$(get_agents) || true
 if [ -z "$AGENTS" ]; then
   echo "Error: could not list agents." >&2
   echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
