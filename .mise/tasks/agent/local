@@ -16,23 +16,15 @@ if [ -z "$AGENT_HOME" ]; then
   exit 1
 fi
 
-# Find agent identity file
-if [ -n "$AGENT_IDENTITY" ] && [ -f "$AGENT_IDENTITY" ]; then
-  AGENT_FILE="$AGENT_IDENTITY"
-else
-  echo "No agent identity file found." >&2
-  if [ -z "$AGENT_IDENTITY" ]; then
-    echo "AGENT_IDENTITY not set. Does your agent home provide an agent:identity task?" >&2
-  else
-    echo "AGENT_IDENTITY points to $AGENT_IDENTITY but the file does not exist." >&2
-  fi
+# Get agent identity content
+if [ -z "$AGENT_IDENTITY" ]; then
+  echo "AGENT_IDENTITY not set. Does your agent home provide an agent:identity task?" >&2
   echo "Run: eval \$(shimmer as <agent>)" >&2
   exit 1
 fi
 
-# Read prompt and pass to claude. Double-quoted variable expansion is safe
-# against shell injection — special chars are not re-evaluated.
-PROMPT=$(cat "$AGENT_FILE")
+# AGENT_IDENTITY contains the identity content directly (set by shimmer as)
+PROMPT="$AGENT_IDENTITY"
 
 cd "${CALLER_PWD:-.}"
 exec claude --append-system-prompt "$PROMPT

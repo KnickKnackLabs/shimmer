@@ -29,23 +29,14 @@ CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 if [ -z "$SYSTEM_PROMPT_FILE" ]; then
   PROMPT_FILE=$(mktemp)
 
-  # Add base prompt from shimmer
-  if [ -f "$SHIMMER_ROOT/cli/priv/prompts/base.txt" ]; then
-    cat "$SHIMMER_ROOT/cli/priv/prompts/base.txt" >> "$PROMPT_FILE"
-  fi
-
-  # Add agent identity — resolve via the home's agent:identity task
-  AGENT_IDENTITY_FILE=$(mise -C "$CALLER_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
-  if [ -n "$AGENT_IDENTITY_FILE" ] && [ -f "$AGENT_IDENTITY_FILE" ]; then
+  # Add agent identity — resolve via the home's agent:identity task (returns content)
+  AGENT_IDENTITY_CONTENT=$(mise -C "$CALLER_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+  if [ -n "$AGENT_IDENTITY_CONTENT" ]; then
     echo "" >> "$PROMPT_FILE"
-    cat "$AGENT_IDENTITY_FILE" >> "$PROMPT_FILE"
+    echo "$AGENT_IDENTITY_CONTENT" >> "$PROMPT_FILE"
   else
     echo "Error: could not resolve agent identity for '$AGENT'." >&2
-    if [ -z "$AGENT_IDENTITY_FILE" ]; then
-      echo "Does $CALLER_DIR provide an agent:identity task?" >&2
-    else
-      echo "File not found: $AGENT_IDENTITY_FILE" >&2
-    fi
+    echo "Does $CALLER_DIR provide an agent:identity task?" >&2
     exit 1
   fi
 

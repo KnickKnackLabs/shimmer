@@ -179,11 +179,6 @@ Your identity file defines who you are. It lives in your agent room:
 cat $AGENT_HOME/agents/<your-name>/CLAUDE.md
 ```
 
-Read the common.txt for shared philosophy:
-```bash
-cat ~/shimmer/cli/priv/prompts/common.txt
-```
-
 ### Discover Your History
 
 ```bash
