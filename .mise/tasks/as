@@ -4,17 +4,22 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 
-# Find agents directory
-AGENTS_DIR=$("$SCRIPT_DIR/_get-agents-dir") || exit 1
+# Resolve the agent home (the repo the user is calling from)
+AGENT_HOME_DIR=$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")
 
-# Discover agents from the agents directory
+# Delegate agent discovery to the home's agent:list task
 get_agents() {
-  ls -d "$AGENTS_DIR"/*/ 2>/dev/null \
-    | xargs -n1 basename \
-    | sort
+  mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
 }
+
+AGENTS=$(get_agents)
+if [ -z "$AGENTS" ]; then
+  echo "Error: could not list agents." >&2
+  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+  exit 1
+fi
 
 AGENT="$usage_agent"
 
@@ -25,14 +30,13 @@ if [ -z "$AGENT" ]; then
     exit 1
   fi
 
-  AGENT=$(get_agents | fzf \
+  AGENT=$(echo "$AGENTS" | fzf \
     --style=full \
     --height=100% \
     --layout=reverse \
     --border=rounded \
     --border-label=" shimmer as " \
     --border-label-pos=3 \
-    --preview-label=" Activity " \
     --pointer="▸" \
     --prompt="  " \
     --ghost="Type to filter..." \
@@ -46,8 +50,6 @@ if [ -z "$AGENT" ]; then
       gutter:-1
       info:dim
     " \
-    --preview="$SCRIPT_DIR/_agent-preview {} '$AGENTS_DIR'" \
-    --preview-window="right,55%,border-rounded,wrap,<60(down,50%,border-horizontal)" \
   ) || exit 1
 
   if [ -z "$AGENT" ]; then
@@ -59,10 +61,9 @@ fi
 EMAIL="${AGENT}@ricon.family"
 
 # Validate agent
-if ! get_agents | grep -qx "$AGENT"; then
+if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   echo "Unknown agent: $AGENT" >&2
-  echo "Available agents: $(get_agents | tr '\n' ' ')" >&2
-  echo "Agents directory: $AGENTS_DIR" >&2
+  echo "Available agents: $(echo "$AGENTS" | tr '\n' ' ')" >&2
   exit 1
 fi
 
@@ -83,7 +84,7 @@ echo "export GIT_AUTHOR_EMAIL='$EMAIL'"
 echo "export GIT_COMMITTER_EMAIL='$EMAIL'"
 echo "export GIT_AUTHOR_NAME='$AGENT'"
 echo "export GIT_COMMITTER_NAME='$AGENT'"
-echo "export AGENT_HOME='$(dirname "$AGENTS_DIR")'"
+echo "export AGENT_HOME='$AGENT_HOME_DIR'"
 
 # Optional: B2 blob storage bucket (don't fail if not configured)
 B2_BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || true
@@ -92,7 +93,6 @@ if [ -n "$B2_BUCKET" ]; then
 fi
 
 # Resolve agent identity file via the home's agent:identity task
-AGENT_HOME_DIR="$(dirname "$AGENTS_DIR")"
 IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
 if [ -n "$IDENTITY" ]; then
   echo "export AGENT_IDENTITY='$IDENTITY'"
