@@ -2,10 +2,7 @@
 #MISE description="Move resolved threads from HUMAN.md to HUMAN.archive.md"
 set -eo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-
-HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+HUMAN_PATH=$("$MISE_PROJECT_ROOT/.mise/tasks/_get-human-path")
 
 if [ ! -f "$HUMAN_PATH" ]; then
   echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
@@ -15,7 +12,7 @@ fi
 # Archive lives next to HUMAN.md
 ARCHIVE_PATH="${HUMAN_PATH%.md}.archive.md"
 
-HUMAN_PATH="$HUMAN_PATH" ARCHIVE_PATH="$ARCHIVE_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+HUMAN_PATH="$HUMAN_PATH" ARCHIVE_PATH="$ARCHIVE_PATH" PYTHONPATH="$MISE_PROJECT_ROOT/lib" python3 << 'PYEOF'
 import os
 from datetime import date
 from human_threads import split_header_body, parse_threads

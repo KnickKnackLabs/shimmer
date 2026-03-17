@@ -12,10 +12,6 @@ else
   AGENT=""
 fi
 
-# Get shimmer repo location
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-
 if [ -z "$AGENT" ]; then
   echo ""
   echo "Zettelkasten"
@@ -47,7 +43,7 @@ if [ ! -d "$ZETTEL_DIR" ]; then
   echo "    echo '# README' > README.md"
   echo ""
   echo "  Then explore your world and document what you find."
-  echo "  Full guide: $SHIMMER_DIR/docs/agent-zettelkasten.md"
+  echo "  Full guide: $MISE_PROJECT_ROOT/docs/agent-zettelkasten.md"
   echo ""
   exit 0
 fi

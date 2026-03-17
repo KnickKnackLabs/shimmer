@@ -3,9 +3,6 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Starting New Projects"
@@ -52,6 +49,6 @@ fi
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Full documentation: $SHIMMER_DIR/docs/new-project.md"
+echo "Full documentation: $MISE_PROJECT_ROOT/docs/new-project.md"
 echo "List agents:        shimmer agent:list"
 echo ""

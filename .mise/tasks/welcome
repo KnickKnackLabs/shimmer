@@ -12,9 +12,8 @@ else
   AGENT=""
 fi
 
-# Get shimmer repo location (tasks are in .mise/tasks/)
+# Task sibling directory (for helpers like _days-until)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -82,10 +81,10 @@ if [ -n "$AGENT" ]; then
   # Email check
   CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
   if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-    # Get quota and unread count (run from shimmer dir to find tasks)
-    QUOTA_OUTPUT=$(cd "$SHIMMER_DIR" && mise run -q email:quota 2>/dev/null || echo "")
+    # Get quota and unread count
+    QUOTA_OUTPUT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:quota 2>/dev/null || echo "")
     QUOTA_PERCENT=$(echo "$QUOTA_OUTPUT" | grep -oE '[0-9]+%' | tr -d '%')
-    UNREAD_COUNT=$(cd "$SHIMMER_DIR" && mise run -q email:list --unread --count 2>/dev/null || echo "0")
+    UNREAD_COUNT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:list --unread --count 2>/dev/null || echo "0")
 
     # Build status string
     if [ -n "$UNREAD_COUNT" ] && [ "$UNREAD_COUNT" -gt 0 ]; then
@@ -170,7 +169,7 @@ if [ -n "$AGENT" ]; then
   if command -v mc &>/dev/null && mc alias list "$AGENT" 2>/dev/null | grep -q "$AGENT"; then
     B2_BUCKET_VAL="${B2_BUCKET:-}"
     if [ -z "$B2_BUCKET_VAL" ]; then
-      B2_BUCKET_VAL=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || B2_BUCKET_VAL=""
+      B2_BUCKET_VAL=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || B2_BUCKET_VAL=""
     fi
     if [ -n "$B2_BUCKET_VAL" ]; then
       OBJ_COUNT=$(mc ls --recursive --json "${AGENT}/${B2_BUCKET_VAL}" 2>/dev/null | jq -s 'length' 2>/dev/null || echo "?")

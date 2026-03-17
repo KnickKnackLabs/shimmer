@@ -3,10 +3,7 @@
 #MISE alias="code:init"
 set -eo pipefail
 
-# Find shimmer directory (for template)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-TEMPLATE_FILE="$SHIMMER_DIR/templates/CLAUDE.md"
+TEMPLATE_FILE="$MISE_PROJECT_ROOT/templates/CLAUDE.md"
 
 # Known orgs
 ORGS=("ricon-family" "KnickKnackLabs")
