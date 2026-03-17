@@ -18,11 +18,11 @@ teardown() {
   echo "$output" | grep -qx "bob"
 }
 
-@test "discovery: resolves identity via home's agent:identity task" {
+@test "discovery: agent:identity returns content, not path" {
   setup_test_home "alice"
   run mise -C "$TEST_HOME" run -q agent:identity alice
   [ "$status" -eq 0 ]
-  [[ "$output" == *"notes/alice.md"* ]]
+  [[ "$output" == *"You are alice."* ]]
 }
 
 # ============ Full as flow (secret:get mocked) ============
@@ -50,7 +50,7 @@ teardown() {
   echo "$output" | grep -q "$(basename "$TEST_HOME")"
 }
 
-@test "as: sets AGENT_IDENTITY to identity file" {
+@test "as: AGENT_IDENTITY contains identity content" {
   setup_test_home "alice"
   mock_task "secret/get" 'echo "ghp_fake"'
   mock_shimmer
@@ -58,7 +58,7 @@ teardown() {
   run run_as alice
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export AGENT_IDENTITY="
-  echo "$output" | grep -q "notes/alice.md"
+  echo "$output" | grep -q "You are alice."
 }
 
 @test "as: works for each agent independently" {

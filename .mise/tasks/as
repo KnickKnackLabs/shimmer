@@ -30,6 +30,7 @@ if [ -z "$AGENT" ]; then
     exit 1
   fi
 
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   AGENT=$(echo "$AGENTS" | fzf \
     --style=full \
     --height=100% \
@@ -37,6 +38,7 @@ if [ -z "$AGENT" ]; then
     --border=rounded \
     --border-label=" shimmer as " \
     --border-label-pos=3 \
+    --preview-label=" Activity " \
     --pointer="▸" \
     --prompt="  " \
     --ghost="Type to filter..." \
@@ -50,6 +52,8 @@ if [ -z "$AGENT" ]; then
       gutter:-1
       info:dim
     " \
+    --preview="$SCRIPT_DIR/_agent-preview {} '$AGENT_HOME_DIR'" \
+    --preview-window="right,55%,border-rounded,wrap,<60(down,50%,border-horizontal)" \
   ) || exit 1
 
   if [ -z "$AGENT" ]; then
@@ -92,10 +96,12 @@ if [ -n "$B2_BUCKET" ]; then
   echo "export B2_BUCKET='$B2_BUCKET'"
 fi
 
-# Resolve agent identity file via the home's agent:identity task
+# Resolve agent identity content via the home's agent:identity task
 IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
 if [ -n "$IDENTITY" ]; then
-  echo "export AGENT_IDENTITY='$IDENTITY'"
+  # Export as multi-line env var using $'...' quoting
+  ESCAPED=$(printf '%s' "$IDENTITY" | sed "s/'/'\\\\''/g")
+  echo "export AGENT_IDENTITY='$ESCAPED'"
 else
   echo "# Note: agent home has no agent:identity task — AGENT_IDENTITY not set" >&2
 fi

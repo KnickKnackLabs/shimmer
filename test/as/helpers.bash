@@ -25,15 +25,15 @@ $(printf 'echo "%s"\n' "${agents[@]}")
 TASK
   chmod +x "$TEST_HOME/.mise/tasks/agent/list"
 
-  # agent:identity
+  # agent:identity — returns content, not path
   cat > "$TEST_HOME/.mise/tasks/agent/identity" <<'TASK'
 #!/usr/bin/env bash
-#MISE description="Resolve identity"
+#MISE description="Output identity content"
 AGENT="$1"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 IDENTITY_FILE="$DIR/notes/$AGENT.md"
 if [ -f "$IDENTITY_FILE" ]; then
-  echo "$IDENTITY_FILE"
+  cat "$IDENTITY_FILE"
 else
   echo "Error: no identity for $AGENT" >&2
   exit 1
