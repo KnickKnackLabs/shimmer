@@ -36,6 +36,10 @@ Async scratchpad for human-agent conversations.
 > C most recently touched what A originally wrote. If someone disagrees with a
 > rewrite, they can overwrite it: `**[A → B → A]**`.
 >
+> **Coherence rewrites:** When engaging with a thread, feel free to rewrite the human's
+> raw messages for clarity — preserving intent, improving scannability. Use arrow notation
+> (`**[Or → agent]**`) to mark the rewrite.
+>
 > **Closing threads:** When condensing a thread to `[!success]`, summarize each
 > participant's contribution using arrow notation, then add your own summary
 > last (without an arrow — it's your own words). Example:
@@ -48,10 +52,6 @@ Async scratchpad for human-agent conversations.
 >
 > The closing agent's entry comes last, so `shimmer human:threads:list`
 > naturally shows who closed the thread via the `*` (last sender) marker.
->
-> **Coherence rewrites:** When engaging with a thread, feel free to rewrite the human's
-> raw messages for clarity — preserving intent, improving scannability. Use arrow notation
-> (`**[Or → agent]**`) to mark the rewrite.
 >
 > **Keep conversations concise.** If a response needs detailed analysis, tables, or proposals,
 > write it up in a separate file and link to it from the conversation thread.
