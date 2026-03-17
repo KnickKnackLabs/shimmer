@@ -2,17 +2,14 @@
 #MISE description="Tidy HUMAN.md: convert raw codeblocks to callouts, promote/demote thread types"
 set -eo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-
-HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+HUMAN_PATH=$("$MISE_PROJECT_ROOT/.mise/tasks/_get-human-path")
 
 if [ ! -f "$HUMAN_PATH" ]; then
   echo "No HUMAN.md found at $HUMAN_PATH — run: shimmer human:threads:init" >&2
   exit 1
 fi
 
-HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$SHIMMER_DIR/lib" python3 << 'PYEOF'
+HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$MISE_PROJECT_ROOT/lib" python3 << 'PYEOF'
 import re, os
 from human_threads import (
     NAME_PAT, CALLOUT_OPENER,

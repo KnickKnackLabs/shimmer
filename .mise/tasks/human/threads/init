@@ -3,12 +3,10 @@
 #USAGE flag "--force" help="Overwrite header only in existing HUMAN.md"
 set -eo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-TEMPLATE_FILE="$SHIMMER_DIR/templates/HUMAN.md"
+TEMPLATE_FILE="$MISE_PROJECT_ROOT/templates/HUMAN.md"
 
 # Resolve HUMAN.md path via home delegation
-HUMAN_PATH=$("$SHIMMER_DIR/.mise/tasks/_get-human-path")
+HUMAN_PATH=$("$MISE_PROJECT_ROOT/.mise/tasks/_get-human-path")
 
 if [ ! -f "$TEMPLATE_FILE" ]; then
   echo "Error: template not found at $TEMPLATE_FILE" >&2

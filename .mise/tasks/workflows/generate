@@ -7,20 +7,17 @@ set -eo pipefail
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 cd "$TARGET_DIR"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SHIMMER_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-
 # Validate workflows.yaml against schema
 if [[ -f workflows.yaml ]]; then
   echo "Validating workflows.yaml..."
-  check-jsonschema --schemafile "$SHIMMER_DIR/workflows.schema.json" workflows.yaml
+  check-jsonschema --schemafile "$MISE_PROJECT_ROOT/workflows.schema.json" workflows.yaml
 fi
 
 # Use local template if exists, otherwise use shimmer's
 if [[ -f ".github/templates/agent-scheduled.yml" ]]; then
   TEMPLATE=".github/templates/agent-scheduled.yml"
 else
-  TEMPLATE="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
+  TEMPLATE="$MISE_PROJECT_ROOT/.github/templates/agent-scheduled.yml"
 fi
 OUTPUT_DIR=".github/workflows"
 CHECK_MODE="${usage_check:-false}"
@@ -36,9 +33,9 @@ mkdir -p "$OUTPUT_DIR"
 
 # Copy base workflow templates from shimmer
 echo "Copying base templates from shimmer..."
-cp "$SHIMMER_DIR/.github/templates/agent-run.yml" "$OUTPUT_DIR/agent-run.yml"
+cp "$MISE_PROJECT_ROOT/.github/templates/agent-run.yml" "$OUTPUT_DIR/agent-run.yml"
 echo "Generated: agent-run.yml"
-cp "$SHIMMER_DIR/.github/templates/agent-message.yml" "$OUTPUT_DIR/agent-message.yml"
+cp "$MISE_PROJECT_ROOT/.github/templates/agent-message.yml" "$OUTPUT_DIR/agent-message.yml"
 echo "Generated: agent-message.yml"
 
 # Read workflows from manifest
