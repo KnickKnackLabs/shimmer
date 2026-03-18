@@ -14,7 +14,7 @@ import re, os
 from human_threads import (
     NAME_PAT, CALLOUT_OPENER,
     split_header_body, parse_threads,
-    extract_thread_body, extract_authors, thread_waiting_on,
+    extract_thread_body, extract_message_senders, thread_waiting_on,
 )
 
 filepath = os.environ["HUMAN_PATH"]
@@ -85,8 +85,8 @@ if header is not None:
             continue
 
         body_lines = extract_thread_body(lines)
-        authors = extract_authors(body_lines)
-        waiting = thread_waiting_on(kind, authors)
+        senders = extract_message_senders(body_lines)
+        waiting = thread_waiting_on(kind, senders)
 
         new_kind = kind
         if waiting == "Or" and kind != "warning":
