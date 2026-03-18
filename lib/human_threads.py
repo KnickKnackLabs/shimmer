@@ -139,10 +139,11 @@ def parse_author_chain(raw):
 def extract_authors(body_lines):
     """Extract author names from body lines, in order of appearance.
 
-    Supports arrow chain convention: **[Or → x1f9]** yields both names.
+    Supports arrow chain convention: **[Or → Zeke]** yields both names.
     The returned list is flattened — each message contributes its chain's
-    last name as the "effective author" for waiting-on logic, but all
-    names in all chains appear in the participants set.
+    last name as the "effective author" for editor attribution (the '*'
+    last-editor annotation in `list` output). For turn-taking / waiting-on
+    logic, use `extract_message_senders()` instead.
     """
     authors = []
     for line in body_lines:
