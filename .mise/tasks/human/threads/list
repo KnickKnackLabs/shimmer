@@ -13,8 +13,8 @@ output=$(HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$MISE_PROJECT_ROOT/lib" python3 <<
 import os
 from human_threads import (
     split_header_body, parse_threads, extract_thread_body,
-    extract_authors, extract_all_participants, extract_thread_starter,
-    thread_title, thread_waiting_on,
+    extract_authors, extract_message_senders, extract_all_participants,
+    extract_thread_starter, thread_title, thread_waiting_on,
 )
 
 content = open(os.environ["HUMAN_PATH"]).read()
@@ -30,10 +30,11 @@ else:
         title = thread_title(lines[0])
         body_lines = extract_thread_body(lines)
         authors = extract_authors(body_lines)
+        senders = extract_message_senders(body_lines)
         participants = extract_all_participants(body_lines)
         starter = extract_thread_starter(body_lines)
         last_author = authors[-1] if authors else None
-        waiting = thread_waiting_on(kind, authors)
+        waiting = thread_waiting_on(kind, senders)
 
         # Annotate: + for starter, * for last sender
         # For resolved threads, * naturally indicates who resolved it

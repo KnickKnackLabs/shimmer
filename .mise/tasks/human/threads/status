@@ -13,7 +13,7 @@ HUMAN_PATH="$HUMAN_PATH" PYTHONPATH="$MISE_PROJECT_ROOT/lib" python3 << 'PYEOF'
 import os
 from human_threads import (
     split_header_body, parse_threads, extract_thread_body,
-    extract_authors, thread_waiting_on,
+    extract_message_senders, thread_waiting_on,
 )
 
 content = open(os.environ["HUMAN_PATH"]).read()
@@ -28,8 +28,8 @@ for kind, lines in threads:
         continue
 
     body_lines = extract_thread_body(lines)
-    authors = extract_authors(body_lines)
-    waiting = thread_waiting_on(kind, authors)
+    senders = extract_message_senders(body_lines)
+    waiting = thread_waiting_on(kind, senders)
 
     if waiting == "agent":
         counts["agent"] += 1

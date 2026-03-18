@@ -143,3 +143,40 @@ ls -la
   run run_task tidy
   echo "$output" | grep -q "Nothing to tidy"
 }
+
+# ============ Arrow notation: sender vs editor ============
+
+@test "tidy: does not promote when Or's rewritten message has agent reply" {
+  # [Or → Zeke] then [Zeke] — Zeke (agent) spoke last, should wait on Or.
+  # This was already a note and should stay note? No — Zeke spoke last,
+  # so waiting on Or → should promote to warning. That's correct.
+  write_threads "$THREAD_OR_REWRITTEN_BY_AGENT"
+  run run_task tidy
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "promoted 1 to warning"
+  grep -q '\[!warning\]-' "$HUMAN_PATH"
+}
+
+@test "tidy: does not promote when Or's rewritten message is last" {
+  # [Zeke] then [Or → Zeke] — Or sent the last message (Zeke just edited).
+  # Should be waiting on agent, not Or. This is the core bug fix.
+  write_threads "$THREAD_OR_REWRITTEN_LAST"
+  run run_task tidy
+  echo "$output" | grep -q "Nothing to tidy"
+  # Should remain a note (waiting on agent), NOT promoted to warning
+  grep -q '\[!note\]-' "$HUMAN_PATH"
+}
+
+@test "tidy: demotes warning when Or's rewritten message is last" {
+  # Same as above but starting as a warning — should demote to note
+  local warning_or_rewritten='> [!warning]- Or spoke last via rewrite 👈
+> **[Zeke]** I said something first.
+>
+> ---
+>
+> **[Or → Zeke]** Or replied, Zeke cleaned it up.'
+  write_threads "$warning_or_rewritten"
+  run run_task tidy
+  echo "$output" | grep -q "demoted 1 to note"
+  grep -q '\[!note\]-' "$HUMAN_PATH"
+}

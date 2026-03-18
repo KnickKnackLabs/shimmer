@@ -14,12 +14,13 @@ teardown() {
 }
 
 # Helper: run Python parser directly against HUMAN_PATH
+# Returns threads with both authors (effective editors) and senders (original authors)
 run_parser() {
   PYTHONPATH="$SHIMMER_DIR/lib" python3 -c "
 import os, sys, json
 from human_threads import (
     split_header_body, parse_threads, extract_thread_body,
-    extract_authors, thread_title, thread_waiting_on,
+    extract_authors, extract_message_senders, thread_title, thread_waiting_on,
     parse_author_chain,
 )
 content = open('$HUMAN_PATH').read()
@@ -30,11 +31,13 @@ for kind, lines in threads:
     title = thread_title(lines[0])
     body_lines = extract_thread_body(lines)
     authors = extract_authors(body_lines)
+    senders = extract_message_senders(body_lines)
     result.append({
         'kind': kind,
         'title': title,
         'authors': authors,
-        'waiting': thread_waiting_on(kind, authors),
+        'senders': senders,
+        'waiting': thread_waiting_on(kind, senders),
         'body_line_count': len(body_lines),
     })
 print(json.dumps(result))
@@ -43,15 +46,16 @@ print(json.dumps(result))
 
 # ============ Arrow chain authorship ============
 
-@test "parser: arrow chain extracts effective author" {
+@test "parser: arrow chain — authors returns editor, senders returns original" {
   write_threads "$THREAD_ARROW_CHAIN"
   output=$(run_parser)
-  # x1f9 is the effective author (last in Or → x1f9 chain)
-  # junior is the second message author
   echo "$output" | python3 -c "
 import sys, json
 threads = json.loads(sys.stdin.read())
-assert threads[0]['authors'] == ['x1f9', 'junior'], f'got {threads[0][\"authors\"]}'
+# authors: effective editors (last in chain)
+assert threads[0]['authors'] == ['x1f9', 'junior'], f'authors: got {threads[0][\"authors\"]}'
+# senders: original authors (first in chain)
+assert threads[0]['senders'] == ['Or', 'junior'], f'senders: got {threads[0][\"senders\"]}'
 "
 }
 
@@ -61,6 +65,7 @@ assert threads[0]['authors'] == ['x1f9', 'junior'], f'got {threads[0][\"authors\
   echo "$output" | python3 -c "
 import sys, json
 threads = json.loads(sys.stdin.read())
+# junior (agent) is the last sender, so waiting on Or
 assert threads[0]['waiting'] == 'Or', f'got {threads[0][\"waiting\"]}'
 "
 }
@@ -71,8 +76,39 @@ assert threads[0]['waiting'] == 'Or', f'got {threads[0][\"waiting\"]}'
   echo "$output" | python3 -c "
 import sys, json
 threads = json.loads(sys.stdin.read())
-# brownie is the effective author (last in Or → x1f9 → brownie)
-assert threads[0]['authors'] == ['brownie'], f'got {threads[0][\"authors\"]}'
+# authors: brownie is the effective editor (last in Or → x1f9 → brownie)
+assert threads[0]['authors'] == ['brownie'], f'authors: got {threads[0][\"authors\"]}'
+# senders: Or is the original sender (first in chain)
+assert threads[0]['senders'] == ['Or'], f'senders: got {threads[0][\"senders\"]}'
+"
+}
+
+@test "parser: rewritten message — sender is original author, not editor" {
+  write_threads "$THREAD_OR_REWRITTEN_BY_AGENT"
+  output=$(run_parser)
+  echo "$output" | python3 -c "
+import sys, json
+threads = json.loads(sys.stdin.read())
+# Message 1: [Or → Zeke] — Or sent it, Zeke edited
+# Message 2: [Zeke] — Zeke sent it
+assert threads[0]['authors'] == ['Zeke', 'Zeke'], f'authors: got {threads[0][\"authors\"]}'
+assert threads[0]['senders'] == ['Or', 'Zeke'], f'senders: got {threads[0][\"senders\"]}'
+# Zeke (agent) spoke last → waiting on Or
+assert threads[0]['waiting'] == 'Or', f'waiting: got {threads[0][\"waiting\"]}'
+"
+}
+
+@test "parser: Or's rewritten message as last — waiting on agent" {
+  write_threads "$THREAD_OR_REWRITTEN_LAST"
+  output=$(run_parser)
+  echo "$output" | python3 -c "
+import sys, json
+threads = json.loads(sys.stdin.read())
+# Message 1: [Zeke] — Zeke sent it
+# Message 2: [Or → Zeke] — Or sent it, Zeke edited
+assert threads[0]['senders'] == ['Zeke', 'Or'], f'senders: got {threads[0][\"senders\"]}'
+# Or sent the last message → waiting on agent
+assert threads[0]['waiting'] == 'agent', f'waiting: got {threads[0][\"waiting\"]}'
 "
 }
 

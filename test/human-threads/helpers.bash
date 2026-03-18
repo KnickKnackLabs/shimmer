@@ -104,6 +104,24 @@ THREAD_ARROW_CHAIN='> [!note]- Rewritten thread (Mar 15)
 THREAD_MULTI_ARROW='> [!note]- Multi-edit thread
 > **[Or → x1f9 → brownie]** Edited twice.'
 
+# Thread where Or's message was rewritten by an agent (arrow notation)
+# The bug: tidy saw "Zeke" as last author and promoted to warning,
+# but Or sent this message — it should stay as note (waiting on agent).
+THREAD_OR_REWRITTEN_BY_AGENT='> [!note]- Or said something, agent rewrote
+> **[Or → Zeke]** This is Or speaking, Zeke just cleaned up the prose.
+>
+> ---
+>
+> **[Zeke]** My actual response to Or.'
+
+# Thread where agent's rewrite is the last message (should wait on agent)
+THREAD_OR_REWRITTEN_LAST='> [!note]- Or spoke last via rewrite
+> **[Zeke]** I said something first.
+>
+> ---
+>
+> **[Or → Zeke]** Or replied, Zeke cleaned it up.'
+
 # Thread with multi-paragraph content (blank lines inside callout)
 THREAD_MULTI_PARAGRAPH='> [!note]- Long discussion (Mar 15)
 > **[Or]** First paragraph of thought.

@@ -156,6 +156,27 @@ def extract_authors(body_lines):
     return authors
 
 
+def extract_message_senders(body_lines):
+    """Extract the original sender of each message, in order.
+
+    For arrow chains like **[Or → Zeke]**, returns 'Or' (the original
+    author), not 'Zeke' (the editor). Use this for turn-taking logic
+    (thread_waiting_on) where we care about who *sent* the message,
+    not who cleaned up its prose.
+
+    Contrast with extract_authors which returns the last name in each
+    chain (the effective editor / most recent toucher).
+    """
+    senders = []
+    for line in body_lines:
+        m = NAME_PAT.match(line)
+        if m:
+            chain = parse_author_chain(m.group(1))
+            if chain:
+                senders.append(chain[0])
+    return senders
+
+
 def extract_all_participants(body_lines):
     """Extract all unique participant names from body lines.
 
