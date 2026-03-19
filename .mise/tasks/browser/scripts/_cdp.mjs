@@ -243,7 +243,7 @@ if (action === 'goto') {
   const authPath = authFilePath(agent, site);
   if (!existsSync(authPath)) {
     console.error(`No auth found: ${authPath}`);
-    console.error(`Run: shimmer browser:login ${site}`);
+    console.error(`Save auth first: shimmer browser:save-auth ${site}`);
     process.exit(1);
   }
 

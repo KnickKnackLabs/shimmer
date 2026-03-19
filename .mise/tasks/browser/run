@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Run a Playwright script with saved browser auth"
+#MISE description="Run a Patchright script (with optional saved auth)"
 #USAGE arg "<script>" help="Script name (built-in) or path to .mjs file"
 #USAGE arg "[args...]" var=#true help="Arguments to pass to the script"
 #USAGE flag "-s --site <site>" help="Site to use auth for (default: inferred from script)"

@@ -23,4 +23,4 @@ if [ -d "$PATCHRIGHT_MODULES" ]; then
 fi
 
 echo ""
-echo "Done. Run: shimmer browser:login <site>"
+echo "Done. Run: shimmer browser:launch"
