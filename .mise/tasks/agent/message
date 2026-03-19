@@ -7,16 +7,19 @@
 
 set -e
 
-# Discover agents from AGENT_HOME
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
+
+# Resolve the agent home (the repo the caller is in)
+AGENT_HOME_DIR="${AGENT_HOME:-$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")}"
+
+# Delegate agent discovery to the home's agent:list task
 get_agents() {
-  ls -d "$AGENT_HOME/agents"/*/ 2>/dev/null \
-    | xargs -n1 basename \
-    | sort
+  mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
 }
 
-# Get the repo name from AGENT_HOME
+# Get the repo name from the agent home
 get_repo() {
-  git -C "$AGENT_HOME" remote get-url origin 2>/dev/null \
+  git -C "$AGENT_HOME_DIR" remote get-url origin 2>/dev/null \
     | sed 's/.*github.com[:/]//' \
     | sed 's/\.git$//'
 }
@@ -30,29 +33,21 @@ if [ -n "${usage_repo:-}" ]; then
   # Remote mode: target a different repo, skip local validation
   REPO="$usage_repo"
 else
-  # Local mode: use AGENT_HOME (original behavior)
-  if [ -z "${AGENT_HOME:-}" ]; then
-    echo "Error: AGENT_HOME not set (use --repo for remote agent homes)" >&2
-    echo "Run: eval \$(shimmer as <agent>)" >&2
-    exit 1
-  fi
-
-  if [ ! -d "$AGENT_HOME/agents" ]; then
-    echo "Error: No agents/ directory in $AGENT_HOME" >&2
-    exit 1
-  fi
-
-  if [ ! -f "$AGENT_HOME/.github/workflows/agent-message.yml" ]; then
-    echo "Error: No agent-message.yml workflow in $AGENT_HOME" >&2
+  # Local mode: discover agents via home's agent:list task
+  AGENTS=$(get_agents) || true
+  if [ -z "$AGENTS" ]; then
+    echo "Error: could not list agents." >&2
+    echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+    echo "Or use --repo for remote agent homes." >&2
     exit 1
   fi
 
   REPO=$(get_repo)
 
-  # Validate agent exists locally
-  if ! get_agents | grep -qx "$AGENT"; then
+  # Validate agent exists
+  if ! echo "$AGENTS" | grep -qx "$AGENT"; then
     echo "Unknown agent: $AGENT"
-    echo "Available agents: $(get_agents | tr '\n' ' ')"
+    echo "Available agents: $(echo "$AGENTS" | tr '\n' ' ')"
     exit 1
   fi
 fi

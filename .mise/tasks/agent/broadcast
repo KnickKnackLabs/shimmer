@@ -8,22 +8,15 @@
 
 set -e
 
-if [ -z "${AGENT_HOME:-}" ]; then
-  echo "Error: AGENT_HOME not set" >&2
-  echo "Run: eval \$(shimmer as <agent>)" >&2
-  exit 1
-fi
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 
-# Validate this is an agent home
-if [ ! -d "$AGENT_HOME/agents" ]; then
-  echo "Error: No agents/ directory in $AGENT_HOME" >&2
-  exit 1
-fi
+# Resolve the agent home
+AGENT_HOME_DIR="${AGENT_HOME:-$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")}"
 
-if [ ! -f "$AGENT_HOME/.github/workflows/agent-message.yml" ]; then
-  echo "Error: No agent-message.yml workflow in $AGENT_HOME" >&2
-  exit 1
-fi
+# Delegate agent discovery to the home's agent:list task
+get_agents() {
+  mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
+}
 
 MESSAGE="$usage_message"
 STAGGER="${usage_stagger:-30}"
@@ -31,10 +24,13 @@ DRY_RUN="${usage_dry_run:-false}"
 MODEL="${usage_model:-}"
 AGENTS_FLAG="${usage_agents:-}"
 
-# Discover or filter agents
-ALL_AGENTS=$(ls -d "$AGENT_HOME/agents"/*/ 2>/dev/null \
-  | xargs -n1 basename \
-  | sort)
+# Discover agents
+ALL_AGENTS=$(get_agents) || true
+if [ -z "$ALL_AGENTS" ]; then
+  echo "Error: could not list agents." >&2
+  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+  exit 1
+fi
 
 if [ -n "$AGENTS_FLAG" ]; then
   # Filter to requested agents, validate each exists
