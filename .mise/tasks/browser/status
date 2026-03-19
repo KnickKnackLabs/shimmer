@@ -63,6 +63,7 @@ fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  shimmer browser:setup              Install Chromium"
-echo "  shimmer browser:login <site>       Log in interactively"
+echo "  shimmer browser:launch             Start a browser"
+echo "  shimmer browser:save-auth <site>   Save auth from browser"
 echo "  shimmer browser:run <script> ...   Run automation script"
 echo ""
