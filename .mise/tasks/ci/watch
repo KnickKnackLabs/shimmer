@@ -5,12 +5,11 @@
 
 set -e
 
-# Discover agents from the caller's agents directory
+# Delegate agent discovery to the home's agent:list task
 get_agents() {
-  local agents_dir="${CALLER_PWD:-.}/agents"
-  ls -d "$agents_dir"/*/ 2>/dev/null \
-    | xargs -n1 basename \
-    | sort
+  local home_dir
+  home_dir=$(git -C "${CALLER_PWD:-.}" rev-parse --show-toplevel 2>/dev/null || echo "${CALLER_PWD:-.}")
+  mise -C "$home_dir" run -q agent:list 2>/dev/null
 }
 
 # Discover jobs for a specific agent
