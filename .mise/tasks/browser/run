@@ -11,8 +11,8 @@ set -e
 SCRIPT_NAME="${usage_script:?Usage: shimmer browser:run <script> [args...]}"
 HEADED="${usage_headed:-false}"
 BROWSER_ID="${usage_browser:-}"
-# Variadic args come as a shell-escaped string
-eval "SCRIPT_ARGS=(${usage_args:-})"
+# Variadic args come as a whitespace-separated string
+read -ra SCRIPT_ARGS <<< "${usage_args:-}"
 
 # Determine agent identity
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then

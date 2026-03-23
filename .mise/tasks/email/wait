@@ -20,10 +20,9 @@ SCRIPT_DIR="$(dirname "$0")"
 TIMEOUT=$("$SCRIPT_DIR/../_parse-duration" "${usage_timeout:-600}")
 
 # Parse optional query (variadic args - mise passes as shell-escaped string)
-# Use eval to strip mise's quoting, same pattern as email:delete
 QUERY_ARGS=()
 if [ -n "${usage_query:-}" ]; then
-  eval "QUERY_ARGS=($usage_query)"
+  read -ra QUERY_ARGS <<< "$usage_query"
 fi
 
 # Determine current agent from environment or git config

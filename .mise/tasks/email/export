@@ -17,12 +17,12 @@ LIMIT="${usage_limit:-500}"
 ALL="${usage_all:-false}"
 
 # Parse variadic args - mise passes them as a shell-escaped string, not an array
-# Validate before eval: IDs should only contain digits and whitespace
+# Validate: IDs should only contain digits and whitespace
 if [ -n "$usage_ids" ] && [[ ! "$usage_ids" =~ ^[0-9[:space:]]+$ ]]; then
   echo "Error: IDs must be numeric (got: $usage_ids)"
   exit 1
 fi
-eval "IDS=($usage_ids)"
+read -ra IDS <<< "$usage_ids"
 
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
