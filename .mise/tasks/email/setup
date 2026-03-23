@@ -30,22 +30,16 @@ if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null
   exit 0
 fi
 
-# Get password: env var > 1Password > error
-if [ -z "$EMAIL_PASSWORD" ]; then
-  if command -v op &> /dev/null && op account get &> /dev/null; then
-    echo "Fetching email password from 1Password..."
-    EMAIL_PASSWORD=$(op item get "${AGENT} - Email" --vault Agents --fields password --reveal 2>/dev/null || true)
-    if [ -n "$EMAIL_PASSWORD" ]; then
-      echo "Using password from 1Password"
-    fi
-  fi
+# Get password: env var > secrets tool > error
+if [ -z "${EMAIL_PASSWORD:-}" ]; then
+  EMAIL_PASSWORD=$(secrets get "$AGENT/email-password" 2>/dev/null || true)
 fi
 
 if [ -z "$EMAIL_PASSWORD" ]; then
   echo "ERROR: Could not get email password for $AGENT"
   echo ""
   echo "Options:"
-  echo "  1. Sign into 1Password: op signin"
+  echo "  1. Store via: secrets set $AGENT/email-password"
   echo "  2. Set EMAIL_PASSWORD env var manually"
   exit 1
 fi

@@ -28,13 +28,9 @@ if [ -f "$CREDS_DIR/credentials.json" ]; then
   exit 1
 fi
 
-# Get password: env var > 1Password > interactive prompt
-if [ -z "$MATRIX_PASSWORD" ]; then
-  # Try 1Password
-  if command -v op &> /dev/null && op account get &> /dev/null; then
-    MATRIX_PASSWORD=$(op item get "${USERNAME} - Matrix" --vault Agents --fields password --reveal 2>/dev/null || true)
-    [ -n "$MATRIX_PASSWORD" ] && echo "Using password from 1Password"
-  fi
+# Get password: env var > secrets tool > interactive prompt
+if [ -z "${MATRIX_PASSWORD:-}" ]; then
+  MATRIX_PASSWORD=$(secrets get "$USERNAME/matrix-password" 2>/dev/null || true)
 fi
 
 if [ -z "$MATRIX_PASSWORD" ]; then
