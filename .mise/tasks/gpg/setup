@@ -4,6 +4,9 @@
 
 set -e
 
+# Bridge env var during migration
+export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
+
 AGENT="${usage_agent:-${1:?Usage: mise run gpg:setup <agent>}}"
 EMAIL="${AGENT}@ricon.family"
 
@@ -19,9 +22,9 @@ if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
 else
   # Get private key: env var (CI) > secret provider (local)
   if [ -z "$GPG_PRIVATE_KEY" ]; then
-    GPG_PRIVATE_KEY=$(mise run -q secret:get "$AGENT" gpg-private-key) || {
+    GPG_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key") || {
       echo "" >&2
-      echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
+      echo "Tip: set SECRETS_PROVIDER=keychain or SECRETS_PROVIDER=1password" >&2
       exit 1
     }
   fi

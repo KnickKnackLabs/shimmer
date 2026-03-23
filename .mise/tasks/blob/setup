@@ -29,40 +29,40 @@ fi
 
 # Endpoint
 if [ -z "${B2_ENDPOINT:-}" ]; then
-  B2_ENDPOINT=$(mise run -q secret:get "$AGENT" b2-endpoint 2>/dev/null) || true
+  B2_ENDPOINT=$(secrets get "$AGENT/b2-endpoint" 2>/dev/null) || true
 fi
 if [ -z "${B2_ENDPOINT:-}" ]; then
   echo "ERROR: Could not get B2 endpoint for $AGENT" >&2
   echo "" >&2
   echo "Options:" >&2
   echo "  1. Set B2_ENDPOINT env var" >&2
-  echo "  2. Store via: shimmer secret:set $AGENT b2-endpoint" >&2
+  echo "  2. Store via: secrets set $AGENT/b2-endpoint" >&2
   exit 1
 fi
 
 # Key ID
 if [ -z "${B2_KEY_ID:-}" ]; then
-  B2_KEY_ID=$(mise run -q secret:get "$AGENT" b2-key-id 2>/dev/null) || true
+  B2_KEY_ID=$(secrets get "$AGENT/b2-key-id" 2>/dev/null) || true
 fi
 if [ -z "${B2_KEY_ID:-}" ]; then
   echo "ERROR: Could not get B2 key ID for $AGENT" >&2
   echo "" >&2
   echo "Options:" >&2
   echo "  1. Set B2_KEY_ID env var" >&2
-  echo "  2. Store via: shimmer secret:set $AGENT b2-key-id" >&2
+  echo "  2. Store via: secrets set $AGENT/b2-key-id" >&2
   exit 1
 fi
 
 # Application key
 if [ -z "${B2_APPLICATION_KEY:-}" ]; then
-  B2_APPLICATION_KEY=$(mise run -q secret:get "$AGENT" b2-application-key 2>/dev/null) || true
+  B2_APPLICATION_KEY=$(secrets get "$AGENT/b2-application-key" 2>/dev/null) || true
 fi
 if [ -z "${B2_APPLICATION_KEY:-}" ]; then
   echo "ERROR: Could not get B2 application key for $AGENT" >&2
   echo "" >&2
   echo "Options:" >&2
   echo "  1. Set B2_APPLICATION_KEY env var" >&2
-  echo "  2. Store via: shimmer secret:set $AGENT b2-application-key" >&2
+  echo "  2. Store via: secrets set $AGENT/b2-application-key" >&2
   exit 1
 fi
 

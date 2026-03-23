@@ -102,7 +102,54 @@ EOF
   export OVERLAY
 }
 
-# Run shimmer as via the overlay
-run_as() {
-  CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as "$@" 2>&1
+# Create a mock `secrets` binary on PATH.
+# Returns canned values based on the key argument.
+# Usage: mock_secrets_binary ["key1=value1" "key2=value2" ...]
+# With no args, returns "mock-token" for any get call.
+mock_secrets_binary() {
+  MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
+  mkdir -p "$MOCK_BIN"
+
+  # Build case branches from args
+  local case_body=""
+  for entry in "$@"; do
+    local key="${entry%%=*}"
+    local value="${entry#*=}"
+    case_body+="      \"$key\") echo \"$value\" ;;"$'\n'
+  done
+
+  if [ -z "$case_body" ]; then
+    # Default: return mock-token for any get, succeed silently for set
+    cat > "$MOCK_BIN/secrets" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  get) echo "mock-token" ;;
+  set) ;; # silent success
+  *) echo "mock secrets: unknown command $1" >&2; exit 1 ;;
+esac
+MOCK
+  else
+    cat > "$MOCK_BIN/secrets" <<MOCK
+#!/usr/bin/env bash
+case "\$1" in
+  get)
+    case "\$2" in
+$case_body      *) echo "ERROR: No secret found for key=\$2" >&2; exit 1 ;;
+    esac
+    ;;
+  set) ;; # silent success
+  *) echo "mock secrets: unknown command \$1" >&2; exit 1 ;;
+esac
+MOCK
+  fi
+  chmod +x "$MOCK_BIN/secrets"
+
+  export PATH="$MOCK_BIN:$PATH"
 }
+
+# Call shimmer tasks through mise, matching real usage.
+# Usage: shimmer as alice
+shimmer() {
+  CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q "$@" 2>&1
+}
+export -f shimmer

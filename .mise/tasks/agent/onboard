@@ -5,10 +5,12 @@
 
 set -e
 
+# Bridge env var during migration
+export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
+
 AGENT="${usage_agent_name:?Usage: mise run agent:onboard <agent-name>}"
 AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 EMAIL="${AGENT}@ricon.family"
-VAULT="Agents"
 
 # Target caller's repo for GitHub secrets (not shimmer's)
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
@@ -23,32 +25,17 @@ wait_for_enter() {
   echo ""
 }
 
-# Check prerequisites
-if ! command -v op &> /dev/null; then
-  echo "ERROR: 1Password CLI (op) not found."
-  exit 1
-fi
-
-if ! op account get &> /dev/null; then
-  echo "ERROR: Not signed in to 1Password. Run: op signin"
-  exit 1
-fi
-
-# Get credentials from 1Password.
-# Standard secrets use the secret:* provider interface; account metadata fields
-# (username, email, country) are 1Password-specific and read directly via op.
-echo "Fetching credentials from 1Password..."
-export SHIMMER_SECRETS_PROVIDER=1password
-EMAIL_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" email-password 2>/dev/null || echo "")
-GITHUB_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" github-password 2>/dev/null || echo "")
-# Account metadata fields — not part of secret:* abstraction (1Password item fields only)
-GITHUB_USERNAME=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields username 2>/dev/null || echo "")
-GITHUB_EMAIL=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields email 2>/dev/null || echo "")
-GITHUB_COUNTRY=$(op item get "${AGENT} - GitHub" --vault "$VAULT" --fields country 2>/dev/null || echo "")
+# Get credentials from secret provider
+echo "Fetching credentials..."
+EMAIL_PASSWORD=$(secrets get "$AGENT/email-password" 2>/dev/null || echo "")
+GITHUB_PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null || echo "")
+GITHUB_USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null || echo "")
+GITHUB_EMAIL=$(secrets get "$AGENT/github-email" 2>/dev/null || echo "")
+GITHUB_COUNTRY=$(secrets get "$AGENT/github-country" 2>/dev/null || echo "")
 
 if [ -z "$GITHUB_PASSWORD" ]; then
-  echo "ERROR: Could not find ${AGENT} - GitHub in 1Password"
-  echo "Run: mise run store-agent-credentials $AGENT"
+  echo "ERROR: No github-password found for $AGENT"
+  echo "Run: shimmer agent:provision $AGENT"
   exit 1
 fi
 
@@ -168,7 +155,7 @@ echo "      Click: New GPG key"
 echo "      Title: $EMAIL"
 echo "      Key:"
 echo ""
-mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" gpg-public-key 2>/dev/null || echo "(no GPG public key found — run agent:provision first)"
+secrets get "$AGENT/gpg-public-key" 2>/dev/null || echo "(no GPG public key found — run agent:provision first)"
 echo ""
 
 wait_for_enter
@@ -193,7 +180,7 @@ echo ""
 
 if [ -n "$PAT_TOKEN" ]; then
   echo "[auto] Storing in secret store..."
-  printf '%s' "$PAT_TOKEN" | mise -C "$MISE_PROJECT_ROOT" run -q secret:set "$AGENT" github-pat
+  printf '%s' "$PAT_TOKEN" | secrets set "$AGENT/github-pat"
 
   echo "[auto] Storing as GitHub secret ${AGENT_UPPER}_GITHUB_PAT..."
   echo "$PAT_TOKEN" | gh secret set "${AGENT_UPPER}_GITHUB_PAT"
@@ -213,7 +200,7 @@ wait_for_enter
 echo "STEP 8: Matrix Setup"
 echo "------------------------------------------------------------"
 
-MATRIX_PASSWORD=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" matrix-password 2>/dev/null || echo "")
+MATRIX_PASSWORD=$(secrets get "$AGENT/matrix-password" 2>/dev/null || echo "")
 MATRIX_USER="@${AGENT}:ricon.family"
 
 if [ -z "$MATRIX_PASSWORD" ]; then
@@ -238,18 +225,18 @@ wait_for_enter
 echo "STEP 9: Blob Storage"
 echo "------------------------------------------------------------"
 
-B2_ENDPOINT=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-endpoint 2>/dev/null || echo "")
-B2_KEY_ID=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-key-id 2>/dev/null || echo "")
-B2_APPLICATION_KEY=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-application-key 2>/dev/null || echo "")
-B2_BUCKET=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-bucket 2>/dev/null || echo "")
+B2_ENDPOINT=$(secrets get "$AGENT/b2-endpoint" 2>/dev/null || echo "")
+B2_KEY_ID=$(secrets get "$AGENT/b2-key-id" 2>/dev/null || echo "")
+B2_APPLICATION_KEY=$(secrets get "$AGENT/b2-application-key" 2>/dev/null || echo "")
+B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null || echo "")
 
 if [ -z "$B2_ENDPOINT" ] || [ -z "$B2_KEY_ID" ] || [ -z "$B2_APPLICATION_KEY" ] || [ -z "$B2_BUCKET" ]; then
   echo "[WARN] B2 credentials not found in secret store, skipping blob storage setup"
   echo "       Store credentials first:"
-  echo "         shimmer secret:set $AGENT b2-endpoint"
-  echo "         shimmer secret:set $AGENT b2-key-id"
-  echo "         shimmer secret:set $AGENT b2-application-key"
-  echo "         shimmer secret:set $AGENT b2-bucket"
+  echo "         secrets set $AGENT/b2-endpoint"
+  echo "         secrets set $AGENT/b2-key-id"
+  echo "         secrets set $AGENT/b2-application-key"
+  echo "         secrets set $AGENT/b2-bucket"
   echo "       Then run: shimmer blob:setup $AGENT"
 else
   echo "[auto] Storing B2 credentials as GitHub secrets..."
@@ -279,7 +266,7 @@ echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
 echo ""
 
 # Set agent identity and run welcome to verify the full local identity chain
-PAT=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" github-pat 2>/dev/null || true)
+PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null || true)
 (
   export GH_TOKEN="$PAT"
   export GIT_AUTHOR_EMAIL="$EMAIL"
