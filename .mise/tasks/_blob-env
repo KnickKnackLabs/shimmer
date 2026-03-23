@@ -29,16 +29,16 @@ BLOB_ALIAS="$BLOB_AGENT"
 if [ -n "${B2_BUCKET:-}" ]; then
   BLOB_BUCKET="$B2_BUCKET"
 else
-  BLOB_BUCKET=$(mise run -q secret:get "$BLOB_AGENT" b2-bucket 2>/dev/null) || {
+  BLOB_BUCKET=$(secrets get "$BLOB_AGENT/b2-bucket" 2>/dev/null) || {
     echo "ERROR: Could not determine B2 bucket for $BLOB_AGENT" >&2
-    echo "       Set B2_BUCKET env var or store via: shimmer secret:set $BLOB_AGENT b2-bucket" >&2
+    echo "       Set B2_BUCKET env var or store via: secrets set $BLOB_AGENT/b2-bucket" >&2
     exit 1
   }
 fi
 
 if [ -z "$BLOB_BUCKET" ]; then
   echo "ERROR: B2 bucket is empty for $BLOB_AGENT" >&2
-  echo "       Store via: shimmer secret:set $BLOB_AGENT b2-bucket" >&2
+  echo "       Store via: secrets set $BLOB_AGENT/b2-bucket" >&2
   exit 1
 fi
 

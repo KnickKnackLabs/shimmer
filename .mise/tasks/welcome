@@ -169,13 +169,13 @@ if [ -n "$AGENT" ]; then
   if command -v mc &>/dev/null && mc alias list "$AGENT" 2>/dev/null | grep -q "$AGENT"; then
     B2_BUCKET_VAL="${B2_BUCKET:-}"
     if [ -z "$B2_BUCKET_VAL" ]; then
-      B2_BUCKET_VAL=$(mise -C "$MISE_PROJECT_ROOT" run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || B2_BUCKET_VAL=""
+      B2_BUCKET_VAL=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || B2_BUCKET_VAL=""
     fi
     if [ -n "$B2_BUCKET_VAL" ]; then
       OBJ_COUNT=$(mc ls --recursive --json "${AGENT}/${B2_BUCKET_VAL}" 2>/dev/null | jq -s 'length' 2>/dev/null || echo "?")
       print_status "Blob" "✓" "${OBJ_COUNT} objects" "shimmer blob:welcome"
     else
-      print_status "Blob" "⚠" "alias set, no bucket" "shimmer secret:set $AGENT b2-bucket"
+      print_status "Blob" "⚠" "alias set, no bucket" "secrets set $AGENT/b2-bucket"
     fi
   else
     print_status "Blob" "✗" "not configured" "shimmer blob:setup $AGENT"

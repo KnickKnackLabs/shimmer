@@ -44,13 +44,13 @@ BUCKET=""
 if [ -n "${B2_BUCKET:-}" ]; then
   BUCKET="$B2_BUCKET"
 else
-  BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || BUCKET=""
+  BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || BUCKET=""
 fi
 
 if [ -z "$BUCKET" ]; then
   echo "  Bucket:   not set"
   echo ""
-  echo "  Store via: shimmer secret:set $AGENT b2-bucket"
+  echo "  Store via: secrets set $AGENT/b2-bucket"
   echo ""
   exit 0
 fi

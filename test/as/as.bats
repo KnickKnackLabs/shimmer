@@ -5,7 +5,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$TEST_HOME" "$OVERLAY" "$BATS_TEST_TMPDIR/mocks-$$"
+  rm -rf "$TEST_HOME" "$OVERLAY" "$BATS_TEST_TMPDIR/mocks-$$" "$BATS_TEST_TMPDIR/mock-bin-$$"
 }
 
 # ============ Agent discovery (no mocks needed) ============
@@ -25,14 +25,14 @@ teardown() {
   [[ "$output" == *"You are alice."* ]]
 }
 
-# ============ Full as flow (secret:get mocked) ============
+# ============ Full as flow (secrets binary mocked) ============
 
 @test "as: outputs export statements for valid agent" {
   setup_test_home "alice" "bob"
-  mock_task "secret/get" 'echo "ghp_fake_test_token"'
+  mock_secrets_binary "alice/github-pat=ghp_fake_test_token"
   mock_shimmer
 
-  run run_as alice
+  run shimmer as alice
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
   echo "$output" | grep -q "export GIT_AUTHOR_EMAIL='alice@ricon.family'"
@@ -41,10 +41,10 @@ teardown() {
 
 @test "as: sets AGENT_HOME to the home directory" {
   setup_test_home "alice"
-  mock_task "secret/get" 'echo "ghp_fake"'
+  mock_secrets_binary
   mock_shimmer
 
-  run run_as alice
+  run shimmer as alice
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export AGENT_HOME="
   echo "$output" | grep -q "$(basename "$TEST_HOME")"
@@ -52,10 +52,10 @@ teardown() {
 
 @test "as: AGENT_IDENTITY contains identity content" {
   setup_test_home "alice"
-  mock_task "secret/get" 'echo "ghp_fake"'
+  mock_secrets_binary
   mock_shimmer
 
-  run run_as alice
+  run shimmer as alice
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export AGENT_IDENTITY="
   echo "$output" | grep -q "You are alice."
@@ -63,12 +63,58 @@ teardown() {
 
 @test "as: works for each agent independently" {
   setup_test_home "alice" "bob"
-  mock_task "secret/get" 'echo "ghp_fake"'
+  mock_secrets_binary
   mock_shimmer
 
-  run run_as bob
+  run shimmer as bob
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='bob'"
+}
+
+@test "as: uses agent-specific PAT from secrets" {
+  setup_test_home "alice" "bob"
+  mock_secrets_binary "alice/github-pat=ghp_alice_token" "bob/github-pat=ghp_bob_token"
+  mock_shimmer
+
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "export GH_TOKEN='ghp_alice_token'"
+
+  run shimmer as bob
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "export GH_TOKEN='ghp_bob_token'"
+}
+
+@test "as: exports B2_BUCKET when available" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake" "alice/b2-bucket=my-bucket"
+  mock_shimmer
+
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "export B2_BUCKET='my-bucket'"
+}
+
+@test "as: succeeds without B2_BUCKET" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+  # Should NOT contain B2_BUCKET export
+  ! echo "$output" | grep -q "export B2_BUCKET="
+}
+
+@test "as: bridges SHIMMER_SECRETS_PROVIDER to SECRETS_PROVIDER" {
+  setup_test_home "alice"
+  mock_secrets_binary
+  mock_shimmer
+
+  # Set old env var, verify task still works (bridge picks it up)
+  run env SHIMMER_SECRETS_PROVIDER=keychain CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
 }
 
 # ============ Validation (no mocks — fails before secrets) ============
@@ -77,7 +123,7 @@ teardown() {
   setup_test_home "alice" "bob"
   mock_shimmer
 
-  run run_as charlie
+  run shimmer as charlie
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unknown agent: charlie"* ]]
 }
@@ -86,7 +132,7 @@ teardown() {
   setup_test_home "alice" "bob"
   mock_shimmer
 
-  run run_as charlie
+  run shimmer as charlie
   [[ "$output" == *"alice"* ]]
   [[ "$output" == *"bob"* ]]
 }
@@ -100,8 +146,9 @@ teardown() {
   git -C "$TEST_HOME" init -q -b main
   git -C "$TEST_HOME" config user.email "test@test.com"
   git -C "$TEST_HOME" config user.name "Test"
+  mock_shimmer
 
-  run env CALLER_PWD="$TEST_HOME" mise -C "$SHIMMER_DIR" run -q as alice 2>&1
+  run shimmer as alice
   [ "$status" -ne 0 ]
   [[ "$output" == *"could not list agents"* ]]
 }

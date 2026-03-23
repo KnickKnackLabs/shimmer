@@ -4,6 +4,9 @@
 
 set -e
 
+# Bridge env var during migration: shimmer callers may still set SHIMMER_SECRETS_PROVIDER
+export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
+
 CALLER_DIR="${CALLER_PWD:-$(pwd)}"
 
 # Resolve the agent home (the repo the user is calling from)
