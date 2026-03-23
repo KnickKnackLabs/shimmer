@@ -71,10 +71,10 @@ if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   exit 1
 fi
 
-# Fetch GitHub PAT via secret provider
-PAT=$(mise run -q secret:get "$AGENT" github-pat) || {
+# Fetch GitHub PAT via secrets tool
+PAT=$(secrets get "$AGENT/github-pat") || {
   echo "" >&2
-  echo "Tip: set SHIMMER_SECRETS_PROVIDER=keychain or SHIMMER_SECRETS_PROVIDER=1password" >&2
+  echo "Tip: set SECRETS_PROVIDER=keychain or SECRETS_PROVIDER=1password" >&2
   exit 1
 }
 
@@ -91,7 +91,7 @@ echo "export GIT_COMMITTER_NAME='$AGENT'"
 echo "export AGENT_HOME='$AGENT_HOME_DIR'"
 
 # Optional: B2 blob storage bucket (don't fail if not configured)
-B2_BUCKET=$(mise run -q secret:get "$AGENT" b2-bucket 2>/dev/null) || true
+B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || true
 if [ -n "$B2_BUCKET" ]; then
   echo "export B2_BUCKET='$B2_BUCKET'"
 fi
