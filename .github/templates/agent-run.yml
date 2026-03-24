@@ -145,13 +145,13 @@ jobs:
             echo "No zettelkasten found for ${{ inputs.agent }}, skipping"
           fi
 
-      - name: Unlock encrypted files
+      - name: Install project dependencies and unlock
         env:
           GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_PAT }}
         run: |
           cd "$HOME/$REPO_NAME"
-          mise trust -q
-          mise install -q
+          mise trust
+          mise install
           if [ -d ".git-crypt" ]; then
             rudi install
             notes unlock || echo "Warning: notes unlock failed — encrypted files may not be readable"
@@ -233,6 +233,9 @@ jobs:
           echo ""
           echo "--- mise status ---"
           mise doctor 2>/dev/null | head -30 || echo "(mise doctor unavailable)"
+          echo ""
+          echo "--- Installed tools ---"
+          mise ls 2>/dev/null || echo "(mise ls unavailable)"
           echo ""
           echo "--- Network connectivity ---"
           curl -so /dev/null -w "github.com: HTTP %{http_code} (%{time_total}s)\n" https://github.com 2>/dev/null || echo "github.com: unreachable"
