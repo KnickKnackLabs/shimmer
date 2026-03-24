@@ -27,7 +27,7 @@ get_repo() {
 AGENT="$usage_agent"
 MESSAGE="$usage_message"
 MODEL="${usage_model:-}"
-WORKFLOW="agent-message.yml"
+WORKFLOW="${AGENT}.yml"
 
 if [ -n "${usage_repo:-}" ]; then
   # Remote mode: target a different repo, skip local validation
@@ -57,7 +57,7 @@ if [ -n "$MODEL" ]; then
   MODEL_ARG="-f model=$MODEL"
 fi
 
-gh workflow run "$WORKFLOW" -R "$REPO" -f agent="$AGENT" -f message="$MESSAGE" $MODEL_ARG
+gh workflow run "$WORKFLOW" -R "$REPO" -f message="$MESSAGE" $MODEL_ARG
 
 # Wait briefly for GitHub to register the run, then get the URL and ID
 # Filter by triggering user to avoid races when multiple agents dispatch simultaneously
