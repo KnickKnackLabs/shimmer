@@ -39,7 +39,7 @@ echo "Generated: agent-run.yml"
 # Generate per-agent workflow files from agent:list
 AGENTS=$(mise run -q agent:list 2>/dev/null) || AGENTS=""
 if [[ -n "$AGENTS" ]]; then
-  echo "Discovered agents: $(echo $AGENTS | tr '\n' ' ')"
+  echo "Discovered agents: $(echo "$AGENTS" | tr '\n' ' ')"
 
   AGENT_COUNT=0
   while IFS= read -r agent; do
