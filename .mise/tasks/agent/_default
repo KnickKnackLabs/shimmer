@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#MISE description="Start an interactive agent session"
+#MISE quiet=true
+
+set -e
+
+# Derive agent name from environment (set by `shimmer as`)
+if [ -z "$GIT_AUTHOR_NAME" ]; then
+  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+if [ -z "$AGENT_IDENTITY" ]; then
+  echo "AGENT_IDENTITY not set. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Resolve harness from environment (default: claude)
+HARNESS="${AGENT_HARNESS:-claude}"
+
+if ! command -v "$HARNESS" &>/dev/null; then
+  echo "Harness '$HARNESS' not found on PATH." >&2
+  echo "Install it or set AGENT_HARNESS to an available harness (e.g., claude, pi)." >&2
+  exit 1
+fi
+
+cd "${CALLER_PWD:-.}"
+exec "$HARNESS" --append-system-prompt "$AGENT_IDENTITY
+
+## Session Context
+This is a local interactive session started via \`shimmer agent\`. A human is present and directing you."
