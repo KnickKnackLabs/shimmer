@@ -39,6 +39,10 @@ fi
 cd "${CALLER_PWD:-.}"
 
 if [ "$HEADLESS" = "true" ]; then
+  # Headless instances get a distinct chat identity so messages are attributable.
+  # SESSION_NAME is generic; ZMX_SESSION is set automatically inside zmx sessions.
+  export CHAT_IDENTITY="$GIT_AUTHOR_NAME-${SESSION_NAME:-${ZMX_SESSION:-headless}}"
+
   exec "$HARNESS" -p --append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
