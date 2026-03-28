@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-#MISE description="Start an interactive agent session"
+#MISE description="Start an agent session (interactive or headless)"
 #MISE quiet=true
+#USAGE flag "--headless" help="Non-interactive mode: process message and exit"
+#USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
+
+HEADLESS="${usage_headless:-false}"
+MESSAGE="${usage_message:-}"
 
 # Derive agent name from environment (set by `shimmer as`)
 if [ -z "$GIT_AUTHOR_NAME" ]; then
@@ -12,6 +17,13 @@ fi
 
 if [ -z "$AGENT_IDENTITY" ]; then
   echo "AGENT_IDENTITY not set. Run: eval \$(shimmer as <agent>)" >&2
+  exit 1
+fi
+
+# Headless mode requires a message
+if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
+  echo "Error: --headless requires a message" >&2
+  echo "Usage: shimmer agent --headless \"do something\"" >&2
   exit 1
 fi
 
@@ -25,7 +37,18 @@ if ! command -v "$HARNESS" &>/dev/null; then
 fi
 
 cd "${CALLER_PWD:-.}"
-exec "$HARNESS" --append-system-prompt "$AGENT_IDENTITY
+
+if [ "$HEADLESS" = "true" ]; then
+  exec "$HARNESS" -p --append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
-This is a local interactive session started via \`shimmer agent\`. A human is present and directing you."
+This is a headless session started via \`shimmer agent --headless\`. No human is present. You are running non-interactively — complete the task and exit." \
+    "$MESSAGE"
+else
+  ARGS=(--append-system-prompt "$AGENT_IDENTITY
+
+## Session Context
+This is a local interactive session started via \`shimmer agent\`. A human is present and directing you.")
+  [ -n "$MESSAGE" ] && ARGS+=("$MESSAGE")
+  exec "$HARNESS" "${ARGS[@]}"
+fi
