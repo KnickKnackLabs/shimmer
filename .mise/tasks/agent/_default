@@ -2,11 +2,13 @@
 #MISE description="Start an agent session (interactive or headless)"
 #MISE quiet=true
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
+#USAGE flag "--session <session>" help="Session file path to resume (passed through to harness)"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
 
 HEADLESS="${usage_headless:-false}"
+SESSION="${usage_session:-}"
 MESSAGE="${usage_message:-}"
 
 # Derive agent name from environment (set by `shimmer as`)
@@ -43,16 +45,19 @@ if [ "$HEADLESS" = "true" ]; then
   # SESSION_NAME is generic; ZMX_SESSION is set automatically inside zmx sessions.
   export CHAT_IDENTITY="${SESSION_NAME:-${ZMX_SESSION:-$GIT_AUTHOR_NAME-headless}}"
 
-  exec "$HARNESS" -p --append-system-prompt "$AGENT_IDENTITY
+  ARGS=(-p --append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
-This is a headless session started via \`shimmer agent --headless\`. No human is present. You are running non-interactively — complete the task and exit." \
-    "$MESSAGE"
+This is a headless session started via \`shimmer agent --headless\`. No human is present. You are running non-interactively — complete the task and exit.")
+  [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
+  ARGS+=("$MESSAGE")
+  exec "$HARNESS" "${ARGS[@]}"
 else
   ARGS=(--append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
 This is a local interactive session started via \`shimmer agent\`. A human is present and directing you.")
+  [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
   [ -n "$MESSAGE" ] && ARGS+=("$MESSAGE")
   exec "$HARNESS" "${ARGS[@]}"
 fi
