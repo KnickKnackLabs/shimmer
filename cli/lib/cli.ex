@@ -220,15 +220,20 @@ defmodule Cli do
           {path, ~s( --append-system-prompt "#{path}")}
       end
 
+    # Ensure model includes a provider prefix for pi (e.g. "anthropic/claude-opus-4-6").
+    # If the caller already specified one ("openai/gpt-4o"), use it as-is.
+    qualified_model =
+      if String.contains?(model, "/"), do: model, else: "anthropic/#{model}"
+
     # Shell script that pipes empty stdin and runs pi with timeout.
     # $1=message, $2=model are passed as positional parameters to avoid shell injection.
     shell_script =
       "echo | timeout #{timeout} pi -p \"$1\"#{prompt_flag}" <>
-        " --provider anthropic --model \"$2\"" <>
+        " --model \"$2\"" <>
         " --mode json --no-session" <>
         " --no-extensions --no-skills --no-prompt-templates"
 
-    args = ["-c", shell_script, "--", message, model]
+    args = ["-c", shell_script, "--", message, qualified_model]
 
     # Convert env extras like "KEY=value" to {~c"KEY", ~c"value"} tuples
     env =
@@ -467,7 +472,10 @@ defmodule Cli do
         IO.puts("\n[TOOL] #{name}")
         %{state | tool_input: ""}
 
-      # Pi: tool call input delta — accumulate partial JSON
+      # Pi: tool call input delta — accumulate partial JSON.
+      # NOTE: tool_input is accumulated but not consumed by handle_tool_call_end
+      # (which reads the completed arguments from the toolcall_end event instead).
+      # Kept for future progressive tool input display during long-running tool calls.
       {:ok,
        %{
          "type" => "message_update",
