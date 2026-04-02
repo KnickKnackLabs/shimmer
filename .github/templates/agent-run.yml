@@ -31,8 +31,6 @@ on:
         required: true
       AGENT_MATRIX_PASSWORD:
         required: false
-      AGENT_PASSPHRASE:
-        required: false
       AGENT_GITHUB_PASSWORD:
         required: false
       AGENT_B2_ENDPOINT:
@@ -112,7 +110,6 @@ jobs:
           AGENT_GPG_PRIVATE_KEY: ${{ secrets.AGENT_GPG_PRIVATE_KEY }}
           AGENT_EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
           AGENT_MATRIX_PASSWORD: ${{ secrets.AGENT_MATRIX_PASSWORD }}
-          AGENT_PASSPHRASE: ${{ secrets.AGENT_PASSPHRASE }}
           AGENT_GITHUB_PASSWORD: ${{ secrets.AGENT_GITHUB_PASSWORD }}
           AGENT_B2_ENDPOINT: ${{ secrets.AGENT_B2_ENDPOINT }}
           AGENT_B2_KEY_ID: ${{ secrets.AGENT_B2_KEY_ID }}
@@ -128,7 +125,6 @@ jobs:
             [GPG_PRIVATE_KEY]="$AGENT_GPG_PRIVATE_KEY"
             [EMAIL_PASSWORD]="$AGENT_EMAIL_PASSWORD"
             [MATRIX_PASSWORD]="${AGENT_MATRIX_PASSWORD:-}"
-            [PASSPHRASE]="${AGENT_PASSPHRASE:-}"
             [GITHUB_PASSWORD]="${AGENT_GITHUB_PASSWORD:-}"
             [B2_ENDPOINT]="${AGENT_B2_ENDPOINT:-}"
             [B2_KEY_ID]="${AGENT_B2_KEY_ID:-}"
@@ -139,9 +135,10 @@ jobs:
           for key in "${!SECRETS_MAP[@]}"; do
             value="${SECRETS_MAP[$key]}"
             [ -z "$value" ] && continue
-            echo "${AGENT_UPPER}_${key}<<EOFVAL" >> "$GITHUB_ENV"
+            DELIM="EOFVAL_$(openssl rand -hex 8)"
+            echo "${AGENT_UPPER}_${key}<<${DELIM}" >> "$GITHUB_ENV"
             echo "$value" >> "$GITHUB_ENV"
-            echo "EOFVAL" >> "$GITHUB_ENV"
+            echo "${DELIM}" >> "$GITHUB_ENV"
           done
 
           echo "SECRETS_PROVIDER=env" >> "$GITHUB_ENV"
@@ -158,12 +155,8 @@ jobs:
 
       - name: Setup blob storage
         continue-on-error: true
-        env:
-          B2_ENDPOINT: ${{ secrets.AGENT_B2_ENDPOINT }}
-          B2_KEY_ID: ${{ secrets.AGENT_B2_KEY_ID }}
-          B2_APPLICATION_KEY: ${{ secrets.AGENT_B2_APPLICATION_KEY }}
         run: |
-          if [ -n "$B2_ENDPOINT" ] && [ -n "$B2_KEY_ID" ] && [ -n "$B2_APPLICATION_KEY" ]; then
+          if secrets get "${{ inputs.agent }}/b2-endpoint" >/dev/null 2>&1; then
             shimmer blob:setup ${{ inputs.agent }}
           else
             echo "B2 credentials not configured, skipping blob storage setup"
@@ -199,7 +192,7 @@ jobs:
       - name: Run agent
         env:
           AGENT_HOME: $HOME/${{ github.event.repository.name }}
-          AGENT_PASSPHRASE: ${{ secrets.AGENT_PASSPHRASE }}
+          AGENT: ${{ inputs.agent }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BROWSER_GITHUB_COM_PASSWORD: ${{ secrets.AGENT_GITHUB_PASSWORD }}
           BROWSER_GITHUB_COM_USERNAME: ${{ inputs.agent }}-ricon
@@ -213,7 +206,7 @@ jobs:
 
           # shimmer as sets identity env vars (AGENT_IDENTITY, GIT_AUTHOR_*, GH_TOKEN, etc.)
           # shimmer agent --headless delegates to sessions run for execution
-          eval $(shimmer as ${{ inputs.agent }})
+          eval "$(shimmer as "$AGENT")"
 
           CMD=(shimmer agent --headless --timeout "$RUN_TIMEOUT")
           [ -n "$INPUT_MODEL" ] && CMD+=(--model "$INPUT_MODEL")

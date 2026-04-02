@@ -77,7 +77,6 @@ jobs:
       AGENT_GPG_PRIVATE_KEY: \${{ secrets.${AGENT_UPPER}_GPG_PRIVATE_KEY }}
       AGENT_EMAIL_PASSWORD: \${{ secrets.${AGENT_UPPER}_EMAIL_PASSWORD }}
       AGENT_MATRIX_PASSWORD: \${{ secrets.${AGENT_UPPER}_MATRIX_PASSWORD }}
-      AGENT_PASSPHRASE: \${{ secrets.${AGENT_UPPER}_PASSPHRASE }}
       AGENT_GITHUB_PASSWORD: \${{ secrets.${AGENT_UPPER}_GITHUB_PASSWORD }}
 WORKFLOW_EOF
     echo "Generated: ${agent}.yml"

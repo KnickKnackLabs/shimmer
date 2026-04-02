@@ -45,7 +45,7 @@ jobs:
       - name: Run BATS tests
         run: |
           if [ -d test ]; then
-            mise run test 2>/dev/null || bats test/
+            mise run test 2>&1 || bats test/
           else
             echo "No tests found"
           fi

@@ -33,8 +33,6 @@ if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   exit 1
 fi
 
-cd "${CALLER_PWD:-.}"
-
 if [ "$HEADLESS" = "true" ]; then
   # Headless mode delegates to sessions run.
   # shimmer handles identity (who you are), sessions handles execution (running pi).
@@ -55,6 +53,7 @@ if [ "$HEADLESS" = "true" ]; then
   exec sessions run "${ARGS[@]}"
 else
   # Interactive mode calls pi directly.
+  cd "${CALLER_PWD:-.}"
   HARNESS="pi"
   if ! command -v "$HARNESS" &>/dev/null; then
     echo "pi not found on PATH." >&2
