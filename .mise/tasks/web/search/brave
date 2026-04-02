@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#MISE description="Search the web using Brave Search API"
+#USAGE arg "<query>" help="Search query"
+#USAGE flag "-n --count <count>" help="Number of results (default: 5)"
+#USAGE flag "--json" help="Output raw JSON"
+#USAGE flag "--offset <offset>" help="Result offset for pagination (default: 0)"
+
+set -euo pipefail
+
+QUERY="${usage_query}"
+COUNT="${usage_count:-5}"
+OFFSET="${usage_offset:-0}"
+JSON_OUTPUT="${usage_json:-false}"
+
+if [[ -z "${BRAVE_SEARCH_API_KEY:-}" ]]; then
+  echo "ERROR: BRAVE_SEARCH_API_KEY not set" >&2
+  echo "Get one at https://brave.com/search/api/" >&2
+  exit 1
+fi
+
+# Fetch results
+response=$(curl -sS -G "https://api.search.brave.com/res/v1/web/search" \
+  -H "Accept: application/json" \
+  -H "X-Subscription-Token: ${BRAVE_SEARCH_API_KEY}" \
+  --data-urlencode "q=${QUERY}" \
+  --data-urlencode "count=${COUNT}" \
+  --data-urlencode "offset=${OFFSET}" \
+  --compressed)
+
+# Validate JSON response (curl may return HTML from proxies, rate limits, etc.)
+if ! echo "$response" | jq empty 2>/dev/null; then
+  echo "ERROR: unexpected response (not JSON)" >&2
+  echo "$response" | head -5 >&2
+  exit 1
+fi
+
+# Check for API errors
+if echo "$response" | jq -e '.type == "ErrorResponse"' >/dev/null 2>&1; then
+  echo "$response" | jq -r '.detail // .message // "Unknown API error"' >&2
+  exit 1
+fi
+
+# Raw JSON mode
+if [[ "$JSON_OUTPUT" == "true" ]]; then
+  echo "$response" | jq '.web.results // []'
+  exit 0
+fi
+
+# Extract results
+results=$(echo "$response" | jq -c '.web.results // []')
+count=$(echo "$results" | jq 'length')
+
+if [[ "$count" == "0" ]]; then
+  echo "No results found for: ${QUERY}"
+  exit 0
+fi
+
+# Decode HTML entities and strip tags using jq filter file
+JQ_FILTER=$(cat <<'JQ'
+def decode_html:
+  gsub("<[^>]*>"; "")
+  | gsub("&quot;"; "\"")
+  | gsub("&amp;"; "&")
+  | gsub("&lt;"; "<")
+  | gsub("&gt;"; ">")
+  | gsub("&#x27;"; "'")
+  | gsub("&#39;"; "'")
+  | gsub("&nbsp;"; " ");
+
+to_entries[] |
+  "\(.key + 1). \(.value.title)"
+  + "\n   \(.value.url)"
+  + (if (.value.description // "") != "" then
+      "\n   " + ((.value.description | decode_html) as $d | if ($d | length) > 200 then $d[0:200] + "..." else $d end)
+    else "" end)
+  + "\n"
+JQ
+)
+
+echo "$results" | jq -r "$JQ_FILTER"

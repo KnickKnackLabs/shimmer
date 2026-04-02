@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#MISE description="Search the web (default provider: brave)"
+#USAGE arg "<query>" help="Search query"
+#USAGE flag "-n --count <count>" help="Number of results (default: 5)"
+#USAGE flag "--json" help="Output raw JSON"
+
+set -euo pipefail
+
+# Build args for the provider task
+# Note: --offset deliberately not exposed here; pagination is a power-user
+# feature — go to the provider task directly (e.g. web:search:brave --offset 10).
+args=("${usage_query}")
+[[ -n "${usage_count:-}" ]] && args+=(-n "${usage_count}")
+[[ "${usage_json:-false}" == "true" ]] && args+=(--json)
+
+exec mise run web:search:brave "${args[@]}"

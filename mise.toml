@@ -1,3 +1,7 @@
+[settings]
+quiet = true
+task_output = "interleave"
+
 [tools]
 node = "22"                               # LTS
 "github:pimalaya/himalaya" = "1.2.0"      # Email CLI for agents
