@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-#MISE description="Refresh the Anthropic OAuth token in GitHub secrets"
+#MISE description="Refresh the Anthropic API key in GitHub secrets"
 #USAGE flag "--repo <repo>" help="Target repo (default: current directory's repo)"
-# Note: This is also called by `agent:sync-secrets --with-oauth`
+# Note: This can also be triggered via `agent:sync-secrets --with-api-key`
 #
-# The OAuth token is shared across all agents and obtained from
-# the Anthropic Console or Claude Code's OAuth flow. Since pi accepts
-# the token via ANTHROPIC_OAUTH_TOKEN, the same token works for both.
+# The token is obtained from Claude Code's OAuth flow (claude setup-token).
+# Pi accepts it via ANTHROPIC_API_KEY regardless of whether it's an OAuth
+# token or a console API key.
 
 set -e
 
@@ -36,7 +36,7 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-echo "Updating ANTHROPIC_OAUTH_TOKEN secret on $REPO..."
-gh secret set ANTHROPIC_OAUTH_TOKEN --repo "$REPO" --body "$TOKEN"
+echo "Updating ANTHROPIC_API_KEY secret on $REPO..."
+gh secret set ANTHROPIC_API_KEY --repo "$REPO" --body "$TOKEN"
 
 echo "Done! Token updated (${#TOKEN} chars)."
