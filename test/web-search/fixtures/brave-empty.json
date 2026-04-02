@@ -1,0 +1,6 @@
+{
+  "query": { "original": "xyzzy nonexistent query" },
+  "web": {
+    "results": []
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "type": "ErrorResponse",
+  "detail": "API key is invalid"
+}

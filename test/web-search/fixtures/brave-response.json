@@ -1,0 +1,21 @@
+{
+  "query": { "original": "test query" },
+  "web": {
+    "results": [
+      {
+        "title": "First Result Title",
+        "url": "https://example.com/first",
+        "description": "This is the first result with <b>bold HTML</b> and &quot;quotes&quot; and &#x27;apostrophes&#x27;."
+      },
+      {
+        "title": "Second Result — Unicode Works",
+        "url": "https://example.com/second",
+        "description": "A result with &amp; ampersands and &lt;angle brackets&gt; in the description."
+      },
+      {
+        "title": "No Description Result",
+        "url": "https://example.com/no-desc"
+      }
+    ]
+  }
+}
