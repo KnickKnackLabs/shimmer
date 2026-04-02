@@ -50,29 +50,13 @@ generate_password() {
   openssl rand -base64 18 | tr -d '/+=' | head -c 20
 }
 
-generate_passphrase() {
-  # Two random words, like the old provision flow
-  if [ -f /usr/share/dict/words ]; then
-    WORD1=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
-    WORD2=$(shuf -n1 /usr/share/dict/words | tr '[:lower:]' '[:upper:]')
-    echo "$WORD1 $WORD2"
-  else
-    # Fallback if no dictionary available (e.g. CI)
-    openssl rand -base64 24 | head -c 24
-  fi
-}
-
-CREDENTIAL_KEYS=(email-password github-password matrix-password passphrase)
+CREDENTIAL_KEYS=(email-password github-password matrix-password)
 
 for key in "${CREDENTIAL_KEYS[@]}"; do
   if secrets get "$AGENT/$key" &>/dev/null; then
     echo "[auto] $key already stored"
   else
-    if [ "$key" = "passphrase" ]; then
-      value=$(generate_passphrase)
-    else
-      value=$(generate_password)
-    fi
+    value=$(generate_password)
     echo "[auto] Generating and storing $key..."
     printf '%s' "$value" | secrets set "$AGENT/$key"
   fi
