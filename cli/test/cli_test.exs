@@ -74,28 +74,28 @@ defmodule CliTest do
 
   describe "Cli module" do
     test "exports main/1 function" do
-      # Verify the main entry point exists
       assert function_exported?(Cli, :main, 1)
     end
 
     test "module loads without errors" do
-      # Basic smoke test - if this passes, the module compiles correctly
       assert Code.ensure_loaded?(Cli)
     end
   end
 
-  describe "Jason dependency" do
-    test "JSON parsing works for stream events" do
-      # Test that our JSON parsing will work with expected format
-      json = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
-      {:ok, decoded} = Jason.decode(json)
+  describe "JSON parsing" do
+    test "pi text_delta event parses correctly" do
+      json =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "Hello"}
+        })
 
-      assert decoded["type"] == "stream_event"
-      assert get_in(decoded, ["event", "delta", "text"]) == "Hello"
+      {:ok, decoded} = Jason.decode(json)
+      assert decoded["type"] == "message_update"
+      assert get_in(decoded, ["assistantMessageEvent", "delta"]) == "Hello"
     end
 
     test "JSON parsing handles malformed input" do
-      # Verify error handling for invalid JSON
       result = Jason.decode("not valid json")
       assert {:error, _} = result
     end
@@ -107,8 +107,8 @@ defmodule CliTest do
       assert Cli.format_tool_input(input) == "  $ ls -la"
     end
 
-    test "formats file path input for Read tool" do
-      input = %{"file_path" => "/path/to/file.ex"}
+    test "formats pi read/write tool input with path" do
+      input = %{"path" => "/path/to/file.ex"}
       assert Cli.format_tool_input(input) == "  -> /path/to/file.ex"
     end
 
@@ -122,41 +122,36 @@ defmodule CliTest do
       assert Cli.format_tool_input(input) == "  cli/lib/cli.ex\n  pattern: def main"
     end
 
-    test "formats Edit tool input with old_string and new_string" do
+    test "formats pi edit tool input with edits array" do
       input = %{
-        "file_path" => "/path/to/file.ex",
-        "old_string" => "old code here",
-        "new_string" => "new code here"
+        "path" => "/path/to/file.ex",
+        "edits" => [%{"oldText" => "old code here", "newText" => "new code here"}]
       }
 
       result = Cli.format_tool_input(input)
       assert result =~ "  /path/to/file.ex"
-      # Short strings should NOT have ellipsis
       assert result =~ "  - old code here"
       assert result =~ "  + new code here"
       refute result =~ "old code here..."
       refute result =~ "new code here..."
     end
 
-    test "truncates long old_string and new_string in Edit tool" do
+    test "truncates long oldText and newText in pi edit tool" do
       long_string = String.duplicate("x", 100)
 
       input = %{
-        "file_path" => "/path/to/file.ex",
-        "old_string" => long_string,
-        "new_string" => long_string
+        "path" => "/path/to/file.ex",
+        "edits" => [%{"oldText" => long_string, "newText" => long_string}]
       }
 
       result = Cli.format_tool_input(input)
-      # Should truncate to 60 chars plus "..."
       assert result =~ String.duplicate("x", 60) <> "..."
     end
 
-    test "replaces newlines in Edit tool strings" do
+    test "replaces newlines in pi edit tool strings" do
       input = %{
-        "file_path" => "/path/to/file.ex",
-        "old_string" => "line1\nline2",
-        "new_string" => "line3\nline4"
+        "path" => "/path/to/file.ex",
+        "edits" => [%{"oldText" => "line1\nline2", "newText" => "line3\nline4"}]
       }
 
       result = Cli.format_tool_input(input)
@@ -184,20 +179,16 @@ defmodule CliTest do
     end
 
     test "handles TodoWrite with non-map todo items gracefully" do
-      # Edge case: model sends malformed data (strings instead of maps)
       input = %{"todos" => ["Task 1", "Task 2"]}
 
       result = Cli.format_tool_input(input)
-      # Should not crash, just show count without preview
       assert result == "  2 todo(s)"
     end
 
     test "handles TodoWrite with mixed todo items gracefully" do
-      # Edge case: some items are maps, some are not
       input = %{"todos" => [nil, %{"content" => "Valid task"}]}
 
       result = Cli.format_tool_input(input)
-      # First item is nil, so no preview
       assert result == "  2 todo(s)"
     end
 
@@ -209,7 +200,6 @@ defmodule CliTest do
 
       result = Cli.format_tool_input(input)
       assert result =~ "  Fetching docs"
-      # Short prompts should NOT have ellipsis
       assert result =~ "  prompt: Extract the main content"
       refute result =~ "Extract the main content..."
     end
@@ -224,7 +214,6 @@ defmodule CliTest do
       result = Cli.format_tool_input(input)
       assert result =~ "  Fetching docs"
       assert result =~ "  url: https://example.com/docs"
-      # Short prompts should NOT have ellipsis
       assert result =~ "  prompt: Extract the main content"
       refute result =~ "Extract the main content..."
     end
@@ -236,7 +225,6 @@ defmodule CliTest do
       }
 
       result = Cli.format_tool_input(input)
-      # Should not have leading empty line when description is missing
       assert result == "  url: https://example.com\n  prompt: Get content"
     end
 
@@ -248,14 +236,12 @@ defmodule CliTest do
       }
 
       result = Cli.format_tool_input(input)
-      # Should not have leading empty line when description is empty
       assert result == "  url: https://example.com\n  prompt: Get content"
     end
 
     test "formats prompt input without description" do
       input = %{"prompt" => "Some prompt text"}
       result = Cli.format_tool_input(input)
-      # Short prompts should NOT have ellipsis
       assert result == "  prompt: Some prompt text"
       refute result =~ "Some prompt text..."
     end
@@ -275,9 +261,13 @@ defmodule CliTest do
     end
   end
 
-  describe "process_line/2" do
+  describe "process_line/2 — pi text events" do
     test "outputs text delta and tracks abort_seen" do
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "Hello"}
+        })
 
       state = %{
         tool_input: "",
@@ -305,7 +295,11 @@ defmodule CliTest do
     end
 
     test "detects [[ABORT]] on its own line" do
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "[[ABORT]]\n"}
+        })
 
       state = %{
         tool_input: "",
@@ -324,8 +318,11 @@ defmodule CliTest do
     end
 
     test "detects [[ABORT]] split across streaming chunks" do
-      # First chunk ends mid-signal
-      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABO"}}})
+      line1 =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "[[ABO"}
+        })
 
       state1 = %{
         tool_input: "",
@@ -340,10 +337,13 @@ defmodule CliTest do
         send(self(), {:result1, result})
       end)
 
-      assert_received {:result1, %{abort_seen: false, recent_text: _recent} = state2}
+      assert_received {:result1, %{abort_seen: false} = state2}
 
-      # Second chunk completes the signal
-      line2 = ~s({"type":"stream_event","event":{"delta":{"text":"RT]]\\n"}}})
+      line2 =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "RT]]\n"}
+        })
 
       capture_io(fn ->
         result = Cli.process_line(line2, state2)
@@ -354,10 +354,11 @@ defmodule CliTest do
     end
 
     test "detects [[ABORT]] split across chunks when followed by long text" do
-      # Issue #402: [[ABORT]] is complete in combined text but gets pushed out of
-      # the 20-char window by subsequent text. Need to check before truncating.
-      # First chunk ends mid-signal
-      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"prefix\\n[[ABO"}}})
+      line1 =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "prefix\n[[ABO"}
+        })
 
       state1 = %{
         tool_input: "",
@@ -374,24 +375,32 @@ defmodule CliTest do
 
       assert_received {:result1, %{abort_seen: false} = state2}
 
-      # Second chunk completes signal but has lots of text after
       line2 =
-        ~s({"type":"stream_event","event":{"delta":{"text":"RT]]\\nlots of additional text that pushes it out of window"}}})
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "text_delta",
+            "delta" => "RT]]\nlots of additional text that pushes it out of window"
+          }
+        })
 
       capture_io(fn ->
         result = Cli.process_line(line2, state2)
         send(self(), {:result2, result})
       end)
 
-      # With the fix (#402), we check combined BEFORE truncating
       assert_received {:result2, %{abort_seen: true}}
     end
 
     test "detects [[ABORT]] after >20 chars of text ending with newline" do
-      # Issue #400: When >20 chars of text are followed by [[ABORT]] on its own line,
-      # the old 20-char window would lose the newline that precedes [[ABORT]].
-      # First chunk: >20 chars of text ending with a newline (puts us at line boundary)
-      line1 = ~s({"type":"stream_event","event":{"delta":{"text":"aaaaaaaaaaaaaaaaaaaaaaa\\n"}}})
+      line1 =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "text_delta",
+            "delta" => "aaaaaaaaaaaaaaaaaaaaaaa\n"
+          }
+        })
 
       state1 = %{
         tool_input: "",
@@ -408,20 +417,29 @@ defmodule CliTest do
 
       assert_received {:result1, %{abort_seen: false} = state2}
 
-      # Second chunk: the abort signal on its own line (should be detected)
-      line2 = ~s({"type":"stream_event","event":{"delta":{"text":"[[ABORT]]\\n"}}})
+      line2 =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "[[ABORT]]\n"}
+        })
 
       capture_io(fn ->
         result = Cli.process_line(line2, state2)
         send(self(), {:result2, result})
       end)
 
-      # With the fix (#400), we track that there was a newline in the trimmed portion
       assert_received {:result2, %{abort_seen: true}}
     end
 
     test "does not detect [[ABORT]] embedded in text" do
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"some [[ABORT]] text"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "text_delta",
+            "delta" => "some [[ABORT]] text"
+          }
+        })
 
       state = %{
         tool_input: "",
@@ -440,11 +458,11 @@ defmodule CliTest do
     end
 
     test "skips already-flushed text prefix" do
-      # Simulates the scenario from issue #338:
-      # 1. Partial buffer was flushed showing "Hello wor" (9 chars)
-      # 2. Full line completes with "Hello world"
-      # 3. Should only output "ld" (the new part)
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "Hello world"}
+        })
 
       state = %{
         tool_input: "",
@@ -460,14 +478,16 @@ defmodule CliTest do
           send(self(), {:result, result})
         end)
 
-      # Should only output the new part
       assert output == "ld"
-      # flushed_chars should be reset after processing complete line
       assert_received {:result, %{flushed_chars: 0}}
     end
 
     test "outputs full text when flushed_chars is zero" do
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hello world"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "Hello world"}
+        })
 
       state = %{
         tool_input: "",
@@ -487,9 +507,11 @@ defmodule CliTest do
     end
 
     test "outputs remaining text when flushed_chars exceeds text length" do
-      # Edge case: flushed_chars is larger than the text
-      # (shouldn't happen in practice, but handle gracefully)
-      line = ~s({"type":"stream_event","event":{"delta":{"text":"Hi"}}})
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{"type" => "text_delta", "delta" => "Hi"}
+        })
 
       state = %{
         tool_input: "",
@@ -505,13 +527,26 @@ defmodule CliTest do
           send(self(), {:result, result})
         end)
 
-      # Should output empty string since all chars were "flushed"
       assert output == ""
     end
+  end
 
-    test "resets tool_input on tool_use start and prints tool name" do
+  describe "process_line/2 — pi tool events" do
+    test "resets tool_input on toolcall_start and prints tool name" do
       line =
-        ~s({"type":"stream_event","event":{"content_block":{"type":"tool_use","name":"Bash"}}})
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_start",
+            "contentIndex" => 1,
+            "partial" => %{
+              "content" => [
+                %{"type" => "text", "text" => "I'll run that."},
+                %{"type" => "toolCall", "name" => "bash", "arguments" => %{}}
+              ]
+            }
+          }
+        })
 
       state = %{tool_input: "leftover"}
 
@@ -521,28 +556,69 @@ defmodule CliTest do
           send(self(), {:result, result})
         end)
 
-      assert output =~ "[TOOL] Bash"
+      assert output =~ "[TOOL] bash"
       assert_received {:result, %{tool_input: ""}}
     end
 
-    test "accumulates partial_json to tool_input" do
-      line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{\\"cmd\\":"}}})
+    test "accumulates toolcall_delta to tool_input" do
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_delta",
+            "delta" => ~s({"command": "ls)
+          }
+        })
+
       state = %{tool_input: ""}
-
       result = Cli.process_line(line, state)
-      assert result.tool_input == "{\"cmd\":"
+      assert result.tool_input == ~s({"command": "ls)
     end
 
-    test "appends partial_json to existing tool_input" do
-      line = ~s({"type":"stream_event","event":{"delta":{"partial_json":"\\"ls\\"}"}}})
-      state = %{tool_input: "{\"cmd\":"}
+    test "ignores empty toolcall_delta" do
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_delta",
+            "delta" => ""
+          }
+        })
 
+      state = %{tool_input: "existing"}
       result = Cli.process_line(line, state)
-      assert result.tool_input == "{\"cmd\":\"ls\"}"
+      # Empty delta should not change state (falls through to _ catch-all)
+      assert result.tool_input == "existing"
     end
 
-    test "clears tool_input on content_block_stop and prints formatted output" do
-      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
+    test "appends toolcall_delta to existing tool_input" do
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_delta",
+            "delta" => ~s( -la"})
+          }
+        })
+
+      state = %{tool_input: ~s({"command": "ls)}
+      result = Cli.process_line(line, state)
+      assert result.tool_input == ~s({"command": "ls -la"})
+    end
+
+    test "clears tool_input on toolcall_end and prints formatted output" do
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_end",
+            "toolCall" => %{
+              "name" => "bash",
+              "arguments" => %{"command" => "ls -la"}
+            }
+          }
+        })
+
       state = %{tool_input: ~s({"command":"ls -la"})}
 
       output =
@@ -555,8 +631,16 @@ defmodule CliTest do
       assert_received {:result, %{tool_input: ""}}
     end
 
-    test "handles content_block_stop with empty tool_input" do
-      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
+    test "handles toolcall_end with no arguments" do
+      line =
+        Jason.encode!(%{
+          "type" => "message_update",
+          "assistantMessageEvent" => %{
+            "type" => "toolcall_end",
+            "toolCall" => %{"name" => "bash"}
+          }
+        })
+
       state = %{tool_input: ""}
 
       output =
@@ -565,26 +649,86 @@ defmodule CliTest do
           send(self(), {:result, result})
         end)
 
-      # No output when tool_input is empty
       assert output == ""
       assert_received {:result, %{tool_input: ""}}
     end
+  end
 
-    test "handles content_block_stop with malformed JSON in tool_input" do
-      line = ~s({"type":"stream_event","event":{"type":"content_block_stop"}})
-      state = %{tool_input: "not valid json"}
+  describe "process_line/2 — pi agent_end" do
+    test "extracts usage data from agent_end event" do
+      line =
+        Jason.encode!(%{
+          "type" => "agent_end",
+          "messages" => [
+            %{"role" => "user", "content" => [%{"type" => "text", "text" => "hello"}]},
+            %{
+              "role" => "assistant",
+              "content" => [%{"type" => "text", "text" => "Hi!"}],
+              "usage" => %{
+                "input" => 100,
+                "output" => 50,
+                "cacheRead" => 200,
+                "cacheWrite" => 300,
+                "cost" => %{"total" => 0.0259}
+              }
+            }
+          ]
+        })
 
-      output =
-        capture_io(fn ->
-          result = Cli.process_line(line, state)
-          send(self(), {:result, result})
-        end)
+      state = %{tool_input: "", usage: nil}
+      result_state = Cli.process_line(line, state)
 
-      # No output when JSON is invalid
-      assert output == ""
-      assert_received {:result, %{tool_input: ""}}
+      assert result_state.usage.cost_usd == 0.0259
+      assert result_state.usage.num_turns == 1
+      assert result_state.usage.usage["input_tokens"] == 100
+      assert result_state.usage.usage["output_tokens"] == 50
+      assert result_state.usage.usage["cache_read_input_tokens"] == 200
+      assert result_state.usage.usage["cache_creation_input_tokens"] == 300
     end
 
+    test "sums usage across multiple assistant messages" do
+      line =
+        Jason.encode!(%{
+          "type" => "agent_end",
+          "messages" => [
+            %{"role" => "user", "content" => []},
+            %{
+              "role" => "assistant",
+              "usage" => %{
+                "input" => 100,
+                "output" => 50,
+                "cacheRead" => 200,
+                "cacheWrite" => 0,
+                "cost" => %{"total" => 0.01}
+              }
+            },
+            %{"role" => "toolResult", "content" => []},
+            %{
+              "role" => "assistant",
+              "usage" => %{
+                "input" => 80,
+                "output" => 30,
+                "cacheRead" => 250,
+                "cacheWrite" => 100,
+                "cost" => %{"total" => 0.005}
+              }
+            }
+          ]
+        })
+
+      state = %{tool_input: "", usage: nil}
+      result_state = Cli.process_line(line, state)
+
+      assert result_state.usage.cost_usd == 0.015
+      assert result_state.usage.num_turns == 2
+      assert result_state.usage.usage["input_tokens"] == 180
+      assert result_state.usage.usage["output_tokens"] == 80
+      assert result_state.usage.usage["cache_read_input_tokens"] == 450
+      assert result_state.usage.usage["cache_creation_input_tokens"] == 100
+    end
+  end
+
+  describe "process_line/2 — general" do
     test "returns state unchanged for unknown event types" do
       line = ~s({"type":"unknown"})
       state = %{tool_input: "preserved"}
@@ -605,59 +749,36 @@ defmodule CliTest do
 
       assert Cli.process_line(line, state) == state
     end
-  end
 
-  describe "result event processing" do
-    test "extracts usage data from result event" do
-      line =
-        Jason.encode!(%{
-          "type" => "result",
-          "total_cost_usd" => 0.0259,
-          "duration_ms" => 2327,
-          "num_turns" => 1,
-          "usage" => %{
-            "input_tokens" => 100,
-            "output_tokens" => 50,
-            "cache_read_input_tokens" => 200,
-            "cache_creation_input_tokens" => 300
-          },
-          "modelUsage" => %{
-            "claude-opus-4-6" => %{"inputTokens" => 100}
-          }
-        })
-
-      state = %{tool_input: "", full_text: "", usage: nil}
-      result_state = Cli.process_line(line, state)
-
-      assert result_state.usage.cost_usd == 0.0259
-      assert result_state.usage.duration_ms == 2327
-      assert result_state.usage.num_turns == 1
-      assert result_state.usage.usage["input_tokens"] == 100
-      assert result_state.usage.usage["output_tokens"] == 50
-      assert result_state.usage.model_usage["claude-opus-4-6"]["inputTokens"] == 100
+    test "ignores pi session/turn/message_start events" do
+      for type <- ["session", "agent_start", "turn_start", "turn_end"] do
+        line = Jason.encode!(%{"type" => type})
+        state = %{tool_input: "preserved"}
+        assert Cli.process_line(line, state) == state
+      end
     end
   end
 
   describe "flush_partial_buffer/1" do
-    test "extracts and outputs text from partial JSON with text field" do
-      # Simulates a partial streaming event with incomplete text
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)
+    test "extracts and outputs text from partial pi text_delta event" do
+      partial =
+        ~s({"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"Hello wor)
 
       output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
       assert output == "Hello wor"
     end
 
-    # Verifies regex captures escape sequences and Jason decodes them.
-    # Jason handles all standard JSON escapes: \n, \t, \r, \", \\, \b, \f, \/, \uXXXX
     test "handles JSON escapes in partial text" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
+      partial =
+        ~s({"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"line1\\nline2\\ttab)
 
       output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
       assert output == "line1\nline2\ttab"
     end
 
-    test "outputs nothing for partial JSON without text field" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{)
+    test "outputs nothing for partial JSON without delta field" do
+      partial =
+        ~s({"type":"message_update","assistantMessageEvent":{"type":"toolcall_start","contentIndex":1)
 
       output = capture_io(fn -> Cli.flush_partial_buffer(partial) end)
       assert output == ""
@@ -677,18 +798,22 @@ defmodule CliTest do
   end
 
   describe "extract_partial_text/1" do
-    test "extracts text from partial JSON" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"Hello wor)
+    test "extracts text from partial pi text_delta event" do
+      partial =
+        ~s({"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"Hello wor)
+
       assert Cli.extract_partial_text(partial) == "Hello wor"
     end
 
     test "handles JSON escapes" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"text":"line1\\nline2\\ttab)
+      partial =
+        ~s({"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"line1\\nline2\\ttab)
+
       assert Cli.extract_partial_text(partial) == "line1\nline2\ttab"
     end
 
-    test "returns empty string for non-text partial" do
-      partial = ~s({"type":"stream_event","event":{"delta":{"partial_json":"{)
+    test "returns empty string for non-delta partial" do
+      partial = ~s({"type":"session","version":3,"id":"abc)
       assert Cli.extract_partial_text(partial) == ""
     end
 
@@ -703,12 +828,10 @@ defmodule CliTest do
 
   describe "text_beyond_flushed/2" do
     test "returns remainder after flushed chars" do
-      # "hello" is 5 chars, so skip 5 chars from "hello world"
       assert Cli.text_beyond_flushed("hello world", 5) == " world"
     end
 
     test "returns empty string when fully flushed" do
-      # "hello" is 5 chars
       assert Cli.text_beyond_flushed("hello", 5) == ""
     end
 
@@ -717,7 +840,6 @@ defmodule CliTest do
     end
 
     test "returns empty string when flushed_chars exceeds text length" do
-      # Only 9 chars in "different" but we flushed 10
       assert Cli.text_beyond_flushed("different", 10) == ""
     end
 
@@ -727,7 +849,6 @@ defmodule CliTest do
     end
 
     test "raises on nil flushed_chars (type safety)" do
-      # Passing nil should fail loudly, not silently drop content.
       assert_raise FunctionClauseError, fn ->
         Cli.text_beyond_flushed("hello world", nil)
       end

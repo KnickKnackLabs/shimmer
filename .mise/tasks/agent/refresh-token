@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-#MISE description="Refresh the Claude OAuth token in GitHub secrets"
+#MISE description="Refresh the Anthropic API key in GitHub secrets"
 #USAGE flag "--repo <repo>" help="Target repo (default: current directory's repo)"
-# Note: This is also called automatically by `agent:sync-secrets` (unless --skip-oauth)
+# Note: This can also be triggered via `agent:sync-secrets --with-api-key`
+#
+# The token is obtained from Claude Code's OAuth flow (claude setup-token).
+# Pi accepts it via ANTHROPIC_API_KEY regardless of whether it's an OAuth
+# token or a console API key.
 
 set -e
 
@@ -19,11 +23,6 @@ echo "Getting new OAuth token from Claude..."
 RAW_OUTPUT=$(TERM=dumb claude setup-token 2>&1)
 
 # Extract the token - handle escape codes and line wrapping
-# 1. Strip carriage returns
-# 2. Strip ALL escape sequences (CSI, OSC hyperlinks, mode switches, Unicode)
-# 3. Strip newlines to join wrapped lines
-# 4. Extract token (starts with sk-ant-oat01-, ends with AA)
-# Clean the output aggressively: strip everything non-ASCII, then extract
 CLEANED=$(printf '%s' "$RAW_OUTPUT" | \
   LC_ALL=C tr -cd '[:print:]\n' | \
   tr -d '\n')
@@ -37,7 +36,7 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-echo "Updating CLAUDE_CODE_OAUTH_TOKEN secret on $REPO..."
-gh secret set CLAUDE_CODE_OAUTH_TOKEN --repo "$REPO" --body "$TOKEN"
+echo "Updating ANTHROPIC_API_KEY secret on $REPO..."
+gh secret set ANTHROPIC_API_KEY --repo "$REPO" --body "$TOKEN"
 
 echo "Done! Token updated (${#TOKEN} chars)."

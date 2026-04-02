@@ -1,15 +1,14 @@
 # CLI
 
-Thin Elixir wrapper that invokes Claude Code with a system prompt.
+Thin Elixir wrapper that invokes pi with a system prompt.
 
 ## Overview
 
-This CLI is a streaming JSON client for Claude Code. It:
+This CLI is a streaming JSON client for pi. It:
 
 - Reads a system prompt from a file (`--system-prompt-file`)
-- Executes Claude via Port with configurable timeout
+- Executes pi via Port with configurable timeout
 - Streams output in real-time, showing tool invocations with formatted inputs
-- Supports optional context logging via a proxy
 
 **Important:** This CLI does not do agent/job lookup. It expects a ready-to-use system prompt file. Agent and job discovery is handled by the `agent:run` mise task, which composes prompts and calls this CLI.
 
@@ -21,9 +20,6 @@ shimmer --system-prompt-file /tmp/prompt.txt --timeout 300 "Your message"
 
 # With optional agent name for logging
 shimmer --system-prompt-file ./prompt.txt --agent quick --timeout 600 "Explore"
-
-# Enable context logging (starts claude-code-logger proxy)
-shimmer --system-prompt-file ./prompt.txt --timeout 540 --log-context "Debug this"
 ```
 
 Most agent runs go through `mise run agent:run`, which handles:
@@ -37,11 +33,10 @@ Most agent runs go through `mise run agent:run`, which handles:
 | Option | Description |
 |--------|-------------|
 | `--system-prompt-file <path>` | Required. Path to system prompt file |
-| `--timeout <seconds>` | Required. Timeout in seconds for Claude |
+| `--timeout <seconds>` | Required. Timeout in seconds for pi |
 | `--agent <name>` | Optional. Agent name for logging (display only) |
 | `--passphrase <phrase>` | Optional. Admin override passphrase (injected into prompt) |
-| `--model <model>` | Optional. Claude model (default: `claude-opus-4-6`) |
-| `--log-context` | Enables context logging via claude-code-logger proxy |
+| `--model <model>` | Optional. Model (default: `claude-opus-4-6`) |
 
 ## Adding a New Agent
 
@@ -62,5 +57,4 @@ The `mise run ci:time-remaining` task can be used by agents to check remaining t
 
 - Elixir 1.19+
 - Jason (JSON parsing)
-- Claude Code CLI (installed via mise)
-- claude-code-logger (optional, for `--log-context`)
+- pi (installed via mise: `github:badlogic/pi-mono`)
