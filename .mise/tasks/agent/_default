@@ -2,13 +2,17 @@
 #MISE description="Start an agent session (interactive or headless)"
 #MISE quiet=true
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
-#USAGE flag "--session <session>" help="Session file path to resume (passed through to harness)"
+#USAGE flag "--session <session>" help="Session file path to resume"
+#USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, passed to sessions run)"
+#USAGE flag "--model <model>" help="Model to use"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
 
 HEADLESS="${usage_headless:-false}"
 SESSION="${usage_session:-}"
+TIMEOUT="${usage_timeout:-}"
+MODEL="${usage_model:-}"
 MESSAGE="${usage_message:-}"
 
 # Derive agent name from environment (set by `shimmer as`)
@@ -29,30 +33,34 @@ if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   exit 1
 fi
 
-# Resolve harness from environment (default: pi)
-HARNESS="${AGENT_HARNESS:-pi}"
-
-if ! command -v "$HARNESS" &>/dev/null; then
-  echo "Harness '$HARNESS' not found on PATH." >&2
-  echo "Install it or set AGENT_HARNESS to an available harness (e.g., claude, pi)." >&2
-  exit 1
-fi
-
 cd "${CALLER_PWD:-.}"
 
 if [ "$HEADLESS" = "true" ]; then
+  # Headless mode delegates to sessions run.
+  # shimmer handles identity (who you are), sessions handles execution (running pi).
+  if ! command -v sessions &>/dev/null; then
+    echo "sessions not found on PATH. Install it: shiv install sessions" >&2
+    exit 1
+  fi
+
   # Headless instances get a distinct chat identity so messages are attributable.
   # SESSION_NAME is generic; ZMX_SESSION is set automatically inside zmx sessions.
   export CHAT_IDENTITY="${SESSION_NAME:-${ZMX_SESSION:-$GIT_AUTHOR_NAME-headless}}"
 
-  ARGS=(-p --append-system-prompt "$AGENT_IDENTITY
-
-## Session Context
-This is a headless session started via \`shimmer agent --headless\`. No human is present. You are running non-interactively — complete the task and exit.")
+  ARGS=(--headless --cwd "${CALLER_PWD:-.}")
   [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
+  [ -n "$TIMEOUT" ] && ARGS+=(--timeout "$TIMEOUT")
+  [ -n "$MODEL" ] && ARGS+=(--model "$MODEL")
   ARGS+=("$MESSAGE")
-  exec "$HARNESS" "${ARGS[@]}"
+  exec sessions run "${ARGS[@]}"
 else
+  # Interactive mode calls pi directly.
+  HARNESS="pi"
+  if ! command -v "$HARNESS" &>/dev/null; then
+    echo "pi not found on PATH." >&2
+    exit 1
+  fi
+
   ARGS=(--append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
