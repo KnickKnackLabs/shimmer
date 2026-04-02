@@ -103,7 +103,7 @@ jobs:
       - name: Install pi
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_PAT }}
-        run: mise install github:badlogic/pi-mono@0.64.0
+        run: mise use -g github:badlogic/pi-mono@0.64.0
 
       - name: Setup GPG
         env:

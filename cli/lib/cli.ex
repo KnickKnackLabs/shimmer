@@ -112,7 +112,6 @@ defmodule Cli do
     if opts[:passphrase], do: IO.puts("Passphrase: [set]")
     IO.puts("Model: #{model}")
     if opts[:cwd], do: IO.puts("Working dir: #{opts[:cwd]}")
-    if opts[:log_context], do: IO.puts("Context logging: enabled")
     IO.puts("---")
   end
 
@@ -153,7 +152,6 @@ defmodule Cli do
     {opts, rest, invalid} =
       OptionParser.parse(args,
         strict: [
-          log_context: :boolean,
           agent: :string,
           system_prompt_file: :string,
           passphrase: :string,
@@ -227,7 +225,8 @@ defmodule Cli do
     shell_script =
       "echo | timeout #{timeout} pi -p \"$1\"#{prompt_flag}" <>
         " --provider anthropic --model \"$2\"" <>
-        " --mode json --no-session"
+        " --mode json --no-session" <>
+        " --no-extensions --no-skills --no-prompt-templates"
 
     args = ["-c", shell_script, "--", message, model]
 
