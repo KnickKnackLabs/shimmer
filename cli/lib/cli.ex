@@ -1,9 +1,9 @@
 defmodule Cli do
   @moduledoc """
-  CLI interface for running Claude Code agents with streaming response handling.
+  CLI interface for running pi agents with streaming response handling.
 
-  This module provides the main entry point for orchestrating Claude AI
-  interactions, managing system prompts, and streaming responses with tool tracking.
+  This module provides the main entry point for orchestrating agent sessions
+  via pi, managing system prompts, and streaming responses with tool tracking.
   """
 
   use Application
@@ -28,10 +28,6 @@ defmodule Cli do
     end
   end
 
-  @logger_port_retries 5
-  @logger_connect_retries 10
-  @logger_connect_interval_ms 200
-  @logger_connect_timeout_ms 100
   @default_model "claude-opus-4-6"
   @truncate_edit_limit 60
   @truncate_prompt_limit 100
@@ -81,11 +77,7 @@ defmodule Cli do
         base_prompt = load_system_prompt_file(opts[:system_prompt_file])
         system_prompt = maybe_add_passphrase(base_prompt, opts[:passphrase])
 
-        if opts[:log_context] do
-          run_with_logger(message, system_prompt, timeout, model, cwd)
-        else
-          run_claude(message, [], system_prompt, timeout, model, cwd)
-        end
+        run_agent(message, [], system_prompt, timeout, model, cwd)
     end
   end
 
@@ -191,7 +183,7 @@ defmodule Cli do
     IO.puts("""
     Usage: shimmer --system-prompt-file <path> --timeout <seconds> [options] <message>
 
-    Run Claude Code with a system prompt and streaming output.
+    Run pi agent with a system prompt and streaming output.
 
     Required:
       --system-prompt-file <path>  Path to the system prompt file
@@ -200,9 +192,8 @@ defmodule Cli do
     Options:
       --agent <name>           Agent name for logging (optional, display only)
       --passphrase <phrase>    Admin override passphrase (injected into prompt)
-      --model <model>          Claude model to use (default: claude-opus-4-6)
-      --cwd <path>             Working directory for claude (default: current dir)
-      --log-context            Enable context logging via proxy
+      --model <model>          Model to use (default: claude-opus-4-6)
+      --cwd <path>             Working directory for pi (default: current dir)
       -h, --help               Show this help message
 
     Examples:
@@ -212,28 +203,33 @@ defmodule Cli do
     """)
   end
 
-  defp run_claude(message, env_extras, system_prompt, timeout, model, cwd) do
-    # Build claude arguments - message and system prompt passed as positional params to avoid escaping
-    system_prompt_args =
+  defp run_agent(message, env_extras, system_prompt, timeout, model, cwd) do
+    # Write system prompt to a temp file for pi to read.
+    # This avoids shell argument length limits with large agent identity prompts.
+    {prompt_file, prompt_flag} =
       case system_prompt do
-        nil -> ""
-        _prompt -> " --append-system-prompt \"$2\""
+        nil ->
+          {nil, ""}
+
+        prompt ->
+          path =
+            Path.join(
+              System.tmp_dir!(),
+              "pi-prompt-#{:os.system_time(:microsecond)}"
+            )
+
+          File.write!(path, prompt)
+          {path, ~s( --append-system-prompt "#{path}")}
       end
 
-    # Shell script that pipes empty stdin and runs claude with timeout
-    # All user-controlled values ($1=message, $2=system_prompt, $3=model) are passed as
-    # positional parameters to avoid shell injection vulnerabilities
+    # Shell script that pipes empty stdin and runs pi with timeout.
+    # $1=message, $2=model are passed as positional parameters to avoid shell injection.
     shell_script =
-      "echo | timeout #{timeout} claude -p \"$1\"#{system_prompt_args} " <>
-        "--model \"$3\" --output-format stream-json " <>
-        "--verbose --include-partial-messages --dangerously-skip-permissions"
+      "echo | timeout #{timeout} pi -p \"$1\"#{prompt_flag}" <>
+        " --provider anthropic --model \"$2\"" <>
+        " --mode json --no-session"
 
-    # Build args list: -c script, --, message, system_prompt (or empty), model
-    args =
-      case system_prompt do
-        nil -> ["-c", shell_script, "--", message, "", model]
-        prompt -> ["-c", shell_script, "--", message, prompt, model]
-      end
+    args = ["-c", shell_script, "--", message, model]
 
     # Convert env extras like "KEY=value" to {~c"KEY", ~c"value"} tuples
     env =
@@ -263,101 +259,15 @@ defmodule Cli do
         had_newline_before_window: true
       })
 
+    # Clean up temp prompt file
+    if prompt_file, do: File.rm(prompt_file)
+
     if status == @timeout_exit_code do
       IO.puts("\n---")
-      IO.puts("ERROR: Claude timed out after #{timeout} seconds")
+      IO.puts("ERROR: Agent timed out after #{timeout} seconds")
     end
 
     status
-  end
-
-  defp run_with_logger(message, system_prompt, timeout, model, cwd) do
-    # Find an available port to avoid collision with other shimmer instances (issue #398)
-    case find_available_port() do
-      {:ok, logger_port_num} ->
-        run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num, cwd)
-
-      {:error, :no_port_available} ->
-        IO.puts("ERROR: Could not find available port for logger")
-        1
-    end
-  end
-
-  defp run_with_logger_on_port(message, system_prompt, timeout, model, logger_port_num, cwd) do
-    # Use microseconds + random suffix to avoid collision when multiple CLI processes start close together
-    random_suffix = :rand.uniform(0xFFFF) |> Integer.to_string(16) |> String.pad_leading(4, "0")
-    log_file = "/tmp/claude-context-#{:os.system_time(:microsecond)}-#{random_suffix}.log"
-
-    # Start the logger in the background, using mise exec to ensure correct PATH.
-    # Use exec to replace the shell process so stop_logger/1 kills the actual logger.
-    # Pass the dynamically allocated port via --port option
-    logger_script =
-      "exec mise exec -- claude-code-logger start --port #{logger_port_num} --verbose --log-body > #{log_file} 2>&1"
-
-    logger_port =
-      Port.open(
-        {:spawn_executable, "/bin/sh"},
-        [:binary, {:args, ["-c", logger_script]}]
-      )
-
-    # Wait for logger to start with retry loop
-    case wait_for_port(logger_port_num, @logger_connect_retries, @logger_connect_interval_ms) do
-      :ok ->
-        IO.puts("Logger started on port #{logger_port_num}, output will be saved to: #{log_file}")
-        IO.puts("---")
-
-        try do
-          # Run Claude through the proxy
-          status =
-            run_claude(
-              message,
-              ["ANTHROPIC_BASE_URL=http://localhost:#{logger_port_num}"],
-              system_prompt,
-              timeout,
-              model,
-              cwd
-            )
-
-          # Show context log to user (the purpose of --log-context)
-          case File.read(log_file) do
-            {:ok, content} when content != "" ->
-              IO.puts("\n---")
-              IO.puts("Context log:")
-              IO.puts(content)
-
-            _ ->
-              :ok
-          end
-
-          status
-        after
-          stop_logger(logger_port)
-
-          case File.rm(log_file) do
-            :ok ->
-              :ok
-
-            {:error, reason} ->
-              IO.puts("WARNING: Failed to clean up temp file #{log_file}: #{reason}")
-          end
-        end
-
-      :error ->
-        stop_logger(logger_port)
-        IO.puts("ERROR: Failed to start claude-code-logger on port #{logger_port_num}")
-        IO.puts("Check if it's installed: mise exec -- claude-code-logger --version")
-
-        # Show what's in the log file for debugging
-        case File.read(log_file) do
-          {:ok, content} when content != "" -> IO.puts("Logger output: #{content}")
-          _ -> :ok
-        end
-
-        # Keep log file for post-mortem debugging
-        IO.puts("Log file saved to: #{log_file}")
-
-        1
-    end
   end
 
   # Parse a single env extra string like "KEY=value" into a charlist tuple
@@ -370,74 +280,6 @@ defmodule Cli do
       _ ->
         IO.puts("WARNING: Ignoring malformed env extra: #{extra}")
         nil
-    end
-  end
-
-  # Stop the logger process by killing the OS process, then closing the port
-  # Port.close alone doesn't terminate the child process
-  defp stop_logger(logger_port) do
-    case Port.info(logger_port, :os_pid) do
-      {:os_pid, os_pid} ->
-        case System.cmd("kill", ["#{os_pid}"], stderr_to_stdout: true) do
-          {_, 0} ->
-            :ok
-
-          {output, status} ->
-            IO.puts(
-              "WARNING: Failed to kill logger (pid #{os_pid}): exit #{status} - #{String.trim(output)}"
-            )
-        end
-
-        try do
-          Port.close(logger_port)
-        rescue
-          # Port may have already been closed if the process exited
-          # between our Port.info check and here (race condition)
-          ArgumentError -> :ok
-        end
-
-      nil ->
-        # Port already closed
-        :ok
-    end
-  end
-
-  # Find an available port in the ephemeral range (49152-65535)
-  # Uses :gen_tcp.listen to verify port availability before returning
-  defp find_available_port(attempts \\ @logger_port_retries)
-  defp find_available_port(0), do: {:error, :no_port_available}
-
-  defp find_available_port(attempts) do
-    # Random port in IANA dynamic/private range (49152-65535)
-    port = :rand.uniform(16_383) + 49_152
-
-    case :gen_tcp.listen(port, []) do
-      {:ok, socket} ->
-        :gen_tcp.close(socket)
-        {:ok, port}
-
-      {:error, :eaddrinuse} ->
-        find_available_port(attempts - 1)
-
-      {:error, _reason} ->
-        # Other errors (permissions, etc.) - try a different port
-        find_available_port(attempts - 1)
-    end
-  end
-
-  # Wait for a port to become available using Elixir's built-in :gen_tcp
-  # More reliable than external tools like netcat
-  defp wait_for_port(_port, 0, _interval), do: :error
-
-  defp wait_for_port(port, retries, interval) do
-    case :gen_tcp.connect(~c"localhost", port, [], @logger_connect_timeout_ms) do
-      {:ok, socket} ->
-        :gen_tcp.close(socket)
-        :ok
-
-      {:error, _} ->
-        Process.sleep(interval)
-        wait_for_port(port, retries - 1, interval)
     end
   end
 
@@ -529,9 +371,9 @@ defmodule Cli do
   """
   @spec extract_partial_text(String.t()) :: String.t()
   def extract_partial_text(partial) do
-    # Try to extract text from partial JSON if it looks like a streaming event
-    # Pattern: look for "text":" followed by content
-    case Regex.run(~r/"text"\s*:\s*"((?:[^"\\]|\\.)*)$/, partial) do
+    # Try to extract text from partial JSON if it looks like a streaming event.
+    # Matches pi's "delta":" field (text_delta events) and legacy "text":" patterns.
+    case Regex.run(~r/"(?:text|delta)"\s*:\s*"((?:[^"\\]|\\.)*)$/, partial) do
       [_, text] ->
         # Complete the JSON string and use Jason to handle all escape sequences
         # This properly handles \r, \b, \f, \/, \uXXXX in addition to \n, \t, \\, \"
@@ -608,45 +450,60 @@ defmodule Cli do
   @spec process_line(String.t(), stream_state()) :: stream_state()
   def process_line(line, state) do
     case Jason.decode(line) do
-      # Handle streaming text deltas
-      {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"text" => text}}}} ->
-        handle_text_delta(text, state)
-
-      # Handle tool use start - show which tool is being called
+      # Pi: text delta
       {:ok,
        %{
-         "type" => "stream_event",
-         "event" => %{"content_block" => %{"type" => "tool_use", "name" => name}}
+         "type" => "message_update",
+         "assistantMessageEvent" => %{"type" => "text_delta", "delta" => text}
        }} ->
+        handle_text_delta(text, state)
+
+      # Pi: tool call start — extract tool name from the content block
+      {:ok,
+       %{
+         "type" => "message_update",
+         "assistantMessageEvent" => %{"type" => "toolcall_start"} = event
+       }} ->
+        name = extract_tool_name_from_event(event)
         IO.puts("\n[TOOL] #{name}")
         %{state | tool_input: ""}
 
-      # Handle tool input streaming - accumulate the JSON
-      {:ok, %{"type" => "stream_event", "event" => %{"delta" => %{"partial_json" => json}}}} ->
+      # Pi: tool call input delta — accumulate partial JSON
+      {:ok,
+       %{
+         "type" => "message_update",
+         "assistantMessageEvent" => %{"type" => "toolcall_delta", "delta" => json}
+       }}
+      when json != "" ->
         %{state | tool_input: state.tool_input <> json}
 
-      # Handle tool completion - show the accumulated input
-      {:ok, %{"type" => "stream_event", "event" => %{"type" => "content_block_stop"}}} ->
-        handle_tool_completion(state)
+      # Pi: tool call end — display the completed tool call
+      {:ok,
+       %{
+         "type" => "message_update",
+         "assistantMessageEvent" => %{"type" => "toolcall_end", "toolCall" => tool_call}
+       }} ->
+        handle_tool_call_end(tool_call, state)
 
-      # Capture final result with usage data
-      {:ok, %{"type" => "result"} = result} ->
-        handle_result(result, state)
+      # Pi: agent end — extract usage from all assistant messages
+      {:ok, %{"type" => "agent_end", "messages" => messages}} ->
+        handle_agent_end(messages, state)
 
       _ ->
         state
     end
   end
 
-  defp extract_usage(result) do
-    %{
-      cost_usd: Map.get(result, "total_cost_usd"),
-      duration_ms: Map.get(result, "duration_ms"),
-      num_turns: Map.get(result, "num_turns"),
-      usage: Map.get(result, "usage"),
-      model_usage: Map.get(result, "modelUsage")
-    }
+  # Extract tool name from a pi toolcall_start event.
+  # The name lives in partial.content[contentIndex] as a toolCall block.
+  defp extract_tool_name_from_event(%{"contentIndex" => idx, "partial" => %{"content" => content}}) do
+    case Enum.at(content, idx) do
+      %{"name" => name} -> name
+      _ -> "unknown"
+    end
   end
+
+  defp extract_tool_name_from_event(_), do: "unknown"
 
   defp handle_text_delta(text, state) do
     # Write text, skipping any prefix already shown via partial flush (issue #338)
@@ -668,30 +525,56 @@ defmodule Cli do
   defp maybe_write_text(""), do: :ok
   defp maybe_write_text(text), do: IO.write(text)
 
-  defp handle_tool_completion(state) do
-    maybe_print_tool_input(state.tool_input)
+  # Handle completed tool call from pi's toolcall_end event.
+  # Uses the fully parsed arguments rather than accumulated partial JSON.
+  defp handle_tool_call_end(tool_call, state) do
+    case Map.get(tool_call, "arguments") do
+      nil -> :ok
+      args -> print_tool_input(args)
+    end
+
     %{state | tool_input: ""}
   end
 
-  defp maybe_print_tool_input(""), do: :ok
+  # Extract usage from pi's agent_end event by summing across all assistant messages.
+  defp handle_agent_end(messages, state) do
+    assistant_msgs =
+      Enum.filter(messages, fn msg ->
+        msg["role"] == "assistant" && msg["usage"] != nil
+      end)
 
-  defp maybe_print_tool_input(tool_input) do
-    case Jason.decode(tool_input) do
-      {:ok, input} -> print_tool_input(input)
-      _ -> :ok
-    end
+    totals =
+      Enum.reduce(assistant_msgs, %{input: 0, output: 0, cache_read: 0, cache_write: 0, cost: 0.0},
+        fn msg, acc ->
+          u = msg["usage"]
+          cost = get_in(u, ["cost", "total"]) || 0.0
+
+          %{
+            input: acc.input + (u["input"] || 0),
+            output: acc.output + (u["output"] || 0),
+            cache_read: acc.cache_read + (u["cacheRead"] || 0),
+            cache_write: acc.cache_write + (u["cacheWrite"] || 0),
+            cost: acc.cost + cost
+          }
+        end
+      )
+
+    %{
+      state
+      | usage: %{
+          cost_usd: totals.cost,
+          duration_ms: nil,
+          num_turns: length(assistant_msgs),
+          usage: %{
+            "input_tokens" => totals.input,
+            "output_tokens" => totals.output,
+            "cache_read_input_tokens" => totals.cache_read,
+            "cache_creation_input_tokens" => totals.cache_write
+          },
+          model_usage: nil
+        }
+    }
   end
-
-  defp handle_result(result, state) do
-    maybe_print_error(result)
-    %{state | usage: extract_usage(result)}
-  end
-
-  defp maybe_print_error(%{"is_error" => true, "result" => message}) when not is_nil(message) do
-    IO.puts("ERROR: #{message}")
-  end
-
-  defp maybe_print_error(_), do: :ok
 
   @doc """
   Returns the portion of `text` that extends beyond the already flushed characters.
@@ -779,14 +662,11 @@ defmodule Cli do
     "  $ #{cmd}"
   end
 
-  def format_tool_input(%{"file_path" => path, "old_string" => old, "new_string" => new}) do
-    old_preview = old |> truncate(@truncate_edit_limit) |> String.replace("\n", "\\n")
-    new_preview = new |> truncate(@truncate_edit_limit) |> String.replace("\n", "\\n")
-    "  #{path}\n  - #{old_preview}\n  + #{new_preview}"
-  end
-
-  def format_tool_input(%{"file_path" => path}) do
-    "  -> #{path}"
+  # Pi edit tool: {"path": "...", "edits": [{"oldText": "...", "newText": "..."}]}
+  def format_tool_input(%{"path" => path, "edits" => [first | _]}) when is_map(first) do
+    old = first |> Map.get("oldText", "") |> truncate(@truncate_edit_limit) |> String.replace("\n", "\\n")
+    new = first |> Map.get("newText", "") |> truncate(@truncate_edit_limit) |> String.replace("\n", "\\n")
+    "  #{path}\n  - #{old}\n  + #{new}"
   end
 
   def format_tool_input(%{"pattern" => pattern} = input) do
@@ -794,6 +674,12 @@ defmodule Cli do
       nil -> "  pattern: #{pattern}"
       path -> "  #{path}\n  pattern: #{pattern}"
     end
+  end
+
+  # Pi read/write tool: {"path": "..."}
+  # Must come after edit and pattern matches to avoid catching those.
+  def format_tool_input(%{"path" => path}) do
+    "  -> #{path}"
   end
 
   def format_tool_input(%{"url" => url, "prompt" => prompt} = input) do

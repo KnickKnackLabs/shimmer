@@ -29,8 +29,8 @@ if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   exit 1
 fi
 
-# Resolve harness from environment (default: claude)
-HARNESS="${AGENT_HARNESS:-claude}"
+# Resolve harness from environment (default: pi)
+HARNESS="${AGENT_HARNESS:-pi}"
 
 if ! command -v "$HARNESS" &>/dev/null; then
   echo "Harness '$HARNESS' not found on PATH." >&2
