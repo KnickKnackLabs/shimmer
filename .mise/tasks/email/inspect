@@ -25,7 +25,7 @@ RESULT=$({
   sleep 0.3
   echo "b SELECT \"$FOLDER\""
   sleep 0.3
-  echo "c FETCH $ID (RFC822.SIZE BODYSTRUCTURE BODY[HEADER.FIELDS (From To Subject Date Content-Type)])"
+  echo "c UID FETCH $ID (RFC822.SIZE BODYSTRUCTURE BODY[HEADER.FIELDS (From To Subject Date Content-Type)])"
   sleep 0.5
   echo "d LOGOUT"
 } | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
