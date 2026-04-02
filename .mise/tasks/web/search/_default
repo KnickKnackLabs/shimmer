@@ -11,4 +11,4 @@ args=("${usage_query}")
 [[ -n "${usage_count:-}" ]] && args+=(-n "${usage_count}")
 [[ "${usage_json:-false}" == "true" ]] && args+=(--json)
 
-exec mise run web:search:brave "${args[@]}"
+exec mise run -q web:search:brave "${args[@]}"
