@@ -25,7 +25,7 @@ for F in "${FOLDERS[@]}"; do
     sleep 0.3
     echo "b SELECT \"$F\""
     sleep 0.3
-    echo "c FETCH 1:* (UID RFC822.SIZE)"
+    echo "c UID FETCH 1:* (RFC822.SIZE)"
     sleep 0.5
     echo "d LOGOUT"
   } | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
@@ -42,7 +42,7 @@ for F in "${FOLDERS[@]}"; do
   ID_SIZES=$(echo "$RESULT" | grep "RFC822.SIZE" | awk -F'[* ()]+' '{
     id=""; size=""
     for (i=1; i<=NF; i++) {
-      if ($i == "FETCH") id = $(i-1)
+      if ($i == "UID") id = $(i+1)
       if ($i == "RFC822.SIZE") size = $(i+1)
     }
     if (id && size) print id, size
