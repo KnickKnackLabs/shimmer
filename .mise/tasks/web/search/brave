@@ -21,12 +21,18 @@ fi
 # Fetch results
 response=$(curl -sS -G "https://api.search.brave.com/res/v1/web/search" \
   -H "Accept: application/json" \
-  -H "Accept-Encoding: gzip" \
   -H "X-Subscription-Token: ${BRAVE_SEARCH_API_KEY}" \
   --data-urlencode "q=${QUERY}" \
   --data-urlencode "count=${COUNT}" \
   --data-urlencode "offset=${OFFSET}" \
   --compressed)
+
+# Validate JSON response (curl may return HTML from proxies, rate limits, etc.)
+if ! echo "$response" | jq empty 2>/dev/null; then
+  echo "ERROR: unexpected response (not JSON)" >&2
+  echo "$response" | head -5 >&2
+  exit 1
+fi
 
 # Check for API errors
 if echo "$response" | jq -e '.type == "ErrorResponse"' >/dev/null 2>&1; then
@@ -65,7 +71,7 @@ to_entries[] |
   "\(.key + 1). \(.value.title)"
   + "\n   \(.value.url)"
   + (if (.value.description // "") != "" then
-      "\n   " + (.value.description | decode_html | .[0:200])
+      "\n   " + ((.value.description | decode_html) as $d | if ($d | length) > 200 then $d[0:200] + "..." else $d end)
     else "" end)
   + "\n"
 JQ

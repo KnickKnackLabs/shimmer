@@ -147,3 +147,23 @@ run_brave() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"API key is invalid"* ]]
 }
+
+@test "error: non-JSON response (HTML proxy page, 502, etc.)" {
+  echo '<html><body>502 Bad Gateway</body></html>' > "$BATS_TEST_TMPDIR/html-response"
+  mock_curl "$BATS_TEST_TMPDIR/html-response"
+  run run_brave test query
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"unexpected response (not JSON)"* ]]
+  [[ "$output" == *"502 Bad Gateway"* ]]
+}
+
+@test "offset: passes through to curl" {
+  # Mock curl that captures args and returns fixture
+  local fixture="$FIXTURES/brave-response.json"
+  local argfile="$BATS_TEST_TMPDIR/curl-args"
+  printf '#!/usr/bin/env bash\necho "$@" > %s\ncat %s\n' "$argfile" "$fixture" > "$MOCK_BIN/curl"
+  chmod +x "$MOCK_BIN/curl"
+  run run_brave --offset 10 test query
+  [ "$status" -eq 0 ]
+  grep -q "offset=10" "$argfile"
+}

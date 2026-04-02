@@ -7,6 +7,8 @@
 set -euo pipefail
 
 # Build args for the provider task
+# Note: --offset deliberately not exposed here; pagination is a power-user
+# feature — go to the provider task directly (e.g. web:search:brave --offset 10).
 args=("${usage_query}")
 [[ -n "${usage_count:-}" ]] && args+=(-n "${usage_count}")
 [[ "${usage_json:-false}" == "true" ]] && args+=(--json)
