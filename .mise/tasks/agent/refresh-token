@@ -1,14 +1,42 @@
 #!/usr/bin/env bash
-#MISE description="Refresh the Claude OAuth token in GitHub secrets"
-# DEPRECATED: This task is no longer needed.
-# Pi uses ANTHROPIC_API_KEY (a static key) instead of Claude Code's OAuth token.
-# Use `agent:sync-secrets --with-api-key` to sync the Anthropic API key.
+#MISE description="Refresh the Anthropic OAuth token in GitHub secrets"
+#USAGE flag "--repo <repo>" help="Target repo (default: current directory's repo)"
+# Note: This is also called by `agent:sync-secrets --with-oauth`
+#
+# The OAuth token is shared across all agents and obtained from
+# the Anthropic Console or Claude Code's OAuth flow. Since pi accepts
+# the token via ANTHROPIC_OAUTH_TOKEN, the same token works for both.
 
 set -e
 
-echo "DEPRECATED: Claude Code OAuth tokens are no longer used."
-echo "Pi uses ANTHROPIC_API_KEY instead. Sync it with:"
-echo ""
-echo "  shimmer agent:sync-secrets --with-api-key"
-echo ""
-exit 1
+# Determine target repo
+if [ -n "${usage_repo:-}" ]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+  cd "$TARGET_DIR"
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+fi
+
+echo "Getting new OAuth token from Claude..."
+# Use TERM=dumb to reduce (but not eliminate) escape sequences
+RAW_OUTPUT=$(TERM=dumb claude setup-token 2>&1)
+
+# Extract the token - handle escape codes and line wrapping
+CLEANED=$(printf '%s' "$RAW_OUTPUT" | \
+  LC_ALL=C tr -cd '[:print:]\n' | \
+  tr -d '\n')
+TOKEN=$(echo "$CLEANED" | grep -o 'sk-ant-oat01-[A-Za-z0-9_-]*AA')
+
+if [ -z "$TOKEN" ]; then
+  echo "Failed to extract token from output"
+  echo "--- Debug: cleaned output ---"
+  echo "$RAW_OUTPUT" | tr -d '\r' | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' | tr -d '\n' | grep -o 'sk-ant-[A-Za-z0-9_-]*'
+  echo "--- End debug ---"
+  exit 1
+fi
+
+echo "Updating ANTHROPIC_OAUTH_TOKEN secret on $REPO..."
+gh secret set ANTHROPIC_OAUTH_TOKEN --repo "$REPO" --body "$TOKEN"
+
+echo "Done! Token updated (${#TOKEN} chars)."

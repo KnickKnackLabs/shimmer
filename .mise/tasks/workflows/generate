@@ -72,7 +72,7 @@ jobs:
       message: \${{ inputs.message }}
       model: \${{ inputs.model }}
     secrets:
-      ANTHROPIC_API_KEY: \${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_OAUTH_TOKEN: \${{ secrets.ANTHROPIC_OAUTH_TOKEN }}
       AGENT_GITHUB_PAT: \${{ secrets.${AGENT_UPPER}_GITHUB_PAT }}
       AGENT_GPG_PRIVATE_KEY: \${{ secrets.${AGENT_UPPER}_GPG_PRIVATE_KEY }}
       AGENT_EMAIL_PASSWORD: \${{ secrets.${AGENT_UPPER}_EMAIL_PASSWORD }}
