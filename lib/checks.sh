@@ -43,15 +43,20 @@ check_email() {
     return
   fi
 
-  local quota_output
-  quota_output=$(_task --timeout 5 email:quota 2>/dev/null)
-  if [ $? -eq 124 ]; then
+  local quota_output rc=0
+  quota_output=$(_task --timeout 5 email:quota 2>/dev/null) || rc=$?
+  if [ "$rc" -eq 124 ]; then
     print_status "Email" "✗" "timed out after 5s" "shimmer email:welcome"
+    return
+  elif [ "$rc" -ne 0 ]; then
+    print_status "Email" "✗" "check failed" "shimmer email:welcome"
     return
   fi
 
   local quota_percent unread_count status_text
   quota_percent=$(echo "$quota_output" | grep -oE '[0-9]+%' | tr -d '%')
+  # Fallback is safe: if the server were unreachable, quota would have timed out
+  # above and we'd have already returned. We only reach here when the server responded.
   unread_count=$(_task --timeout 5 email:list --unread --count 2>/dev/null || echo "0")
 
   if [ -n "$unread_count" ] && [ "$unread_count" -gt 0 ]; then

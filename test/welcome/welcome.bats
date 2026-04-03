@@ -15,12 +15,25 @@ setup() {
 
 @test "email: timed out after 5s when server unreachable" {
   setup_email
+  # Mock: simulate timeout exit code (unit test of check_email branching,
+  # not integration test of _task's timeout plumbing)
   _task() { return 124; }
   export -f _task
 
   run check_email
   [[ "$output" == *"✗"* ]]
   [[ "$output" == *"timed out after 5s"* ]]
+}
+
+@test "email: check failed on non-timeout error" {
+  setup_email
+  # Mock: simulate a non-timeout failure (e.g., mise config error, task not found)
+  _task() { return 1; }
+  export -f _task
+
+  run check_email
+  [[ "$output" == *"✗"* ]]
+  [[ "$output" == *"check failed"* ]]
 }
 
 @test "email: success with unread and low quota" {
