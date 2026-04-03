@@ -3,6 +3,9 @@
 
 set -e
 
+# Load shared check functions
+source "$MISE_CONFIG_ROOT/lib/checks.sh"
+
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
   AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
@@ -14,11 +17,6 @@ fi
 
 # Task sibling directory (for helpers like _days-until)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Call a sibling shimmer task
-_task() {
-  mise -C "$MISE_PROJECT_ROOT" run -q "$@"
-}
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -32,21 +30,6 @@ else
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
-# Helper for consistent formatting
-# Usage: print_status "Label" "✓|✗" "status text" ["hint"]
-print_status() {
-  local label="$1"
-  local check="$2"
-  local status="$3"
-  local hint="${4:-}"
-
-  if [ -n "$hint" ]; then
-    printf "  %-10s %s %-30s %s\n" "$label" "$check" "$status" "→ $hint"
-  else
-    printf "  %-10s %s %s\n" "$label" "$check" "$status"
-  fi
-}
 
 # Identity check (env var or git config)
 if [ -n "$GIT_AUTHOR_EMAIL" ] && echo "$GIT_AUTHOR_EMAIL" | grep -q '@ricon.family'; then
@@ -83,40 +66,6 @@ if [ -n "$AGENT" ]; then
     print_status "GPG" "✗" "no key" "shimmer gpg:setup $AGENT"
   fi
 
-  # Email check
-  check_email() {
-    local config="${HOME}/.config/himalaya/config.toml"
-    if ! [ -f "$config" ] || ! grep -q "accounts.$AGENT" "$config" 2>/dev/null; then
-      print_status "Email" "✗" "not configured" "shimmer email:setup $AGENT"
-      return
-    fi
-
-    local quota_output
-    quota_output=$(timeout 5 _task email:quota 2>/dev/null)
-    if [ $? -eq 124 ]; then
-      print_status "Email" "✗" "timed out after 5s" "shimmer email:welcome"
-      return
-    fi
-
-    local quota_percent unread_count status_text
-    quota_percent=$(echo "$quota_output" | grep -oE '[0-9]+%' | tr -d '%')
-    unread_count=$(timeout 5 _task email:list --unread --count 2>/dev/null || echo "0")
-
-    if [ -n "$unread_count" ] && [ "$unread_count" -gt 0 ]; then
-      status_text="${unread_count} unread"
-    else
-      status_text="0 unread"
-    fi
-    [ -n "$quota_percent" ] && status_text="${status_text} (quota ${quota_percent}%)"
-
-    if [ -n "$quota_percent" ] && [ "$quota_percent" -ge 95 ]; then
-      print_status "Email" "✗" "$status_text" "shimmer email:purge"
-    elif [ -n "$quota_percent" ] && [ "$quota_percent" -ge 80 ]; then
-      print_status "Email" "⚠" "$status_text" "shimmer email:welcome"
-    else
-      print_status "Email" "✓" "$status_text" "shimmer email:welcome"
-    fi
-  }
   check_email
 
   # Matrix check
