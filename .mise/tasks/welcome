@@ -15,6 +15,11 @@ fi
 # Task sibling directory (for helpers like _days-until)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Call a sibling shimmer task
+_task() {
+  mise -C "$MISE_PROJECT_ROOT" run -q "$@"
+}
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ -n "$AGENT" ]; then
@@ -79,34 +84,40 @@ if [ -n "$AGENT" ]; then
   fi
 
   # Email check
-  CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
-  if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-    # Get quota and unread count
-    QUOTA_OUTPUT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:quota 2>/dev/null || echo "")
-    QUOTA_PERCENT=$(echo "$QUOTA_OUTPUT" | grep -oE '[0-9]+%' | tr -d '%')
-    UNREAD_COUNT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:list --unread --count 2>/dev/null || echo "0")
-
-    # Build status string
-    if [ -n "$UNREAD_COUNT" ] && [ "$UNREAD_COUNT" -gt 0 ]; then
-      STATUS_TEXT="${UNREAD_COUNT} unread"
-    else
-      STATUS_TEXT="0 unread"
-    fi
-    if [ -n "$QUOTA_PERCENT" ]; then
-      STATUS_TEXT="${STATUS_TEXT} (quota ${QUOTA_PERCENT}%)"
+  check_email() {
+    local config="${HOME}/.config/himalaya/config.toml"
+    if ! [ -f "$config" ] || ! grep -q "accounts.$AGENT" "$config" 2>/dev/null; then
+      print_status "Email" "✗" "not configured" "shimmer email:setup $AGENT"
+      return
     fi
 
-    # Determine check mark based on quota
-    if [ -n "$QUOTA_PERCENT" ] && [ "$QUOTA_PERCENT" -ge 95 ]; then
-      print_status "Email" "✗" "$STATUS_TEXT" "shimmer email:purge"
-    elif [ -n "$QUOTA_PERCENT" ] && [ "$QUOTA_PERCENT" -ge 80 ]; then
-      print_status "Email" "⚠" "$STATUS_TEXT" "shimmer email:welcome"
-    else
-      print_status "Email" "✓" "$STATUS_TEXT" "shimmer email:welcome"
+    local quota_output
+    quota_output=$(timeout 5 _task email:quota 2>/dev/null)
+    if [ $? -eq 124 ]; then
+      print_status "Email" "✗" "timed out after 5s" "shimmer email:welcome"
+      return
     fi
-  else
-    print_status "Email" "✗" "not configured" "shimmer email:setup $AGENT"
-  fi
+
+    local quota_percent unread_count status_text
+    quota_percent=$(echo "$quota_output" | grep -oE '[0-9]+%' | tr -d '%')
+    unread_count=$(timeout 5 _task email:list --unread --count 2>/dev/null || echo "0")
+
+    if [ -n "$unread_count" ] && [ "$unread_count" -gt 0 ]; then
+      status_text="${unread_count} unread"
+    else
+      status_text="0 unread"
+    fi
+    [ -n "$quota_percent" ] && status_text="${status_text} (quota ${quota_percent}%)"
+
+    if [ -n "$quota_percent" ] && [ "$quota_percent" -ge 95 ]; then
+      print_status "Email" "✗" "$status_text" "shimmer email:purge"
+    elif [ -n "$quota_percent" ] && [ "$quota_percent" -ge 80 ]; then
+      print_status "Email" "⚠" "$status_text" "shimmer email:welcome"
+    else
+      print_status "Email" "✓" "$status_text" "shimmer email:welcome"
+    fi
+  }
+  check_email
 
   # Matrix check
   MATRIX_CREDS="$HOME/.config/matrix-commander/$AGENT/credentials.json"
