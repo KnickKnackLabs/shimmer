@@ -1,9 +1,10 @@
-# Shared helpers for human:threads BATS tests
+# Helpers for human:threads BATS tests
 #
-# Provides test isolation via temporary directories with a mock
+# Suite-specific: test isolation via temporary directories with a mock
 # home repo that has a `human` task returning the HUMAN.md path.
+# Shared helpers (SHIMMER_DIR, mock infrastructure) loaded from test/helpers.bash.
 
-SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../" && pwd)/helpers.bash"
 
 # Create an isolated test environment with a mock home repo
 # Sets: TEST_HOME, HUMAN_PATH, ARCHIVE_PATH

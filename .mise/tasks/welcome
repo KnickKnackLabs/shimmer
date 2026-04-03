@@ -3,6 +3,9 @@
 
 set -e
 
+# Load shared check functions
+source "$MISE_CONFIG_ROOT/lib/checks.sh"
+
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
   AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
@@ -27,21 +30,6 @@ else
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
-# Helper for consistent formatting
-# Usage: print_status "Label" "✓|✗" "status text" ["hint"]
-print_status() {
-  local label="$1"
-  local check="$2"
-  local status="$3"
-  local hint="${4:-}"
-
-  if [ -n "$hint" ]; then
-    printf "  %-10s %s %-30s %s\n" "$label" "$check" "$status" "→ $hint"
-  else
-    printf "  %-10s %s %s\n" "$label" "$check" "$status"
-  fi
-}
 
 # Identity check (env var or git config)
 if [ -n "$GIT_AUTHOR_EMAIL" ] && echo "$GIT_AUTHOR_EMAIL" | grep -q '@ricon.family'; then
@@ -78,35 +66,7 @@ if [ -n "$AGENT" ]; then
     print_status "GPG" "✗" "no key" "shimmer gpg:setup $AGENT"
   fi
 
-  # Email check
-  CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
-  if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-    # Get quota and unread count
-    QUOTA_OUTPUT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:quota 2>/dev/null || echo "")
-    QUOTA_PERCENT=$(echo "$QUOTA_OUTPUT" | grep -oE '[0-9]+%' | tr -d '%')
-    UNREAD_COUNT=$(mise -C "$MISE_PROJECT_ROOT" run -q email:list --unread --count 2>/dev/null || echo "0")
-
-    # Build status string
-    if [ -n "$UNREAD_COUNT" ] && [ "$UNREAD_COUNT" -gt 0 ]; then
-      STATUS_TEXT="${UNREAD_COUNT} unread"
-    else
-      STATUS_TEXT="0 unread"
-    fi
-    if [ -n "$QUOTA_PERCENT" ]; then
-      STATUS_TEXT="${STATUS_TEXT} (quota ${QUOTA_PERCENT}%)"
-    fi
-
-    # Determine check mark based on quota
-    if [ -n "$QUOTA_PERCENT" ] && [ "$QUOTA_PERCENT" -ge 95 ]; then
-      print_status "Email" "✗" "$STATUS_TEXT" "shimmer email:purge"
-    elif [ -n "$QUOTA_PERCENT" ] && [ "$QUOTA_PERCENT" -ge 80 ]; then
-      print_status "Email" "⚠" "$STATUS_TEXT" "shimmer email:welcome"
-    else
-      print_status "Email" "✓" "$STATUS_TEXT" "shimmer email:welcome"
-    fi
-  else
-    print_status "Email" "✗" "not configured" "shimmer email:setup $AGENT"
-  fi
+  check_email
 
   # Matrix check
   MATRIX_CREDS="$HOME/.config/matrix-commander/$AGENT/credentials.json"
