@@ -183,6 +183,16 @@ jobs:
             notes unlock || echo "Warning: notes unlock failed — encrypted files may not be readable"
           fi
 
+      - name: Initialize modules
+        continue-on-error: true
+        run: |
+          if [ -d "submodules" ] && command -v modules >/dev/null 2>&1; then
+            echo "Initializing modules..."
+            modules init
+          else
+            echo "No modules to initialize"
+          fi
+
       - name: Run agent
         env:
           AGENT_HOME: $HOME/${{ github.event.repository.name }}
