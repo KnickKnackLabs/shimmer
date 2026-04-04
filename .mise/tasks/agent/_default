@@ -3,7 +3,7 @@
 #MISE quiet=true
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
 #USAGE flag "--session <session>" help="Session file path to resume"
-#USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, passed to sessions run)"
+#USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, stored as session metadata — not yet enforced by sessions wake)"
 #USAGE flag "--model <model>" help="Model to use"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
@@ -34,29 +34,37 @@ if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
 fi
 
 if [ "$HEADLESS" = "true" ]; then
-  # Headless mode delegates to sessions run.
-  # shimmer handles identity (who you are), sessions handles execution (running pi).
+  # Headless mode creates a tracked session and launches it in the background
+  # via sessions new + sessions wake. The agent runs inside zmx (backgrounded),
+  # and can be monitored with `sessions read`.
   if ! command -v sessions &>/dev/null; then
     echo "sessions not found on PATH. Install it: shiv install sessions" >&2
     exit 1
   fi
 
-  # Headless instances get a distinct chat identity so messages are attributable.
-  # SESSION_NAME is generic; ZMX_SESSION is set automatically inside zmx sessions.
-  export CHAT_IDENTITY="${SESSION_NAME:-${ZMX_SESSION:-$GIT_AUTHOR_NAME-headless}}"
+  CWD="${CALLER_PWD:-.}"
+  SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
 
-  ARGS=(--headless --cwd "${CALLER_PWD:-.}")
-  [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
-  [ -n "$TIMEOUT" ] && ARGS+=(--timeout "$TIMEOUT")
-  [ -n "$MODEL" ] && ARGS+=(--model "$MODEL")
-  ARGS+=("$MESSAGE")
-  exec sessions run "${ARGS[@]}"
+  # Create a tracked session (or resume an existing one)
+  if [ -n "$SESSION" ]; then
+    # Resuming an existing session file
+    SESSION_ID="$SESSION"
+  else
+    NEW_ARGS=("$SESSION_NAME" --cwd "$CWD" --meta "agent.name=$GIT_AUTHOR_NAME")
+    [ -n "$MODEL" ] && NEW_ARGS+=(--model "$MODEL")
+    SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
+  fi
+
+  # Wake the session — launches via zmx, returns immediately
+  WAKE_ARGS=("$SESSION_ID" --message "$MESSAGE")
+  [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
+  sessions wake "${WAKE_ARGS[@]}"
 else
-  # Interactive mode calls pi directly.
+  # Interactive mode calls the agent harness directly.
   cd "${CALLER_PWD:-.}"
-  HARNESS="pi"
+  HARNESS="${AGENT_HARNESS:-pi}"
   if ! command -v "$HARNESS" &>/dev/null; then
-    echo "pi not found on PATH." >&2
+    echo "$HARNESS not found on PATH." >&2
     exit 1
   fi
 
