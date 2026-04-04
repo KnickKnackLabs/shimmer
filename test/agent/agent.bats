@@ -64,7 +64,7 @@ setup() {
   # sessions new includes agent.name metadata
   grep "^new " "$SESSIONS_LOG" | grep -q "agent.name=test-agent"
   # sessions wake was called with the session ID from new
-  grep -q "^wake mock-session-id-001 --message review the PR" "$SESSIONS_LOG"
+  grep -q "^wake mock-session-id-001 --headless --message review the PR" "$SESSIONS_LOG"
 }
 
 @test "headless: session name uses full epoch timestamp" {
@@ -94,7 +94,7 @@ setup() {
   # sessions new should NOT be called
   ! grep -q "^new " "$SESSIONS_LOG"
   # sessions wake called with existing session ID
-  grep -q "^wake existing-session-42 --message continue work" "$SESSIONS_LOG"
+  grep -q "^wake existing-session-42 --headless --message continue work" "$SESSIONS_LOG"
 }
 
 @test "headless: forwards model to sessions new" {

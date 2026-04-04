@@ -55,8 +55,8 @@ if [ "$HEADLESS" = "true" ]; then
     SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
   fi
 
-  # Wake the session — launches via zmx, returns immediately
-  WAKE_ARGS=("$SESSION_ID" --message "$MESSAGE")
+  # Wake the session — foreground + headless (blocks until done)
+  WAKE_ARGS=("$SESSION_ID" --headless --message "$MESSAGE")
   [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
   sessions wake "${WAKE_ARGS[@]}"
 else
