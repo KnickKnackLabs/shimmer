@@ -3,7 +3,7 @@
 #MISE quiet=true
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
 #USAGE flag "--session <session>" help="Session file path to resume"
-#USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, passed to sessions run)"
+#USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, stored as session metadata — not yet enforced by sessions wake)"
 #USAGE flag "--model <model>" help="Model to use"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
@@ -43,7 +43,7 @@ if [ "$HEADLESS" = "true" ]; then
   fi
 
   CWD="${CALLER_PWD:-.}"
-  SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s | tail -c 5)"
+  SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
 
   # Create a tracked session (or resume an existing one)
   if [ -n "$SESSION" ]; then
@@ -60,11 +60,11 @@ if [ "$HEADLESS" = "true" ]; then
   [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
   sessions wake "${WAKE_ARGS[@]}"
 else
-  # Interactive mode calls pi directly.
+  # Interactive mode calls the agent harness directly.
   cd "${CALLER_PWD:-.}"
-  HARNESS="pi"
+  HARNESS="${AGENT_HARNESS:-pi}"
   if ! command -v "$HARNESS" &>/dev/null; then
-    echo "pi not found on PATH." >&2
+    echo "$HARNESS not found on PATH." >&2
     exit 1
   fi
 
