@@ -1,47 +1,4 @@
 #!/usr/bin/env bash
 #MISE description="Show email storage quota usage"
-
-set -e
-
-# shellcheck source=scripts/imap-init.sh
-source "$MISE_CONFIG_ROOT/.mise/tasks/email/scripts/imap-init.sh"
-
-# Query IMAP for quota using GETQUOTAROOT command
-QUOTA_OUTPUT=$({
-  sleep 0.3
-  echo "a LOGIN ${AGENT}@ricon.family $PASS"
-  sleep 0.3
-  echo "b GETQUOTAROOT INBOX"
-  sleep 0.3
-  echo "c LOGOUT"
-} | openssl s_client -connect mail.ricon.family:993 -quiet 2>/dev/null)
-
-# Parse: * QUOTA "User quota" (STORAGE <used_kb> <limit_kb>)
-QUOTA_LINE=$(echo "$QUOTA_OUTPUT" | grep "^\* QUOTA")
-
-if [ -z "$QUOTA_LINE" ]; then
-  echo "Could not retrieve quota information"
-  exit 1
-fi
-
-# Extract used and limit values
-USED_KB=$(echo "$QUOTA_LINE" | grep -oE 'STORAGE [0-9]+ [0-9]+' | awk '{print $2}')
-LIMIT_KB=$(echo "$QUOTA_LINE" | grep -oE 'STORAGE [0-9]+ [0-9]+' | awk '{print $3}')
-
-if [ -z "$USED_KB" ] || [ -z "$LIMIT_KB" ]; then
-  echo "Could not parse quota values"
-  exit 1
-fi
-
-# Calculate human-readable values
-USED_MB=$((USED_KB / 1024))
-LIMIT_MB=$((LIMIT_KB / 1024))
-PERCENT=$((USED_KB * 100 / LIMIT_KB))
-
-echo "Storage: ${USED_MB}MB / ${LIMIT_MB}MB (${PERCENT}%)"
-
-if [ $PERCENT -ge 100 ]; then
-  echo "⚠️  Quota exceeded! Run: shimmer email:purge"
-elif [ $PERCENT -ge 90 ]; then
-  echo "⚠️  Warning: Quota nearly full. Run: shimmer email:purge"
-fi
+# Delegates to KnickKnackLabs/emails — shimmer email:quota is preserved for compatibility.
+exec emails quota "$@"
