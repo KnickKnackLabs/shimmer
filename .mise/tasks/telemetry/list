@@ -23,20 +23,24 @@ CMD="${usage_cmd:-}"
 SINCE="${usage_since:-}"
 JSON="${usage_json:-}"
 
-# Build jq filter
+# Build jq args and filter
+JQ_ARGS=(-c)
 FILTER="."
 if [ -n "$TOOL" ]; then
-  FILTER="$FILTER | select(.tool == \"$TOOL\")"
+  JQ_ARGS+=(--arg filter_tool "$TOOL")
+  FILTER="$FILTER | select(.tool == \$filter_tool)"
 fi
 if [ -n "$CMD" ]; then
-  FILTER="$FILTER | select(.cmd == \"$CMD\")"
+  JQ_ARGS+=(--arg filter_cmd "$CMD")
+  FILTER="$FILTER | select(.cmd == \$filter_cmd)"
 fi
 if [ -n "$SINCE" ]; then
-  FILTER="$FILTER | select(.ts >= \"$SINCE\")"
+  JQ_ARGS+=(--arg filter_since "$SINCE")
+  FILTER="$FILTER | select(.ts >= \$filter_since)"
 fi
 
 # Apply filter
-EVENTS=$(jq -c "$FILTER" "$TELEMETRY_FILE")
+EVENTS=$(jq "${JQ_ARGS[@]}" "$FILTER" "$TELEMETRY_FILE")
 
 # Apply limit (0 = all)
 if [ "$LIMIT" != "0" ]; then
