@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#MISE description="Show telemetry configuration and stats"
+set -euo pipefail
+
+echo "Telemetry Status"
+echo ""
+
+if [ -z "${TELEMETRY_FILE:-}" ]; then
+  echo "  TELEMETRY_FILE  (not set — telemetry is off)"
+  echo ""
+  echo "  To enable: export TELEMETRY_FILE=~/path/to/telemetry.jsonl"
+  exit 0
+fi
+
+echo "  TELEMETRY_FILE  $TELEMETRY_FILE"
+
+if [ -n "${TELEMETRY_HOOK:-}" ]; then
+  if [ -x "$TELEMETRY_HOOK" ]; then
+    echo "  TELEMETRY_HOOK  $TELEMETRY_HOOK"
+  else
+    echo "  TELEMETRY_HOOK  $TELEMETRY_HOOK (⚠ not executable)"
+  fi
+else
+  echo "  TELEMETRY_HOOK  (not set)"
+fi
+
+echo ""
+
+if [ ! -f "$TELEMETRY_FILE" ]; then
+  echo "  No events yet (file does not exist)"
+  exit 0
+fi
+
+EVENT_COUNT=$(wc -l < "$TELEMETRY_FILE" | tr -d ' ')
+FILE_SIZE=$(ls -lh "$TELEMETRY_FILE" | awk '{print $5}')
+
+# Date range
+FIRST_TS=$(head -1 "$TELEMETRY_FILE" | jq -r '.ts // empty' 2>/dev/null || echo "")
+LAST_TS=$(tail -1 "$TELEMETRY_FILE" | jq -r '.ts // empty' 2>/dev/null || echo "")
+
+echo "  Events        $EVENT_COUNT"
+echo "  File size     $FILE_SIZE"
+if [ -n "$FIRST_TS" ] && [ -n "$LAST_TS" ]; then
+  echo "  First event   $FIRST_TS"
+  echo "  Last event    $LAST_TS"
+fi
+
+echo ""
+
+# Tools breakdown
+echo "  By tool:"
+jq -r '.tool' "$TELEMETRY_FILE" 2>/dev/null | sort | uniq -c | sort -rn | while read -r count tool; do
+  printf "    %-20s %s\n" "$tool" "$count"
+done

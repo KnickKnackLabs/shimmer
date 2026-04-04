@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#MISE description="List telemetry events"
+#USAGE flag "--tool <tool>" help="Filter by tool name"
+#USAGE flag "--cmd <cmd>" help="Filter by command name"
+#USAGE flag "--limit <limit>" help="Number of events to show (default: 20, 0 for all)"
+#USAGE flag "--json" help="Output raw JSONL instead of formatted table"
+#USAGE flag "--since <since>" help="Show events since date (ISO 8601, e.g. 2026-04-04)"
+set -euo pipefail
+
+if [ -z "${TELEMETRY_FILE:-}" ]; then
+  echo "TELEMETRY_FILE not set — telemetry is off" >&2
+  exit 1
+fi
+
+if [ ! -f "$TELEMETRY_FILE" ]; then
+  echo "No events yet (file does not exist)" >&2
+  exit 0
+fi
+
+LIMIT="${usage_limit:-20}"
+TOOL="${usage_tool:-}"
+CMD="${usage_cmd:-}"
+SINCE="${usage_since:-}"
+JSON="${usage_json:-}"
+
+# Build jq args and filter
+JQ_ARGS=(-c)
+FILTER="."
+if [ -n "$TOOL" ]; then
+  JQ_ARGS+=(--arg filter_tool "$TOOL")
+  FILTER="$FILTER | select(.tool == \$filter_tool)"
+fi
+if [ -n "$CMD" ]; then
+  JQ_ARGS+=(--arg filter_cmd "$CMD")
+  FILTER="$FILTER | select(.cmd == \$filter_cmd)"
+fi
+if [ -n "$SINCE" ]; then
+  JQ_ARGS+=(--arg filter_since "$SINCE")
+  FILTER="$FILTER | select(.ts >= \$filter_since)"
+fi
+
+# Apply filter
+EVENTS=$(jq "${JQ_ARGS[@]}" "$FILTER" "$TELEMETRY_FILE")
+
+# Apply limit (0 = all)
+if [ "$LIMIT" != "0" ]; then
+  EVENTS=$(echo "$EVENTS" | tail -n "$LIMIT")
+fi
+
+if [ -z "$EVENTS" ]; then
+  echo "No matching events" >&2
+  exit 0
+fi
+
+# Raw JSON output
+if [ "$JSON" = "true" ]; then
+  echo "$EVENTS"
+  exit 0
+fi
+
+# Formatted table
+HEADER=$'ts\ttool\tcmd\tdetails'
+TABLE=$(echo "$EVENTS" | jq -r '[
+  .ts,
+  .tool,
+  .cmd,
+  (to_entries | map(select(.key | IN("ts","tool","cmd") | not)) | map("\(.key)=\(.value)") | join(" "))
+] | join("\t")')
+
+printf '%s\n%s\n' "$HEADER" "$TABLE" | gum table --print --separator $'\t' --border rounded \
+  --border.foreground 240 --header.foreground 81
