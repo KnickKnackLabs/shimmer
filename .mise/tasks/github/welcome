@@ -54,9 +54,9 @@ echo "Status: ✓ authenticated"
 echo ""
 
 # Show token expiration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TASK_DIR="$MISE_CONFIG_ROOT/.mise/tasks"
 if [ -n "$EXPIRY" ]; then
-  DAYS_LEFT=$("$SCRIPT_DIR/../_days-until" "$EXPIRY" 2>/dev/null || echo "")
+  DAYS_LEFT=$("$TASK_DIR/_days-until" "$EXPIRY" 2>/dev/null || echo "")
   if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
     echo "Token:  ✗ expired ($EXPIRY)"
     echo "        Rotate: shimmer github:token:regenerate $AGENT"

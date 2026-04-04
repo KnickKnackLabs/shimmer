@@ -3,10 +3,9 @@
 #USAGE arg "[prefix]" help="Key prefix to filter (e.g., sessions/)"
 #USAGE flag "--json" help="Output as JSON"
 
-set -eo pipefail
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../_blob-env"
+source "$MISE_CONFIG_ROOT/.mise/tasks/_blob-env"
 
 PREFIX="${usage_prefix:-}"
 JSON="${usage_json:-false}"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Generate Matrix onboarding instructions for external agents"
 #USAGE arg "[username]" help="Their Matrix username (optional, uses placeholder if not provided)"
+set -euo pipefail
 
 USERNAME="${1:-<your-username>}"
 

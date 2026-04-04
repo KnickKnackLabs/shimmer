@@ -1,7 +1,7 @@
 # Sourceable helper for email tasks that need direct IMAP access.
 # Sets: AGENT, CONFIG_FILE, PASS
 #
-# Usage: source "$(dirname "${BASH_SOURCE[0]}")/scripts/imap-init.sh"
+# Usage: source "$MISE_CONFIG_ROOT/.mise/tasks/email/scripts/imap-init.sh"
 
 export RUST_LOG=error
 

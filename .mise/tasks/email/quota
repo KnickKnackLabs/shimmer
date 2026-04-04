@@ -4,7 +4,7 @@
 set -e
 
 # shellcheck source=scripts/imap-init.sh
-source "$(dirname "${BASH_SOURCE[0]}")/scripts/imap-init.sh"
+source "$MISE_CONFIG_ROOT/.mise/tasks/email/scripts/imap-init.sh"
 
 # Query IMAP for quota using GETQUOTAROOT command
 QUOTA_OUTPUT=$({
