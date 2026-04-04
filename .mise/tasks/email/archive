@@ -1,41 +1,4 @@
 #!/usr/bin/env bash
 #MISE description="Archive email message(s)"
-#USAGE arg "<id>" help="Message ID to archive"
-
-set -e
-
-# Suppress himalaya debug warnings (still shows errors)
-export RUST_LOG=error
-
-ID="$1"
-
-if [ -z "$ID" ]; then
-  echo "Usage: shimmer email:archive <id>"
-  echo ""
-  echo "Moves message to Archive folder. Find IDs with: shimmer email:list"
-  exit 1
-fi
-
-# Determine current agent from environment or git config
-if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
-elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
-else
-  echo "No agent identity detected. Run: eval \$(shimmer as <agent>)"
-  exit 1
-fi
-
-CONFIG_FILE="${HOME}/.config/himalaya/config.toml"
-if [ ! -f "$CONFIG_FILE" ] || ! grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
-  echo "Email not configured for $AGENT. Run: shimmer email:setup $AGENT"
-  exit 1
-fi
-
-# Create Archive folder if it doesn't exist
-if ! himalaya folder list -a "$AGENT" | grep -q "^| Archive "; then
-  himalaya folder create -a "$AGENT" Archive
-fi
-
-himalaya message move -a "$AGENT" Archive "$ID"
-echo "Archived message $ID"
+# Delegates to KnickKnackLabs/emails — shimmer email:archive is preserved for compatibility.
+exec emails archive "$@"
