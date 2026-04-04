@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="List available agents"
 
+# This just delegates to the agent home's agent:list task.
+# We kept it because we couldn't be bothered to properly remove it.
+
 set -e
 
 if [ -z "${AGENT_HOME:-}" ]; then
@@ -9,24 +12,4 @@ if [ -z "${AGENT_HOME:-}" ]; then
   exit 1
 fi
 
-echo ""
-echo "Available Agents"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-AGENTS_DIR="$AGENT_HOME/agents"
-if [ -d "$AGENTS_DIR" ]; then
-  echo "  Agent home: $AGENT_HOME"
-  echo ""
-  for agent_dir in "$AGENTS_DIR"/*/; do
-    if [ -d "$agent_dir" ]; then
-      agent_name=$(basename "$agent_dir")
-      echo "  $agent_name"
-    fi
-  done
-else
-  echo "  No agents/ directory in $AGENT_HOME"
-  echo "  Run this from an agent home (e.g., fold)"
-fi
-
-echo ""
+mise -C "$AGENT_HOME" run -q agent:list
