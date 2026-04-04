@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#MISE description="Emit a telemetry event to the agent's telemetry file"
+#USAGE arg "<event>" help="JSON event object (required fields: tool, cmd)"
+set -euo pipefail
+
+# No-op when telemetry is off
+if [ -z "${TELEMETRY_FILE:-}" ]; then
+  exit 0
+fi
+
+EVENT="$usage_event"
+
+# Validate JSON
+if ! echo "$EVENT" | jq empty 2>/dev/null; then
+  echo "error: event is not valid JSON" >&2
+  exit 1
+fi
+
+# Validate required fields
+MISSING=$(echo "$EVENT" | jq -r '[
+  (if has("tool") then empty else "tool" end),
+  (if has("cmd") then empty else "cmd" end)
+] | join(", ")')
+
+if [ -n "$MISSING" ]; then
+  echo "error: missing required fields: $MISSING" >&2
+  exit 1
+fi
+
+# Auto-populate ts if missing
+if [ "$(echo "$EVENT" | jq 'has("ts")')" = "false" ]; then
+  EVENT=$(echo "$EVENT" | jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '. + {ts: $ts}')
+fi
+
+# Ensure ts is first for readability, then tool, cmd, rest
+EVENT=$(echo "$EVENT" | jq -c '{ts, tool, cmd} + .')
+
+# Pipe through hook if configured
+if [ -n "${TELEMETRY_HOOK:-}" ]; then
+  if [ ! -x "$TELEMETRY_HOOK" ]; then
+    echo "error: TELEMETRY_HOOK is not executable: $TELEMETRY_HOOK" >&2
+    exit 1
+  fi
+  EVENT=$(echo "$EVENT" | "$TELEMETRY_HOOK")
+  # Hook returned nothing — event filtered out
+  if [ -z "$EVENT" ]; then
+    exit 0
+  fi
+fi
+
+# Ensure parent directory exists
+mkdir -p "$(dirname "$TELEMETRY_FILE")"
+
+# Append (atomic-ish for single lines under PIPE_BUF)
+echo "$EVENT" >> "$TELEMETRY_FILE"
