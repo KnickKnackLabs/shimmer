@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Export emails to a directory"
-# Delegates to KnickKnackLabs/emails — shimmer email:export is preserved for compatibility.
-exec emails export "$@"

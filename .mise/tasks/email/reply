@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Reply to an email message"
-# Delegates to KnickKnackLabs/emails — shimmer email:reply is preserved for compatibility.
-exec emails reply "$@"

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Check email (himalaya) setup status for an agent"
-# Delegates to KnickKnackLabs/emails — shimmer email:status is preserved for compatibility.
-exec emails status "$@"

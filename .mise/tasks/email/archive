@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Archive email message(s)"
-# Delegates to KnickKnackLabs/emails — shimmer email:archive is preserved for compatibility.
-exec emails archive "$@"

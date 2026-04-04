@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Show per-folder email sizes and largest messages"
-# Delegates to KnickKnackLabs/emails — shimmer email:sizes is preserved for compatibility.
-exec emails sizes "$@"

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Wait for new email to arrive"
-# Delegates to KnickKnackLabs/emails — shimmer email:wait is preserved for compatibility.
-exec emails wait "$@"

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Setup email (himalaya) for an agent (one-time local setup)"
-# Delegates to KnickKnackLabs/emails — shimmer email:setup is preserved for compatibility.
-exec emails setup "$@"

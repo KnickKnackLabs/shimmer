@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Read an email message"
-# Delegates to KnickKnackLabs/emails — shimmer email:read is preserved for compatibility.
-exec emails read "$@"

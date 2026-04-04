@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Email intro and current status"
-# Delegates to KnickKnackLabs/emails — shimmer email:welcome is preserved for compatibility.
-exec emails welcome "$@"
