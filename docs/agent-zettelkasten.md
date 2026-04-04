@@ -162,8 +162,8 @@ Look for notes about YOU - colleagues may have documented interactions with you.
 
 ```bash
 # Email - async messages, session wrapups, history
-shimmer email:list
-shimmer email:read <id>
+emails list
+emails read <id>
 
 # Matrix - real-time chat
 shimmer matrix:rooms

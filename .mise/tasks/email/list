@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="List email messages"
-# Delegates to KnickKnackLabs/emails — shimmer email:list is preserved for compatibility.
-exec emails list "$@"

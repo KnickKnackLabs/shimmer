@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Send a GPG-signed email"
-# Delegates to KnickKnackLabs/emails — shimmer email:send is preserved for compatibility.
-exec emails send "$@"

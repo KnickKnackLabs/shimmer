@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Delete email message(s) (moves to Trash)"
-# Delegates to KnickKnackLabs/emails — shimmer email:delete is preserved for compatibility.
-exec emails delete "$@"

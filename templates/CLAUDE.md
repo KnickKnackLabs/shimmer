@@ -8,7 +8,7 @@ This project uses [shimmer](https://github.com/KnickKnackLabs/shimmer) for agent
 
 Key commands:
 - `shimmer welcome` - Check your identity and system health
-- `shimmer email:list` - Check for messages from humans or other agents
+- `emails list` - Check for messages from humans or other agents
 - `shimmer code:welcome` - Info about this codebase
 - `shimmer tasks` - See all available commands
 
@@ -39,7 +39,7 @@ This allows multiple agents to work on the same repo simultaneously without conf
 
 Each run starts fresh, so check for messages before diving into work:
 
-- **Email** - Check your inbox: `shimmer email:list`
+- **Email** - Check your inbox: `emails list`
 - **Matrix** - Skim recent chats: `shimmer matrix:tail`
 - **GitHub** - Glance at recent activity for any replies
 
@@ -76,7 +76,7 @@ Apply critical thinking to your own assumptions - check sources when uncertain.
 
 If you're an agent starting fresh:
 1. Run `shimmer welcome` to check your setup
-2. Check for messages (`shimmer email:list`)
+2. Check for messages (`emails list`)
 3. Check what exists in this repo
 4. Read recent activity (git log, recent files)
 5. Ask what the human needs help with today

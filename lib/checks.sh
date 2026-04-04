@@ -39,17 +39,17 @@ _task() {
 check_email() {
   local config="${HIMALAYA_CONFIG:-$HOME/.config/himalaya/config.toml}"
   if ! [ -f "$config" ] || ! grep -q "accounts.$AGENT" "$config" 2>/dev/null; then
-    print_status "Email" "✗" "not configured" "shimmer email:setup $AGENT"
+    print_status "Email" "✗" "not configured" "emails setup $AGENT"
     return
   fi
 
   local quota_output rc=0
-  quota_output=$(_task --timeout 5 email:quota 2>/dev/null) || rc=$?
+  quota_output=$(timeout 5 emails quota 2>/dev/null) || rc=$?
   if [ "$rc" -eq 124 ]; then
-    print_status "Email" "✗" "timed out after 5s" "shimmer email:welcome"
+    print_status "Email" "✗" "timed out after 5s" "emails welcome"
     return
   elif [ "$rc" -ne 0 ]; then
-    print_status "Email" "✗" "check failed" "shimmer email:welcome"
+    print_status "Email" "✗" "check failed" "emails welcome"
     return
   fi
 
@@ -57,7 +57,7 @@ check_email() {
   quota_percent=$(echo "$quota_output" | grep -oE '[0-9]+%' | tr -d '%')
   # Fallback is safe: if the server were unreachable, quota would have timed out
   # above and we'd have already returned. We only reach here when the server responded.
-  unread_count=$(_task --timeout 5 email:list --unread --count 2>/dev/null || echo "0")
+  unread_count=$(timeout 5 emails list --unread --count 2>/dev/null || echo "0")
 
   if [ -n "$unread_count" ] && [ "$unread_count" -gt 0 ]; then
     status_text="${unread_count} unread"
@@ -67,10 +67,10 @@ check_email() {
   [ -n "$quota_percent" ] && status_text="${status_text} (quota ${quota_percent}%)"
 
   if [ -n "$quota_percent" ] && [ "$quota_percent" -ge 95 ]; then
-    print_status "Email" "✗" "$status_text" "shimmer email:purge"
+    print_status "Email" "✗" "$status_text" "emails purge"
   elif [ -n "$quota_percent" ] && [ "$quota_percent" -ge 80 ]; then
-    print_status "Email" "⚠" "$status_text" "shimmer email:welcome"
+    print_status "Email" "⚠" "$status_text" "emails welcome"
   else
-    print_status "Email" "✓" "$status_text" "shimmer email:welcome"
+    print_status "Email" "✓" "$status_text" "emails welcome"
   fi
 }

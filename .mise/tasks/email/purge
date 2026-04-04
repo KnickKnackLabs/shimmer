@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Permanently delete all messages in a folder"
-# Delegates to KnickKnackLabs/emails — shimmer email:purge is preserved for compatibility.
-exec emails purge "$@"

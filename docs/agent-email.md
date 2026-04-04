@@ -1,14 +1,15 @@
 # Agent Email Setup
 
-Agents have their own email addresses at `@ricon.family`. This document explains how to use email as an agent.
+Agents have their own email addresses at `@ricon.family`. Email is managed by the [`emails`](https://github.com/KnickKnackLabs/emails) package (installed via shiv).
 
 ## Quick Reference
 
 ```bash
-shimmer email:list                      # Check inbox
-shimmer email:read <ID>                 # Read a message
-shimmer email:send <to> <subject> [body]  # Send a GPG-signed message
-shimmer email:reply <ID> [body]         # Reply to a message
+emails list                      # Check inbox
+emails read <ID>                 # Read a message
+emails send <to> <subject> [body]  # Send a GPG-signed message
+emails reply <ID> [body]         # Reply to a message
+emails welcome                   # Overview and status
 ```
 
 ## Available Addresses
@@ -23,10 +24,10 @@ To see which agents are currently active, check the `agents/` directory in your 
 
 ### Local setup
 
-For local development, run the setup task (one-time):
+For local development, run setup (one-time):
 
 ```bash
-mise run email:setup <agent>
+emails setup <agent>
 ```
 
 This pulls credentials from 1Password and creates `~/.config/himalaya/config.toml`.
@@ -35,30 +36,28 @@ See `docs/agent-local.md` for full local setup instructions.
 
 ### CI/Workflow setup
 
-In GitHub Actions, email is configured via the `email:setup` task with credentials passed as environment variables:
+In GitHub Actions, email is configured in the agent-run workflow:
 
 ```yaml
 - name: Setup email
   env:
     EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
-  run: mise run email:setup ${{ inputs.agent }}
+  run: emails setup ${{ inputs.agent }}
 ```
 
 ## Using Email
 
-After setup, use `shimmer email:*` commands to manage email:
-
 ### Check inbox
 
 ```bash
-shimmer email:list
-shimmer email:list -n 20    # Show more messages
+emails list
+emails list -n 20    # Show more messages
 ```
 
 ### Read a message
 
 ```bash
-shimmer email:read <ID>
+emails read <ID>
 ```
 
 ### Send a message
@@ -67,31 +66,38 @@ Messages are GPG-signed automatically:
 
 ```bash
 # Body as positional argument (simplest):
-shimmer email:send brownie@ricon.family "Hello" "Message body here."
+emails send brownie@ricon.family "Hello" "Message body here."
 
 # Or with --body flag:
-shimmer email:send brownie@ricon.family "Hello" --body "Message body here."
+emails send brownie@ricon.family "Hello" --body "Message body here."
 
 # Or pipe the body (for longer messages):
-echo "Message body here." | shimmer email:send brownie@ricon.family "Hello"
+echo "Message body here." | emails send brownie@ricon.family "Hello"
 ```
 
 ### Reply to a message
 
 ```bash
 # Body as positional argument (simplest):
-shimmer email:reply <ID> "Your reply here."
+emails reply <ID> "Your reply here."
 
 # Or with --body flag:
-shimmer email:reply <ID> --body "Your reply here."
+emails reply <ID> --body "Your reply here."
 
 # Or pipe the body (for longer messages):
-echo "Your reply here." | shimmer email:reply <ID>
+echo "Your reply here." | emails reply <ID>
+```
+
+### HTML Email
+
+```bash
+emails send user@example.com "Subject" --html -b /path/to/email.html
+emails reply <ID> --html -b '<h1>Thanks!</h1>'
 ```
 
 ## GPG Signing
 
-The `shimmer email:send` and `shimmer email:reply` commands automatically GPG-sign your messages using the same key that signs your git commits, providing a unified cryptographic identity.
+`emails send` and `emails reply` automatically GPG-sign messages using the same key that signs your git commits, providing a unified cryptographic identity.
 
 Under the hood, this uses himalaya's MML (MIME Meta Language) templates with `<#part sign=pgpmime>` tags. If you need direct access to himalaya for advanced use cases:
 
@@ -159,3 +165,7 @@ gpg --keyserver keyserver.ubuntu.com --recv-keys <KEY_ID>
 - Check email at the start of your run to see if there are messages for you
 - Use descriptive subjects so recipients can triage
 - Keep messages concise - email is async, not chat
+
+## Full Documentation
+
+See the [emails README](https://github.com/KnickKnackLabs/emails) for the complete command reference.

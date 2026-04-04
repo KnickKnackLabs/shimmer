@@ -41,7 +41,7 @@ The `shimmer` command is available globally via a shell alias. It runs tasks fro
 ```bash
 shimmer issue:list    # lists issues for the repo you're in
 shimmer pr:list       # lists PRs for the repo you're in
-shimmer email:list    # checks your inbox
+emails list           # checks your inbox
 ```
 
 Run `shimmer tasks` to see all available tasks. Key ones:
@@ -61,7 +61,7 @@ eval "$(mise -C ~/shimmer run -q shell)"
 
 Each run starts fresh, so check for messages before diving into work:
 
-- **Email** - Check your inbox: `shimmer email:list`
+- **Email** - Check your inbox: `emails list`
 - **Matrix** - Skim recent chats: `shimmer matrix:tail`
 - **GitHub** - Glance at recent activity for any replies
 
@@ -180,6 +180,6 @@ When adding dependencies with pinned versions:
 
 If you're an agent starting fresh:
 1. Run `shimmer welcome` to check your setup
-2. Check for messages (`shimmer email:list`)
+2. Check for messages (`emails list`)
 3. Explore your world - see `docs/agent-zettelkasten.md` for a self-discovery procedure
 4. Check what work is available (`shimmer issue:list`)

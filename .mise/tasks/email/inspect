@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Inspect email message structure and metadata"
-# Delegates to KnickKnackLabs/emails — shimmer email:inspect is preserved for compatibility.
-exec emails inspect "$@"

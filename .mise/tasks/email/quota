@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Show email storage quota usage"
-# Delegates to KnickKnackLabs/emails — shimmer email:quota is preserved for compatibility.
-exec emails quota "$@"
