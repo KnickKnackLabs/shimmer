@@ -4,7 +4,7 @@
 # Source this file from blob tasks to get agent, alias, and bucket info.
 #
 # Usage:
-#   source "$(dirname "${BASH_SOURCE[0]}")/_blob-env"
+#   source "$MISE_CONFIG_ROOT/.mise/tasks/_blob-env"
 #
 # After sourcing, these variables are set:
 #   BLOB_AGENT    — detected agent name

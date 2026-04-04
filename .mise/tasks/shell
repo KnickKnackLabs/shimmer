@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Output shell configuration for global shimmer command (use with eval)"
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_DIR="$MISE_CONFIG_ROOT"
 
 # Create shim so shimmer is callable from scripts and subprocesses
 BIN_DIR="$HOME/.local/bin"

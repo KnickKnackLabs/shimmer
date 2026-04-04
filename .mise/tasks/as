@@ -33,7 +33,7 @@ if [ -z "$AGENT" ]; then
     exit 1
   fi
 
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  TASK_DIR="$MISE_CONFIG_ROOT/.mise/tasks"
   AGENT=$(echo "$AGENTS" | fzf \
     --style=full \
     --height=100% \
@@ -55,7 +55,7 @@ if [ -z "$AGENT" ]; then
       gutter:-1
       info:dim
     " \
-    --preview="$SCRIPT_DIR/_agent-preview {} '$AGENT_HOME_DIR'" \
+    --preview="$TASK_DIR/_agent-preview {} '$AGENT_HOME_DIR'" \
     --preview-window="right,55%,border-rounded,wrap,<60(down,50%,border-horizontal)" \
   ) || exit 1
 

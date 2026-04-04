@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="List available shimmer tasks (optionally filtered by group)"
 #USAGE arg "[group]" help="Task group prefix to filter by (e.g. email, browser, agent)"
+set -euo pipefail
 
-GROUP="${usage_group:-$1}"
+GROUP="${usage_group:-}"
 
 if [ -n "$GROUP" ]; then
   RESULTS=$(mise tasks | grep "^${GROUP}:")

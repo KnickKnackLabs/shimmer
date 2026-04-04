@@ -2,10 +2,9 @@
 #MISE description="Delete a blob from storage"
 #USAGE arg "<key>" help="Object key to delete"
 
-set -eo pipefail
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../_blob-env"
+source "$MISE_CONFIG_ROOT/.mise/tasks/_blob-env"
 
 KEY="$usage_key"
 

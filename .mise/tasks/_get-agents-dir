@@ -9,9 +9,9 @@
 #
 # Returns the path to agents/ or fails with exit 1 if not found.
 
-set -eo pipefail
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TASK_DIR="$MISE_CONFIG_ROOT/.mise/tasks"
 TARGET_DIR="${1:-${CALLER_PWD:-.}}"
 
 # Check target directory first
@@ -21,7 +21,7 @@ if [ -d "$TARGET_DIR/agents" ]; then
 fi
 
 # Try git repository root
-if ROOT=$("$SCRIPT_DIR/_get-git-root" "$TARGET_DIR" 2>/dev/null) && [ -d "$ROOT/agents" ]; then
+if ROOT=$("$TASK_DIR/_get-git-root" "$TARGET_DIR" 2>/dev/null) && [ -d "$ROOT/agents" ]; then
   echo "$ROOT/agents"
   exit 0
 fi

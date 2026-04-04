@@ -16,7 +16,7 @@ else
 fi
 
 # Task sibling directory (for helpers like _days-until)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TASK_DIR="$MISE_CONFIG_ROOT/.mise/tasks"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -87,7 +87,7 @@ if [ -n "$AGENT" ]; then
     GH_CHECK="✓" GH_HINT="shimmer github:welcome"
 
     if [ -n "$GH_EXPIRY" ]; then
-      DAYS_LEFT=$("$SCRIPT_DIR/_days-until" "$GH_EXPIRY" 2>/dev/null || echo "")
+      DAYS_LEFT=$("$TASK_DIR/_days-until" "$GH_EXPIRY" 2>/dev/null || echo "")
       if [ -n "$DAYS_LEFT" ] && [ "$DAYS_LEFT" -lt 0 ]; then
         GH_CHECK="✗" GH_HINT="shimmer github:token:regenerate $AGENT"
         GH_USER="$GH_USER (token expired)"

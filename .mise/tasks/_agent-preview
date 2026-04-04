@@ -2,6 +2,7 @@
 #MISE hide=true
 # Preview script for the interactive agent picker (shimmer as)
 # Called by fzf: _agent-preview <agent> <agent_home_dir>
+set -eo pipefail
 
 AGENT="$1"
 AGENT_HOME_DIR="$2"

@@ -3,10 +3,9 @@
 #USAGE arg "<key>" help="Object key to download"
 #USAGE arg "[dest]" help="Local destination path (default: stdout)"
 
-set -eo pipefail
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../_blob-env"
+source "$MISE_CONFIG_ROOT/.mise/tasks/_blob-env"
 
 KEY="$usage_key"
 DEST="${usage_dest:-}"
