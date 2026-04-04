@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="Fetch content from a URL"
+#USAGE arg "<url>" help="URL to fetch"
+#USAGE flag "-H --header… <header>" help="Additional header (repeatable)"
+#USAGE flag "-q --quiet" help="Suppress HTTP status info"
+
+set -euo pipefail
+
+URL="${usage_url}"
+QUIET="${usage_quiet:-false}"
+
+# Build curl args
+CURL_ARGS=(-sS -L)
+
+# Add custom headers
+if [[ -n "${usage_header:-}" ]]; then
+  while IFS= read -r h; do
+    CURL_ARGS+=(-H "$h")
+  done <<< "$usage_header"
+fi
+
+# Show what we're fetching
+if [[ "$QUIET" != "true" ]]; then
+  echo "Fetching: ${URL}" >&2
+fi
+
+curl "${CURL_ARGS[@]}" "$URL"
