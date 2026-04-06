@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #MISE description="List calendar events"
-#USAGE arg "[calendar]" help="Calendar ID (default: calendar)"
+#USAGE arg "<calendar>" help="Calendar ID (run calendar:list to see available calendars)"
 
-set -e
+set -eu
 
 if ! command -v calendula &> /dev/null; then
   echo "ERROR: calendula not found. Run: mise install" >&2
   exit 1
 fi
 
-CALENDAR="${usage_calendar:-calendar}"
+CALENDAR="${usage_calendar:?}"
 
 calendula items list "$CALENDAR"

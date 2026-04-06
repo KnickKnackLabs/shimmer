@@ -2,7 +2,7 @@
 #MISE description="Setup calendar (calendula) for an agent (one-time local setup)"
 #USAGE arg "<agent>" help="Agent name (e.g., quick, brownie)"
 
-set -e
+set -eu
 
 AGENT="${usage_agent:?}"
 EMAIL="${AGENT}@ricon.family"
@@ -19,7 +19,7 @@ if ! command -v calendula &> /dev/null; then
 fi
 
 # Check if already configured
-if [ -f "$CONFIG_FILE" ] && grep -q "accounts.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
+if [ -f "$CONFIG_FILE" ] && grep -q "accounts\\.$AGENT" "$CONFIG_FILE" 2>/dev/null; then
   echo "Calendar already configured for $EMAIL"
   echo "Config: $CONFIG_FILE"
   echo ""
@@ -50,8 +50,13 @@ if [ -z "$EMAIL_PASSWORD" ]; then
 fi
 
 mkdir -p "$CONFIG_DIR"
+chmod 700 "$CONFIG_DIR"
 
 # Escape password for TOML basic string: backslash first, then quotes
+# Note: this handles backslashes and double-quotes. If a password contains
+# control characters (tabs, newlines), this would produce invalid TOML.
+# Our 1Password-generated passwords don't contain these, but if they ever
+# do, switch to TOML literal strings or validate first.
 ESCAPED_PASSWORD=$(printf '%s' "$EMAIL_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
 # Build the account config block
@@ -78,6 +83,9 @@ else
   # Fresh config
   printf '%s\n' "$ACCOUNT_CONFIG" > "$CONFIG_FILE"
 fi
+
+# Config contains raw password — restrict permissions
+chmod 600 "$CONFIG_FILE"
 
 echo ""
 echo "Calendar configured for $EMAIL"
