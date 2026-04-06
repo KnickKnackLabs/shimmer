@@ -74,19 +74,21 @@ if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   exit 1
 fi
 
+# Clear all identity vars first to prevent stale values from a previous
+# `shimmer as` from leaking through if any resolution step below fails.
+# This must come before PAT resolution — if secrets lookup exits early,
+# eval still clears the previous session's vars.
+echo "unset AGENT_IDENTITY B2_BUCKET"
+echo "unset GH_HOST GH_TOKEN"
+echo "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
+echo "unset AGENT_HOME"
+
 # Fetch GitHub PAT via secrets tool
 PAT=$(secrets get "$AGENT/github-pat") || {
   echo "" >&2
   echo "Tip: set SECRETS_PROVIDER=keychain or SECRETS_PROVIDER=1password" >&2
   exit 1
 }
-
-# Clear all identity vars first to prevent stale values from a previous
-# `shimmer as` from leaking through if any resolution step below fails.
-echo "unset AGENT_IDENTITY B2_BUCKET"
-echo "unset GH_HOST GH_TOKEN"
-echo "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
-echo "unset AGENT_HOME"
 
 # Output export statements for eval.
 # NOTE: GH_HOST is hardcoded to github.com — all shimmer agents currently target
