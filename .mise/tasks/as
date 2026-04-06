@@ -74,6 +74,15 @@ if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   exit 1
 fi
 
+# Clear all identity vars first to prevent stale values from a previous
+# `shimmer as` from leaking through if any resolution step below fails.
+# This must come before PAT resolution — if secrets lookup exits early,
+# eval still clears the previous session's vars.
+echo "unset AGENT_IDENTITY B2_BUCKET"
+echo "unset GH_HOST GH_TOKEN"
+echo "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
+echo "unset AGENT_HOME"
+
 # Fetch GitHub PAT via secrets tool
 PAT=$(secrets get "$AGENT/github-pat") || {
   echo "" >&2
@@ -107,6 +116,7 @@ if [ -n "$IDENTITY" ]; then
   echo "export AGENT_IDENTITY='$ESCAPED'"
 else
   echo "# Note: agent home has no agent:identity task — AGENT_IDENTITY not set" >&2
+  echo "# (was cleared above to prevent stale values)" >&2
 fi
 
 # Print info to stderr so it doesn't interfere with eval

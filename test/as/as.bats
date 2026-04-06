@@ -117,6 +117,63 @@ teardown() {
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
 }
 
+# ============ Stale environment clearing ============
+
+@test "as: clears previous identity vars before setting new ones" {
+  setup_test_home "alice" "bob"
+  mock_secrets_binary
+  mock_shimmer
+
+  # Capture the output and check that unset comes before export
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+
+  # Every exported var should be unset first
+  local var
+  for var in $(echo "$output" | grep -oE "export [A-Z_]+" | awk '{print $2}' | sort -u); do
+    echo "$output" | grep -q "unset.*$var" || {
+      echo "exported var $var is not unset" >&2
+      return 1
+    }
+  done
+
+  # unset should come before the first export
+  local first_unset first_export
+  first_unset=$(echo "$output" | grep -n "unset" | head -1 | cut -d: -f1)
+  first_export=$(echo "$output" | grep -n "export" | head -1 | cut -d: -f1)
+  [ "$first_unset" -lt "$first_export" ]
+}
+
+@test "as: eval clears stale AGENT_IDENTITY from previous session" {
+  setup_test_home "alice" "bob"
+  mock_secrets_binary
+  mock_shimmer
+
+  # Simulate: previous session set AGENT_IDENTITY to bob
+  export AGENT_IDENTITY="You are bob."
+
+  # Switch to alice via eval
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  # Should be alice's identity, not bob's
+  [[ "$AGENT_IDENTITY" == *"You are alice."* ]]
+  [[ "$AGENT_IDENTITY" != *"You are bob."* ]]
+}
+
+@test "as: eval clears stale B2_BUCKET when new agent has none" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  # Simulate: previous session set B2_BUCKET
+  export B2_BUCKET="old-bucket"
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  # B2_BUCKET should be cleared since alice has no bucket configured
+  [ -z "${B2_BUCKET:-}" ]
+}
+
 # ============ Validation (no mocks — fails before secrets) ============
 
 @test "as: rejects unknown agent" {
