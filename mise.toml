@@ -7,6 +7,7 @@ experimental = true
 shiv = "https://github.com/KnickKnackLabs/vfox-shiv"
 
 [tools]
+"shiv:codebase" = "0.1.0"                 # Codebase linting + migrations
 node = "22"                               # LTS
 "github:pimalaya/himalaya" = "1.2.0"      # Email CLI for agents
 "1password-cli" = "2.32.0"                # Credential management
@@ -20,3 +21,9 @@ bats = "1.13.0"                            # Bash Automated Testing System
 "shiv:emails" = "0.3.0"
 "shiv:sessions" = "0.3.0"                   # Agent session transcripts (used by agent task)
 "shiv:threads" = "0.1.0"                    # HUMAN.md thread management
+
+[_.codebase]
+lint = ["mise-settings", "gum-table"]
+
+[_.codebase.scope]
+gum-table = ".mise/tasks"

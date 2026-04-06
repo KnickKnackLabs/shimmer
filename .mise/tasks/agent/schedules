@@ -55,5 +55,5 @@ for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
     status="?"
   fi
 
-  printf "%-8s %-12s %-10s %-24s %s\n" "$status" "$NAME" "$AGENT" "$SCHEDULE" "$MESSAGE"
+  printf "%-8s %-12s %-10s %-24s %s\n" "$status" "$NAME" "$AGENT" "$SCHEDULE" "$MESSAGE" # codebase:ignore
 done

@@ -70,7 +70,7 @@ list_repos() {
       suffix=" (archived)"
     fi
 
-    printf "  %-24s %-8s %-40s %s%s\n" "$name" "$visibility" "$nameWithOwner" "$age" "$suffix"
+    printf "  %-24s %-8s %-40s %s%s\n" "$name" "$visibility" "$nameWithOwner" "$age" "$suffix" # codebase:ignore
   done
 
   # Summary
