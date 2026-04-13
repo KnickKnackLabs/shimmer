@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#MISE description="Wake an agent by dispatching their workflow"
+#USAGE arg "<agent>" help="Agent to wake (e.g., zeke, baby-joel)"
+#USAGE arg "<message>" help="Message for the agent"
+#USAGE flag "--model <model>" help="Claude model to use"
+#USAGE flag "--repo <repo>" help="Target repository (owner/name) — skip agent discovery"
+
+set -e
+
+AGENT="${usage_agent}"
+MESSAGE="${usage_message}"
+MODEL="${usage_model:-}"
+REPO_FLAG="${usage_repo:-}"
+
+# Find the agent's home repo
+FIND_ARGS=("$AGENT")
+if [[ -n "$REPO_FLAG" ]]; then
+  FIND_ARGS+=(--repo "$REPO_FLAG")
+fi
+REPO=$(mise run -q agent:find "${FIND_ARGS[@]}")
+
+# Build workflow inputs
+INPUTS=(--input "message=$MESSAGE")
+if [[ -n "$MODEL" ]]; then
+  INPUTS+=(--input "model=$MODEL")
+fi
+
+# Dispatch the agent's workflow
+RUN_ID=$(mise run -q ci:dispatch "${AGENT}.yml" --repo "$REPO" "${INPUTS[@]}")
+
+echo "✓ Woke $AGENT (run $RUN_ID)"
+echo "  → shimmer ci:logs $RUN_ID --agent --repo $REPO"
+echo ""
+echo "  Tip: add --wait to ci:logs to follow the session."

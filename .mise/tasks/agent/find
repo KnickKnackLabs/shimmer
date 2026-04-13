@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#MISE description="Find an agent's home repository"
+#USAGE arg "<agent>" help="Agent name (e.g., zeke, baby-joel)"
+#USAGE flag "--repo <repo>" help="Override: use this repo directly instead of discovering"
+
+set -e
+
+CALLER_DIR="${CALLER_PWD:-$(pwd)}"
+AGENT="${usage_agent}"
+
+if [[ -n "${usage_repo:-}" ]]; then
+  echo "${usage_repo}"
+  exit 0
+fi
+
+# Resolve the agent home (the repo the caller is in)
+AGENT_HOME_DIR="${AGENT_HOME:-$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")}"
+
+# Discover agents via the home's agent:list task
+AGENTS=$(mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null) || true
+
+if [[ -z "$AGENTS" ]]; then
+  echo "Error: could not list agents." >&2
+  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+  exit 1
+fi
+
+# Validate agent exists
+if ! echo "$AGENTS" | grep -qx "$AGENT"; then
+  echo "Unknown agent: $AGENT" >&2
+  echo "Available: $(echo "$AGENTS" | tr '\n' ' ')" >&2
+  exit 1
+fi
+
+# Get the repo slug from the agent home
+REPO=$(git -C "$AGENT_HOME_DIR" remote get-url origin 2>/dev/null \
+  | sed 's/.*github.com[:/]//' \
+  | sed 's/\.git$//')
+
+if [[ -z "$REPO" ]]; then
+  echo "Error: could not determine repo for $AGENT_HOME_DIR" >&2
+  exit 1
+fi
+
+echo "$REPO"

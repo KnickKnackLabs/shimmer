@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#MISE description="Trigger a workflow run and return the run ID"
+#USAGE arg "<workflow>" help="Workflow filename (e.g., zeke.yml, deploy.yml)"
+#USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
+#USAGE flag "--input <kv>..." help="Workflow inputs as key=value (repeatable)"
+#USAGE flag "--timeout <seconds>" help="Max time to wait for run to appear (default: 30)"
+
+set -e
+
+SCRIPT_DIR="$(dirname "$0")"
+
+# Determine repo
+if [[ -n "${usage_repo:-}" ]]; then
+  REPO="$usage_repo"
+else
+  TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+  REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR")
+fi
+
+WORKFLOW="${usage_workflow}"
+TIMEOUT="${usage_timeout:-30}"
+
+# Build input flags (-f key=value)
+INPUT_FLAGS=()
+if [[ -n "${usage_input:-}" ]]; then
+  for kv in "${usage_input[@]}"; do
+    INPUT_FLAGS+=(-f "$kv")
+  done
+fi
+
+# Record timestamp just before dispatch (for filtering)
+BEFORE=$(date +%s)
+
+# Dispatch the workflow
+gh workflow run "$WORKFLOW" -R "$REPO" "${INPUT_FLAGS[@]}"
+
+# Poll for the run ID — filter by workflow + created after dispatch
+# gh uses ISO 8601, so convert epoch to that format
+GH_USER=$(gh api user -q .login 2>/dev/null || true)
+ELAPSED=0
+INTERVAL=2
+RUN_ID=""
+
+while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
+
+  # Get recent runs for this workflow, filter by actor if possible
+  USER_FILTER=""
+  if [[ -n "$GH_USER" ]]; then
+    USER_FILTER="--user $GH_USER"
+  fi
+
+  RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 $USER_FILTER \
+    --json databaseId,createdAt,url 2>/dev/null || true)
+
+  if [[ -z "$RUN_INFO" ]]; then
+    continue
+  fi
+
+  # Find a run created after our dispatch timestamp
+  RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
+    [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
+  ' 2>/dev/null || true)
+done
+
+if [[ -z "$RUN_ID" ]]; then
+  echo "Error: timed out waiting for run to appear (${TIMEOUT}s)" >&2
+  echo "Workflow was dispatched — check https://github.com/$REPO/actions/workflows/$WORKFLOW" >&2
+  exit 1
+fi
+
+RUN_URL=$(echo "$RUN_INFO" | jq -r --arg id "$RUN_ID" '.[] | select(.databaseId == ($id | tonumber)) | .url // empty' 2>/dev/null || true)
+
+# Output run ID (for composability with ci:wait, ci:logs, etc.)
+echo "$RUN_ID"
+
+# Human-friendly info on stderr
+echo "✓ Dispatched $WORKFLOW (run $RUN_ID)" >&2
+if [[ -n "$RUN_URL" ]]; then
+  echo "  → $RUN_URL" >&2
+fi
