@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #MISE description="Trigger a workflow run and return the run ID"
 #USAGE arg "<workflow>" help="Workflow filename (e.g., zeke.yml, deploy.yml)"
+#USAGE arg "[inputs...]" help="Workflow inputs as key=value pairs"
 #USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
-#USAGE flag "--input <kv>..." help="Workflow inputs as key=value (repeatable)"
 #USAGE flag "--timeout <seconds>" help="Max time to wait for run to appear (default: 30)"
 
 set -e
@@ -20,10 +20,10 @@ fi
 WORKFLOW="${usage_workflow}"
 TIMEOUT="${usage_timeout:-30}"
 
-# Build input flags (-f key=value)
+# Build input flags (-f key=value) from positional args
 INPUT_FLAGS=()
-if [[ -n "${usage_input:-}" ]]; then
-  for kv in "${usage_input[@]}"; do
+if [[ -n "${usage_inputs:-}" ]]; then
+  for kv in ${usage_inputs}; do
     INPUT_FLAGS+=(-f "$kv")
   done
 fi
@@ -46,19 +46,21 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
   ELAPSED=$((ELAPSED + INTERVAL))
 
   # Get recent runs for this workflow, filter by actor if possible
-  USER_FILTER=""
+  USER_ARGS=()
   if [[ -n "$GH_USER" ]]; then
-    USER_FILTER="--user $GH_USER"
+    USER_ARGS=(--user "$GH_USER")
   fi
 
-  RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 $USER_FILTER \
+  RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
     --json databaseId,createdAt,url 2>/dev/null || true)
 
   if [[ -z "$RUN_INFO" ]]; then
     continue
   fi
 
-  # Find a run created after our dispatch timestamp
+  # Find a run created after our dispatch timestamp.
+  # jq's fromdateiso8601 chokes on fractional seconds (e.g., "2026-04-13T21:05:55.024Z"),
+  # so we strip them with sub() before parsing.
   RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
     [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
   ' 2>/dev/null || true)

@@ -19,14 +19,14 @@ if [[ -n "$REPO_FLAG" ]]; then
 fi
 REPO=$(mise run -q agent:find "${FIND_ARGS[@]}")
 
-# Build workflow inputs
-INPUTS=(--input "message=$MESSAGE")
+# Build workflow inputs as positional key=value pairs
+INPUTS=("message=$MESSAGE")
 if [[ -n "$MODEL" ]]; then
-  INPUTS+=(--input "model=$MODEL")
+  INPUTS+=("model=$MODEL")
 fi
 
 # Dispatch the agent's workflow
-RUN_ID=$(mise run -q ci:dispatch "${AGENT}.yml" --repo "$REPO" "${INPUTS[@]}")
+RUN_ID=$(mise run -q ci:dispatch "${AGENT}.yml" "${INPUTS[@]}" --repo "$REPO")
 
 echo "✓ Woke $AGENT (run $RUN_ID)"
 echo "  → shimmer ci:logs $RUN_ID --agent --repo $REPO"
