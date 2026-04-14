@@ -21,3 +21,4 @@ Thumbs.db
 cli/shimmer
 
 __pycache__/
+node_modules
