@@ -69,7 +69,7 @@ teardown() {
   quoted_key=$(quote_wrap "$VALID_GPG_KEY")
   run validate_gpg_key "$quoted_key"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"wrapped in literal double quotes"* ]]
+  [[ "$output" == *"starts with a double quote"* ]]
 }
 
 @test "validate_gpg_key: rejects garbage data" {

@@ -11,7 +11,7 @@ strip_wrapping_quotes() {
     value="${value#\"}"
     value="${value%\"}"
   fi
-  echo "$value"
+  printf '%s\n' "$value"
 }
 
 # Validate that a string is a parseable GPG key.
@@ -26,9 +26,9 @@ validate_gpg_key() {
     return 1
   fi
 
-  # Check for wrapping quotes (common corruption)
+  # Check for leading quote (likely corrupted — wrapping quotes not fully stripped)
   if [[ "$key_data" == \"* ]]; then
-    echo "GPG key is wrapped in literal double quotes — strip them before use" >&2
+    echo "GPG key starts with a double quote — likely corrupted" >&2
     return 1
   fi
 
@@ -43,13 +43,12 @@ validate_gpg_key() {
   # Dry-run import to verify GPG can parse it
   local tmpfile
   tmpfile=$(mktemp)
+  trap 'rm -f "$tmpfile"' RETURN
   printf '%s' "$key_data" > "$tmpfile"
   local output
   if ! output=$(gpg --batch --import --dry-run "$tmpfile" 2>&1); then
-    rm -f "$tmpfile"
     echo "GPG cannot parse key: $output" >&2
     return 1
   fi
-  rm -f "$tmpfile"
   return 0
 }

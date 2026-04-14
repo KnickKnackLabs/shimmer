@@ -31,11 +31,6 @@ else
     }
   fi
 
-  if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
-    echo "ERROR: Retrieved GPG key seems too short or empty"
-    exit 1
-  fi
-
   # Strip wrapping quotes (some providers/uploads introduce them)
   GPG_PRIVATE_KEY=$(strip_wrapping_quotes "$GPG_PRIVATE_KEY")
 

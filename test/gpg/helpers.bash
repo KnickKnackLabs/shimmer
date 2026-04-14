@@ -3,10 +3,6 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
 
 # Generate a real GPG key for testing.
-# Uses a temporary GNUPGHOME so it doesn't pollute the real keyring.
-# Sets VALID_GPG_KEY (armor) and TEST_GNUPGHOME.
-# Usage: generate_test_gpg_key
-# Generate a real GPG key for testing.
 # Uses a short socket path to avoid gpg-agent socket length limits.
 # Sets VALID_GPG_KEY (armor) and TEST_GNUPGHOME.
 generate_test_gpg_key() {
@@ -43,7 +39,7 @@ EOF
 # Wrap a value in literal double quotes (simulates the corruption).
 # Usage: quoted=$(quote_wrap "$value")
 quote_wrap() {
-  echo "\"$1\""
+  printf '"%s"' "$1"
 }
 
 # Clean up gpg-agent and temp dirs.
