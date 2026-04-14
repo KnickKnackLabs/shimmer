@@ -20,12 +20,14 @@ fi
 WORKFLOW="${usage_workflow}"
 TIMEOUT="${usage_timeout:-30}"
 
-# Build input flags (-f key=value) from positional args
+# Build input flags (-f key=value) from positional args.
+# usage_inputs is a shell-escaped string (e.g., "'message=hello world' 'model=opus'").
+# xargs respects the quoting; printf '%s\0' gives us null-delimited items.
 INPUT_FLAGS=()
 if [[ -n "${usage_inputs:-}" ]]; then
-  for kv in ${usage_inputs}; do
+  while IFS= read -r -d '' kv; do
     INPUT_FLAGS+=(-f "$kv")
-  done
+  done < <(printf '%s' "${usage_inputs}" | xargs printf '%s\0')
 fi
 
 # Record timestamp just before dispatch (for filtering)

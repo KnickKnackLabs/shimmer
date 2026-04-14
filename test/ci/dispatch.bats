@@ -41,6 +41,17 @@ setup() {
   grep "workflow run" "$GH_LOG" | grep -q "model=opus"
 }
 
+@test "dispatch: preserves spaces in input values" {
+  mock_gh 12345
+  mock_shimmer
+
+  run shimmer ci:dispatch test.yml "message=hello world from CI" model=opus --repo test/repo
+  [ "$status" -eq 0 ]
+
+  # The full value including spaces should appear as a single -f arg
+  grep "workflow run" "$GH_LOG" | grep -q "message=hello world from CI"
+}
+
 @test "dispatch: shows human-friendly info on stderr" {
   mock_gh 12345
   mock_shimmer
