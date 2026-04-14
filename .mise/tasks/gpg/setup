@@ -4,6 +4,8 @@
 
 set -e
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/lib/gpg.sh"
+
 # Bridge env var during migration
 export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
 
@@ -29,8 +31,14 @@ else
     }
   fi
 
-  if [ ${#GPG_PRIVATE_KEY} -lt 100 ]; then
-    echo "ERROR: Retrieved GPG key seems too short or empty"
+  # Strip wrapping quotes (some providers/uploads introduce them)
+  GPG_PRIVATE_KEY=$(strip_wrapping_quotes "$GPG_PRIVATE_KEY")
+
+  # Validate before importing
+  if ! validate_gpg_key "$GPG_PRIVATE_KEY"; then
+    echo "" >&2
+    echo "Hint: the key may have been corrupted during upload." >&2
+    echo "Try re-syncing: shimmer agent:sync-secrets $AGENT" >&2
     exit 1
   fi
 
