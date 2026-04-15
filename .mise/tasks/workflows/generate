@@ -37,7 +37,7 @@ cp "$MISE_PROJECT_ROOT/.github/templates/agent-run.yml" "$OUTPUT_DIR/agent-run.y
 echo "Generated: agent-run.yml"
 
 # Generate per-agent workflow files from agent:list
-AGENTS=$(mise run -q agent:list 2>/dev/null) || AGENTS=""
+AGENTS=$(mise run -q agent:list -- --ci 2>/dev/null) || AGENTS=""
 if [[ -n "$AGENTS" ]]; then
   echo "Discovered agents: $(echo "$AGENTS" | tr '\n' ' ')"
 
