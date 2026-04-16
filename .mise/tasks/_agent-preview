@@ -36,12 +36,16 @@ fi
 # Workspace info
 WORKSPACE="$HOME/agents/$AGENT"
 if [ -d "$WORKSPACE" ]; then
-  # Zettelkasten
-  ZETTEL_DIR="$WORKSPACE/zettelkasten"
+  # Home repo / zettelkasten
+  if [ -d "$WORKSPACE/home" ]; then
+    ZETTEL_DIR="$WORKSPACE/home"
+  else
+    ZETTEL_DIR="$WORKSPACE/zettelkasten"
+  fi
   if [ -d "$ZETTEL_DIR" ]; then
     NOTE_COUNT=$(find "$ZETTEL_DIR/notes" -mindepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     SESSION_COUNT=$(find "$ZETTEL_DIR/sessions" -mindepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-    echo "Zettelkasten: ${NOTE_COUNT} notes, ${SESSION_COUNT} sessions"
+    echo "Home repo: ${NOTE_COUNT} notes, ${SESSION_COUNT} sessions"
   fi
 
   # Repos in workspace
