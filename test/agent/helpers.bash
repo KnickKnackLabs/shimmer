@@ -5,6 +5,7 @@
 # without real session infrastructure.
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/helpers.bash"
 
 # Set up minimal agent identity environment.
 # Usage: setup_agent [name]

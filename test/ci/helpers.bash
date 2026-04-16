@@ -51,6 +51,7 @@ esac
 MOCK
   chmod +x "$MOCK_BIN/gh"
   export PATH="$MOCK_BIN:$PATH"
+  export GH_BIN="$MOCK_BIN/gh"
 }
 
 # Create a mock gh that never returns a run (for timeout testing)
@@ -76,4 +77,5 @@ esac
 MOCK
   chmod +x "$MOCK_BIN/gh"
   export PATH="$MOCK_BIN:$PATH"
+  export GH_BIN="$MOCK_BIN/gh"
 }

@@ -9,6 +9,100 @@ set -e
 
 SCRIPT_DIR="$(dirname "$0")"
 
+# Parse a shell-escaped word list emitted by mise's #USAGE variadic args.
+# Example shape: `'message=hello world' 'model=opus'`
+# We can't use xargs here because it breaks on embedded newlines.
+parse_shell_words() {
+  local input="$1"
+  PARSED_WORDS=()
+
+  local word=""
+  local state="unquoted"
+  local word_started=false
+  local i ch
+
+  for ((i = 0; i < ${#input}; i++)); do
+    ch="${input:i:1}"
+
+    case "$state" in
+      unquoted)
+        case "$ch" in
+          [[:space:]])
+            if $word_started; then
+              PARSED_WORDS+=("$word")
+              word=""
+              word_started=false
+            fi
+            ;;
+          "'")
+            state="single"
+            word_started=true
+            ;;
+          '"')
+            state="double"
+            word_started=true
+            ;;
+          '\\')
+            state="escape"
+            word_started=true
+            ;;
+          *)
+            word+="$ch"
+            word_started=true
+            ;;
+        esac
+        ;;
+      single)
+        if [[ "$ch" == "'" ]]; then
+          state="unquoted"
+        else
+          word+="$ch"
+        fi
+        ;;
+      double)
+        case "$ch" in
+          '"')
+            state="unquoted"
+            ;;
+          '\\')
+            state="double_escape"
+            ;;
+          *)
+            word+="$ch"
+            ;;
+        esac
+        ;;
+      escape)
+        word+="$ch"
+        state="unquoted"
+        ;;
+      double_escape)
+        case "$ch" in
+          '"'|'\\'|'$'|'`')
+            word+="$ch"
+            ;;
+          *)
+            word+="\\$ch"
+            ;;
+        esac
+        state="double"
+        ;;
+    esac
+  done
+
+  case "$state" in
+    unquoted)
+      if $word_started; then
+        PARSED_WORDS+=("$word")
+      fi
+      ;;
+    *)
+      echo "Error: malformed shell-escaped input list" >&2
+      return 1
+      ;;
+  esac
+}
+
 # Determine repo
 if [[ -n "${usage_repo:-}" ]]; then
   REPO="$usage_repo"
@@ -19,26 +113,27 @@ fi
 
 WORKFLOW="${usage_workflow}"
 TIMEOUT="${usage_timeout:-30}"
+GH_BIN="${GH_BIN:-gh}"
 
 # Build input flags (-f key=value) from positional args.
 # usage_inputs is a shell-escaped string (e.g., "'message=hello world' 'model=opus'").
-# xargs respects the quoting; printf '%s\0' gives us null-delimited items.
 INPUT_FLAGS=()
 if [[ -n "${usage_inputs:-}" ]]; then
-  while IFS= read -r -d '' kv; do
+  parse_shell_words "${usage_inputs}"
+  for kv in "${PARSED_WORDS[@]}"; do
     INPUT_FLAGS+=(-f "$kv")
-  done < <(printf '%s' "${usage_inputs}" | xargs printf '%s\0')
+  done
 fi
 
 # Record timestamp just before dispatch (for filtering)
 BEFORE=$(date +%s)
 
 # Dispatch the workflow
-gh workflow run "$WORKFLOW" -R "$REPO" "${INPUT_FLAGS[@]}"
+"$GH_BIN" workflow run "$WORKFLOW" -R "$REPO" "${INPUT_FLAGS[@]}"
 
 # Poll for the run ID — filter by workflow + created after dispatch
 # gh uses ISO 8601, so convert epoch to that format
-GH_USER=$(gh api user -q .login 2>/dev/null || true)
+GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null || true)
 ELAPSED=0
 INTERVAL=2
 RUN_ID=""
@@ -53,7 +148,7 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
     USER_ARGS=(--user "$GH_USER")
   fi
 
-  RUN_INFO=$(gh run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
+  RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
     --json databaseId,createdAt,url 2>/dev/null || true)
 
   if [[ -z "$RUN_INFO" ]]; then
