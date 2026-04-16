@@ -103,7 +103,15 @@ if [ -n "$AGENT" ]; then
   fi
 
   # Zettelkasten check
-  ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+  PREFERRED_ZETTEL_DIR="$HOME/agents/$AGENT/home"
+  LEGACY_ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+  if [ -d "$PREFERRED_ZETTEL_DIR" ]; then
+    ZETTEL_DIR="$PREFERRED_ZETTEL_DIR"
+  elif [ -d "$LEGACY_ZETTEL_DIR" ]; then
+    ZETTEL_DIR="$LEGACY_ZETTEL_DIR"
+  else
+    ZETTEL_DIR="$PREFERRED_ZETTEL_DIR"
+  fi
   if [ -d "$ZETTEL_DIR" ]; then
     NOTE_COUNT=$(find "$ZETTEL_DIR" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
     # Check if behind remote

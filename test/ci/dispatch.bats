@@ -52,6 +52,19 @@ setup() {
   grep "workflow run" "$GH_LOG" | grep -q "message=hello world from CI"
 }
 
+@test "dispatch: preserves embedded newlines in input values" {
+  mock_gh 12345
+  mock_shimmer
+
+  message=$'line1\nline2'
+  run shimmer ci:dispatch test.yml "message=$message" model=opus --repo test/repo
+  [ "$status" -eq 0 ]
+
+  log=$(cat "$GH_LOG")
+  [[ "$log" == *$'message=line1\nline2'* ]]
+  [[ "$log" == *"model=opus"* ]]
+}
+
 @test "dispatch: shows human-friendly info on stderr" {
   mock_gh 12345
   mock_shimmer

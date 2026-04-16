@@ -155,3 +155,16 @@ setup() {
 
   grep -q "hello there" "$HARNESS_LOG"
 }
+
+@test "agent:dispatch preserves embedded newlines in message input" {
+  mock_gh 12345
+  mock_shimmer
+
+  message=$'line1\nline2'
+  run shimmer agent:dispatch --repo test/repo c0da "$message"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Woke c0da (run 12345)"* ]]
+
+  log=$(cat "$GH_LOG")
+  [[ "$log" == *$'message=line1\nline2'* ]]
+}

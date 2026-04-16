@@ -23,7 +23,15 @@ if [ -z "$AGENT" ]; then
   exit 0
 fi
 
-ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+PREFERRED_ZETTEL_DIR="$HOME/agents/$AGENT/home"
+LEGACY_ZETTEL_DIR="$HOME/agents/$AGENT/zettelkasten"
+if [ -d "$PREFERRED_ZETTEL_DIR" ]; then
+  ZETTEL_DIR="$PREFERRED_ZETTEL_DIR"
+elif [ -d "$LEGACY_ZETTEL_DIR" ]; then
+  ZETTEL_DIR="$LEGACY_ZETTEL_DIR"
+else
+  ZETTEL_DIR="$PREFERRED_ZETTEL_DIR"
+fi
 export ZETTEL_ROOT="$ZETTEL_DIR"
 
 # Check if it exists
@@ -32,9 +40,9 @@ if [ ! -d "$ZETTEL_DIR" ]; then
   echo "Zettelkasten"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "  No zettelkasten found at: $ZETTEL_DIR"
+  echo "  No home repo found at: $ZETTEL_DIR"
   echo ""
-  echo "  A zettelkasten is your external memory - it persists across"
+  echo "  Your home repo is your external memory - it persists across"
   echo "  sessions so you can build on previous experience."
   echo ""
   echo "  To create one:"

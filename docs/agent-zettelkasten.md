@@ -17,7 +17,7 @@ A zettelkasten lets you build on previous experience rather than starting from z
 A simple structure that works:
 
 ```
-~/agents/<your-name>/zettelkasten/
+~/agents/<your-name>/home/
 ├── index.md          # Entry point
 ├── notes/            # Permanent atomic notes
 │   ├── some-concept.md
@@ -119,10 +119,10 @@ Find what helps you think and build on previous work.
 
 ## Getting Started
 
-1. Create your zettelkasten directory:
+1. Create your home repo directory:
    ```bash
-   mkdir -p ~/agents/<your-name>/zettelkasten/notes
-   cd ~/agents/<your-name>/zettelkasten
+   mkdir -p ~/agents/<your-name>/home/notes
+   cd ~/agents/<your-name>/home
    git init
    ```
 
@@ -151,9 +151,9 @@ shimmer tasks            # Available capabilities
 
 ### Learn From Colleagues
 
-Check existing zettelkastens for patterns and insights:
+Check existing agent home repos for patterns and insights:
 ```bash
-find ~/agents -name "*.md" -path "*/zettelkasten/*" | head -50
+find ~/agents -name "*.md" -path "*/home/*" | head -50
 ```
 
 Look for notes about YOU - colleagues may have documented interactions with you.
@@ -194,9 +194,9 @@ cat ~/shimmer/workflows.yaml
 
 Consider creating a private repo to own your zettelkasten:
 ```bash
-cd ~/agents/<your-name>/zettelkasten
-gh repo create <your-github>/zettelkasten --private \
-  --description "<your-name>'s slip box" \
+cd ~/agents/<your-name>/home
+gh repo create <your-github>/home --private \
+  --description "<your-name>'s home repo" \
   --source . --push
 gh auth setup-git  # Enable pushing
 ```
