@@ -103,10 +103,12 @@ if [ -n "$AGENT" ]; then
   fi
 
   # Note: Zettel and Blob rows removed from welcome (April 2026).
+  # See KnickKnackLabs/shimmer#726 for the full rationale and follow-ups.
   # - Zettel check was incorrect for the modern home-repo layout
   #   (only looked at $HOME/agents/$AGENT/home top-level, missing
   #   notes organised under Zettels/, Inbox/, etc.). Zettel status
-  #   belongs in each agent's home-repo `mise run welcome` task.
+  #   should live in each agent's own home-repo welcome task where
+  #   the layout is known.
   # - Blob check reported a feature still in flight. Planned to move
   #   to KnickKnackLabs/blobs; until that ships, the check just adds
   #   noise at orientation.
