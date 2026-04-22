@@ -87,7 +87,7 @@ Interactive walkthrough for full agent setup:
 6. **Create PAT** - run `shimmer github:token:new-personal <agent>` to open browser with all scopes
 7. **Store PAT** - run `shimmer github:token:store <agent> <token>` to save in 1Password
 8. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
-9. **Blob Storage** - store B2 credentials, run `shimmer blob:setup`, verify with `shimmer blob:welcome`
+9. **Blob Storage** - store B2 credentials; configure via the standalone [`blobs`](https://github.com/KnickKnackLabs/blobs) tool (previously `shimmer blob:*`).
 10. **Verify** - triggers test workflow to confirm signed commits work
 
 ## Organization Structure
@@ -155,11 +155,12 @@ rikonor@gmail.com (personal)
 
 - name: Setup blob storage
   env:
+    B2_ALIAS: <agent>
     B2_ENDPOINT: ${{ secrets.<AGENT>_B2_ENDPOINT }}
     B2_KEY_ID: ${{ secrets.<AGENT>_B2_KEY_ID }}
     B2_APPLICATION_KEY: ${{ secrets.<AGENT>_B2_APPLICATION_KEY }}
     B2_BUCKET: ${{ secrets.<AGENT>_B2_BUCKET }}
-  run: mise run blob:setup <agent>
+  run: blobs setup
 ```
 
 For local setup, see `docs/agent-local.md`.

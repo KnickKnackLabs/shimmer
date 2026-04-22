@@ -16,7 +16,6 @@ uv = "latest"                                # Python package installer (needed 
 jq = "1.8.1"                              # JSON processing
 yq = "4.50.1"                             # YAML processing
 fzf = "0.67.0"                            # Fuzzy finder for interactive pickers
-mc = "RELEASE.2025-08-13T08-35-41Z"      # MinIO client for S3-compatible blob storage
 gum = "0.17.0"                             # Terminal UI components (tables, spinners, etc.)
 bats = "1.13.0"                            # Bash Automated Testing System
 "shiv:secrets" = "0.1.0"                    # Provider-based secret management (keychain, 1password)

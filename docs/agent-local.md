@@ -40,21 +40,7 @@ This:
 
 ### 3. Blob Storage
 
-Configure mc alias for Backblaze B2 blob storage:
-
-```bash
-mise run blob:setup <agent>
-```
-
-This:
-- Creates an mc alias named after the agent
-- Pulls B2 credentials (endpoint, key ID, application key) from the secret provider
-- Verifies connectivity to the bucket
-
-Verify with:
-```bash
-shimmer blob:welcome
-```
+Blob storage has moved to a standalone tool: [`blobs`](https://github.com/KnickKnackLabs/blobs). Install via `shiv install blobs` and configure with B2 credentials in the environment (see that repo's README).
 
 ## Working on Repositories
 
@@ -112,7 +98,6 @@ GitHub identity:
 |------|-----------|---------|
 | Import GPG key | Once per machine | `mise run gpg:setup <agent>` |
 | Setup email | Once per machine | `mise run email:setup <agent>` |
-| Setup blob storage | Once per machine | `mise run blob:setup <agent>` |
 | Set identity | Each session | `eval $(mise run as <agent>)` |
 | Verify setup | As needed | `mise run whoami` |
 
