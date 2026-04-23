@@ -54,8 +54,9 @@ for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
     status="?"
   fi
 
-  ROWS+="${status}"$'\t'"${NAME}"$'\t'"${AGENT}"$'\t'"${SCHEDULE}"$'\t'"${MESSAGE}"$'\n'
+  ROWS+="${status}"$'\t'"${NAME}"$'\t'"${AGENT}"$'\t'"${SCHEDULE}"$'\t'"${MESSAGE}"
+  [ "$i" -lt $((WORKFLOW_COUNT - 1)) ] && ROWS+=$'\n'
 done
 
-printf '%s\n%s' "$HEADER" "$ROWS" | gum table --print --separator $'\t' --border rounded \
+printf '%s\n%s\n' "$HEADER" "$ROWS" | gum table --print --separator $'\t' --border rounded \
   --border.foreground 240 --header.foreground 81

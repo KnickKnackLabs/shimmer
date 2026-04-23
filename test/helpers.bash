@@ -10,8 +10,8 @@
 # invoked via `mise run test` or directly with `bats test/...`. We can't
 # rely on $MISE_CONFIG_ROOT: it's unset when bats is invoked directly,
 # and even under `mise run test` it points at the nearest mise.toml,
-# which may be an overlay rather than the real shimmer root. See
-# fold/notes/mise-gotchas.md and codebase's lint:mcr-scope rule.
+# which may be an overlay rather than the real shimmer root. The
+# codebase tool's lint:mcr-scope rule enforces this pattern.
 SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Create a mock task file. Call this before mock_shimmer.

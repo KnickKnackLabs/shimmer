@@ -1,5 +1,16 @@
 #!/usr/bin/env bats
 # Tests for shimmer web:search:brave
+#
+# Standalone by design: doesn't source test/helpers.bash because these
+# tests don't need the mock-first overlay machinery — they only need a
+# PATH-level mock of `curl`. The web:* tasks are slated for extraction
+# into a separate `web` codebase (KnickKnackLabs/web), at which point
+# these tests move with them, so tying into shimmer's shared helpers
+# would be wasted work.
+#
+# Hazard: the PATH-level curl mock relies on shimmer's mise.toml not
+# pinning `curl` as a tool. If it ever does, mise's prepended shim dir
+# would shadow $MOCK_BIN and silently break the mock.
 
 setup() {
   SHIMMER_DIR="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
