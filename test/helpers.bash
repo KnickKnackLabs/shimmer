@@ -6,12 +6,13 @@
 #
 # Usage: source this from suite-specific helpers.bash files.
 
-# Project root — set by mise when running tasks
-if [ -z "${MISE_CONFIG_ROOT:-}" ]; then
-  echo "MISE_CONFIG_ROOT not set — run tests via: mise run test" >&2
-  exit 1
-fi
-SHIMMER_DIR="$MISE_CONFIG_ROOT"
+# Project root — derived from this file's location so tests work whether
+# invoked via `mise run test` or directly with `bats test/...`. We can't
+# rely on $MISE_CONFIG_ROOT: it's unset when bats is invoked directly,
+# and even under `mise run test` it points at the nearest mise.toml,
+# which may be an overlay rather than the real shimmer root. See
+# fold/notes/mise-gotchas.md and codebase's lint:mcr-scope rule.
+SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Create a mock task file. Call this before mock_shimmer.
 # Usage: mock_task "email/quota" 'echo "Usage: 50%"'

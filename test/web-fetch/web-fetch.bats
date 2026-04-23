@@ -3,7 +3,6 @@
 
 setup() {
   SHIMMER_DIR="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-  TASK="$SHIMMER_DIR/.mise/tasks/web/fetch"
 
   # Create a mock curl
   MOCK_BIN="$BATS_TEST_TMPDIR/bin"
@@ -24,24 +23,9 @@ MOCK
   chmod +x "$MOCK_BIN/curl"
 }
 
-# Helper: run the task with usage_ vars set
+# Helper: run the task through mise, so USAGE parses flags like real usage.
 run_fetch() {
-  local url=""
-  local quiet="false"
-  local header=""
-
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -q|--quiet) quiet="true"; shift ;;
-      -H|--header) header="$2"; shift 2 ;;
-      *) url="$1"; shift ;;
-    esac
-  done
-
-  usage_url="$url" \
-  usage_quiet="$quiet" \
-  usage_header="${header:-}" \
-  bash "$TASK"
+  mise -C "$SHIMMER_DIR" run -q web:fetch "$@"
 }
 
 # ============================================================================

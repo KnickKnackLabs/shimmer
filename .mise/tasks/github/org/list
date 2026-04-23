@@ -31,7 +31,7 @@ while IFS= read -r org; do
   PRIVATE_REPOS=$(echo "$INFO" | jq -r '.total_private_repos // 0')
   REPO_COUNT=$((PUBLIC_REPOS + PRIVATE_REPOS))
 
-  printf "  %-24s %-8s %3d repos  %3d members" "$org" "$ROLE" "$REPO_COUNT" "$MEMBERS" # codebase:ignore
+  printf "  %-24s %-8s %3d repos  %3d members" "$org" "$ROLE" "$REPO_COUNT" "$MEMBERS" # codebase:ignore gum-table
   if [[ -n "$DESC" ]]; then
     echo "  $DESC"
   else

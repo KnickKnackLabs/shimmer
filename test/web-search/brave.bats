@@ -14,8 +14,6 @@ setup() {
 
   export PATH="$MOCK_BIN:$PATH"
   export BRAVE_SEARCH_API_KEY="test-key-123"
-
-  TASK="$SHIMMER_DIR/.mise/tasks/web/search/brave"
 }
 
 # Helper: set up curl mock to return a specific fixture
@@ -28,28 +26,24 @@ MOCK
   chmod +x "$MOCK_BIN/curl"
 }
 
-# Helper: run the task with usage_ vars set (simulating mise's USAGE parsing)
+# Helper: run the task through mise, so USAGE parses flags like real usage.
+# Multi-word queries (`run_brave test query`) are joined into a single
+# positional arg because the task's USAGE spec takes one `<query>`.
 run_brave() {
-  local json="false"
-  local count="5"
-  local offset="0"
+  local args=()
   local query=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --json) json="true"; shift ;;
-      -n) count="$2"; shift 2 ;;
-      --offset) offset="$2"; shift 2 ;;
-      *) query="$query $1"; shift ;;
+      --json)   args+=(--json); shift ;;
+      -n)       args+=(-n "$2"); shift 2 ;;
+      --offset) args+=(--offset "$2"); shift 2 ;;
+      *)        query="$query $1"; shift ;;
     esac
   done
   query="${query# }"  # trim leading space
 
-  usage_query="$query" \
-  usage_json="$json" \
-  usage_count="$count" \
-  usage_offset="$offset" \
-  bash "$TASK"
+  mise -C "$SHIMMER_DIR" run -q web:search:brave ${args[@]+"${args[@]}"} "$query"
 }
 
 # ============================================================================
