@@ -6,9 +6,10 @@ set -e
 
 AGENT="${usage_agent:?Usage: shimmer github:token:regenerate <agent>}"
 
-# Fetch credentials from secrets
-USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null || true) # codebase:ignore or-true  prevents set -e abort; empty value caught by credential check below
-PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null || true) # codebase:ignore or-true  prevents set -e abort; empty value caught by credential check below
+# Fetch credentials from secrets. Either missing yields an empty value, which
+# triggers the explicit error message below.
+USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null) || USERNAME=""
+PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null) || PASSWORD=""
 
 if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   echo "ERROR: Could not fetch GitHub credentials for $AGENT" >&2

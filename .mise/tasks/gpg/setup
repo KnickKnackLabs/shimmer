@@ -49,8 +49,12 @@ else
   printf '%s' "$GPG_PRIVATE_KEY" > "$TMPKEY"
   gpg --batch --import "$TMPKEY"
 
-  # Set ultimate trust
-  echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true # codebase:ignore or-true  trust may warn or no-op if already set; key import already succeeded
+  # Set ultimate trust. The key is already imported; failing to set trust
+  # just means git will warn on signed commits until the user fixes it.
+  if ! echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null; then
+    echo "[warn] could not set ultimate trust on $EMAIL key — signed commits may show as untrusted" >&2
+    echo "[warn] fix with: gpg --edit-key $EMAIL trust  (choose 5 = ultimate)" >&2
+  fi
 fi
 
 # Get the key ID

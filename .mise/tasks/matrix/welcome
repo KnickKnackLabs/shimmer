@@ -44,15 +44,22 @@ fi
 echo "Status: ✓ logged in"
 echo ""
 
-# Show rooms
+# Show rooms. Docker/matrix-commander failure is worth surfacing — otherwise
+# an empty list looks like "no rooms" rather than "couldn't connect".
 echo "Rooms:"
-ROOMS=$(docker run --rm \
+WELCOME_STDERR=$(mktemp)
+if ! ROOMS=$(docker run --rm \
   -v "$CREDS_DIR:/data" \
   -v "$STORE_PARENT:/store-parent" \
   matrixcommander/matrix-commander \
   --credentials /data/credentials.json \
   --store /store-parent/store \
-  --joined-rooms 2>/dev/null || true) # codebase:ignore or-true  docker/matrix-commander may not be available; empty shows "(none)"
+  --joined-rooms 2>"$WELCOME_STDERR"); then
+  echo "[warn] could not list joined rooms (docker/matrix-commander may be unavailable):" >&2
+  sed 's/^/  /' "$WELCOME_STDERR" >&2
+  ROOMS=""
+fi
+rm -f "$WELCOME_STDERR"
 
 if [ -n "$ROOMS" ]; then
   echo "$ROOMS" | sed 's/^/  /'
@@ -61,14 +68,16 @@ else
 fi
 echo ""
 
-# Check for pending invites (list only, don't auto-join)
+# Check for pending invites (list only, don't auto-join).
+# If the rooms fetch above worked, this should too; stay quiet on failure
+# here to avoid double-warning for the same underlying cause.
 INVITES=$(docker run --rm \
   -v "$CREDS_DIR:/data" \
   -v "$STORE_PARENT:/store-parent" \
   matrixcommander/matrix-commander \
   --credentials /data/credentials.json \
   --store /store-parent/store \
-  --room-invites LIST 2>/dev/null || true) # codebase:ignore or-true  docker/matrix-commander may not be available; empty handled below
+  --room-invites LIST 2>/dev/null) || INVITES=""
 
 if [ -n "$INVITES" ] && ! echo "$INVITES" | grep -q "No room invites"; then
   echo "Pending invites:"

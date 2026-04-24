@@ -13,9 +13,13 @@ if [ ! -f "workflows.yaml" ]; then
   exit 1
 fi
 
-# Fetch all workflow states upfront
+# Fetch all workflow states upfront. Empty on failure — the per-row lookup
+# below will render "-" for workflows whose state we couldn't determine.
 REPO=$(git remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]//' | sed 's/\.git$//')
-workflow_data=$(gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null || true) # codebase:ignore or-true  best-effort status fetch; schedule info comes from workflows.yaml regardless
+if ! workflow_data=$(gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null); then
+  echo "[warn] could not fetch workflow states from GitHub API; statuses will show as '-'" >&2
+  workflow_data=""
+fi
 
 echo "Agent Schedules"
 echo ""

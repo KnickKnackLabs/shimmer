@@ -16,8 +16,9 @@ fi
 # Resolve the agent home (the repo the caller is in)
 AGENT_HOME_DIR="${AGENT_HOME:-$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")}"
 
-# Discover agents via the home's agent:list task
-AGENTS=$(mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null) || true # codebase:ignore or-true  prevents set -e abort; empty result handled by explicit error check below
+# Discover agents via the home's agent:list task.
+# Empty on failure is the signal — the explicit error check below handles it.
+AGENTS=$(mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null) || AGENTS=""
 
 if [[ -z "$AGENTS" ]]; then
   echo "Error: could not list agents." >&2
