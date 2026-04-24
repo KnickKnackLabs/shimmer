@@ -250,7 +250,12 @@ else
 
   echo "[auto] Verifying blob storage..."
   (
-    # blob:welcome uses GIT_AUTHOR_EMAIL for agent detection
+    # blob:welcome uses GIT_AUTHOR_EMAIL for agent detection. The subshell
+    # scoping is deliberate — we want these overrides to NOT leak into the
+    # rest of onboard. A later `(...)` block re-exports GIT_AUTHOR_EMAIL
+    # independently; shellcheck cross-subshell flow analysis misreads that
+    # as a dropped-modification bug, so disable both codes here.
+    # shellcheck disable=SC2030  # intentional subshell scoping for env override
     export GIT_AUTHOR_EMAIL="$EMAIL"
     export B2_BUCKET="$B2_BUCKET"
     mise -C "$MISE_PROJECT_ROOT" run -q blob:welcome
@@ -269,6 +274,11 @@ echo ""
 PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null || true)
 (
   export GH_TOKEN="$PAT"
+  # Fresh subshell — the earlier blob:welcome `(...)` block's env overrides
+  # don't persist to here; we re-export from $EMAIL directly. SC2031 reads
+  # this as "GIT_AUTHOR_EMAIL modified in a subshell, change might be lost"
+  # but there's no cross-subshell dependency to lose.
+  # shellcheck disable=SC2031  # no cross-subshell flow; each (...) re-exports independently
   export GIT_AUTHOR_EMAIL="$EMAIL"
   export GIT_COMMITTER_EMAIL="$EMAIL"
   export GIT_AUTHOR_NAME="$AGENT"

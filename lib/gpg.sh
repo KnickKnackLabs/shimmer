@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared GPG helper functions for shimmer
 #
 # Sourced by gpg:setup and agent:sync-secrets.

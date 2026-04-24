@@ -32,7 +32,7 @@ if [ ! -f "$TELEMETRY_FILE" ]; then
 fi
 
 EVENT_COUNT=$(wc -l < "$TELEMETRY_FILE" | tr -d ' ')
-FILE_SIZE=$(ls -lh "$TELEMETRY_FILE" | awk '{print $5}')
+FILE_SIZE=$(du -h "$TELEMETRY_FILE" | cut -f1)
 
 # Date range
 FIRST_TS=$(head -1 "$TELEMETRY_FILE" | jq -r '.ts // empty' 2>/dev/null || echo "")

@@ -15,10 +15,13 @@ get_agents() {
 # Discover jobs for a specific agent
 get_jobs() {
   local agent="$1"
-  ls .github/workflows/${agent}-*.yml 2>/dev/null \
-    | xargs -n1 basename \
-    | sed "s/^${agent}-//; s/\.yml$//" \
-    | sort
+  local f
+  for f in .github/workflows/"${agent}"-*.yml; do
+    [ -e "$f" ] || continue
+    f=$(basename "$f")
+    f="${f#"${agent}"-}"
+    echo "${f%.yml}"
+  done | sort
 }
 
 if [ $# -lt 2 ]; then
@@ -52,7 +55,13 @@ if [ ! -f ".github/workflows/$WORKFLOW" ]; then
   echo "Workflow not found: $WORKFLOW"
   echo ""
   echo "Available workflows for $AGENT:"
-  ls .github/workflows/${AGENT}-*.yml 2>/dev/null | xargs -n1 basename | sed 's/^/  /' || echo "  (none)"
+  found=0
+  for f in .github/workflows/"${AGENT}"-*.yml; do
+    [ -e "$f" ] || continue
+    found=1
+    echo "  $(basename "$f")"
+  done
+  [ "$found" -eq 0 ] && echo "  (none)"
   exit 1
 fi
 

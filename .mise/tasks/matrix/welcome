@@ -5,9 +5,10 @@ set -e
 
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+  AGENT="${GIT_AUTHOR_EMAIL%@ricon.family}"
 elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+  AGENT=$(git config user.email)
+  AGENT="${AGENT%@ricon.family}"
 else
   AGENT=""
 fi
@@ -55,7 +56,7 @@ ROOMS=$(docker run --rm \
   --joined-rooms 2>/dev/null || true)
 
 if [ -n "$ROOMS" ]; then
-  echo "$ROOMS" | sed 's/^/  /'
+  while IFS= read -r line; do echo "  $line"; done <<< "$ROOMS"
 else
   echo "  (none)"
 fi
@@ -72,7 +73,7 @@ INVITES=$(docker run --rm \
 
 if [ -n "$INVITES" ] && ! echo "$INVITES" | grep -q "No room invites"; then
   echo "Pending invites:"
-  echo "$INVITES" | sed 's/^/  /'
+  while IFS= read -r line; do echo "  $line"; done <<< "$INVITES"
   echo ""
   echo "  Accept with: shimmer matrix:invites $AGENT"
   echo ""

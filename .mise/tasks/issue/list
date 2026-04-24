@@ -48,7 +48,7 @@ echo ""
 # Display items
 echo "$ITEMS" | jq -r '.[] | "#\(.content.number)\t\(.priority // "—")\t\(.title)"' | \
   column -t -s $'\t' | \
-  while read line; do echo "  $line"; done
+  while read -r line; do echo "  $line"; done
 
 COUNT=$(echo "$ITEMS" | jq 'length')
 echo ""

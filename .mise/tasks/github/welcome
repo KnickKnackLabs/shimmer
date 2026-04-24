@@ -5,9 +5,10 @@ set -e
 
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+  AGENT="${GIT_AUTHOR_EMAIL%@ricon.family}"
 elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+  AGENT=$(git config user.email)
+  AGENT="${AGENT%@ricon.family}"
 else
   AGENT=""
 fi
@@ -88,7 +89,7 @@ fi
 echo "Organizations:"
 ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
 if [ -n "$ORGS" ]; then
-  echo "$ORGS" | sed 's/^/  /'
+  while IFS= read -r line; do echo "  $line"; done <<< "$ORGS"
 else
   echo "  (none)"
 fi
@@ -98,7 +99,7 @@ echo ""
 PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null || true)
 if [ -n "$PENDING" ]; then
   echo "Pending invitations:"
-  echo "$PENDING" | sed 's/^/  /'
+  while IFS= read -r line; do echo "  $line"; done <<< "$PENDING"
   echo ""
   echo "  Accept with: shimmer github:org:accept <org>"
   echo ""

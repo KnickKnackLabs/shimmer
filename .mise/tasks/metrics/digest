@@ -10,7 +10,7 @@ DAYS="${usage_days:-7}"
 export GH_PAGER=""
 
 # Date calculation (compatible with both Linux and macOS)
-START_DATE=$(date -v-${DAYS}d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
+START_DATE=$(date -v-"${DAYS}"d +%Y-%m-%d 2>/dev/null || date -d "-$DAYS days" +%Y-%m-%d)
 END_DATE=$(date +%Y-%m-%d)
 
 # Get PR data

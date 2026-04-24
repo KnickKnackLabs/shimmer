@@ -5,9 +5,10 @@ set -e
 
 # Determine current agent from environment or git config
 if [ -n "$GIT_AUTHOR_EMAIL" ]; then
-  AGENT=$(echo "$GIT_AUTHOR_EMAIL" | sed 's/@ricon\.family$//')
+  AGENT="${GIT_AUTHOR_EMAIL%@ricon.family}"
 elif git config user.email 2>/dev/null | grep -q '@ricon.family'; then
-  AGENT=$(git config user.email | sed 's/@ricon\.family$//')
+  AGENT=$(git config user.email)
+  AGENT="${AGENT%@ricon.family}"
 else
   AGENT=""
 fi
@@ -135,7 +136,7 @@ find "$ZETTEL_DIR" -name "*.md" -type f -print0 2>/dev/null | \
         DATE=$(date -r "$MTIME" "+%Y-%m-%d" 2>/dev/null || date -d "@$MTIME" "+%Y-%m-%d" 2>/dev/null)
       fi
     fi
-    RELPATH="${filepath#$ZETTEL_DIR/}"
+    RELPATH="${filepath#"$ZETTEL_DIR"/}"
     if [ -n "$DATE" ]; then
       echo "    $DATE  $RELPATH"
     else

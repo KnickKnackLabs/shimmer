@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared check functions for shimmer welcome
 #
 # Sourced by the welcome task and by tests.
