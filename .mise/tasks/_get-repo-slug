@@ -16,7 +16,7 @@ TARGET_DIR="${1:-.}"
 
 # Try .project.toml first
 if [[ -f "$TARGET_DIR/.project.toml" ]]; then
-  REPO=$(yq -p toml '.repo' "$TARGET_DIR/.project.toml" 2>/dev/null || true)
+  REPO=$(yq -p toml '.repo' "$TARGET_DIR/.project.toml" 2>/dev/null || true) # codebase:ignore or-true  first source in fallback chain; .project.toml may lack repo field
   if [[ -n "$REPO" ]]; then
     echo "$REPO"
     exit 0
@@ -24,7 +24,7 @@ if [[ -f "$TARGET_DIR/.project.toml" ]]; then
 fi
 
 # Fall back to gh repo view
-REPO=$(cd "$TARGET_DIR" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
+REPO=$(cd "$TARGET_DIR" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true) # codebase:ignore or-true  second source in fallback chain; task fails explicitly if both return empty
 if [[ -n "$REPO" ]]; then
   echo "$REPO"
   exit 0

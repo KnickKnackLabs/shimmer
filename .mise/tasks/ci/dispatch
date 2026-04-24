@@ -133,7 +133,7 @@ BEFORE=$(date +%s)
 
 # Poll for the run ID — filter by workflow + created after dispatch
 # gh uses ISO 8601, so convert epoch to that format
-GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null || true)
+GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null || true) # codebase:ignore or-true  optional — used to filter runs by actor; task works without it
 ELAPSED=0
 INTERVAL=2
 RUN_ID=""
@@ -149,7 +149,7 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
   fi
 
   RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
-    --json databaseId,createdAt,url 2>/dev/null || true)
+    --json databaseId,createdAt,url 2>/dev/null || true) # codebase:ignore or-true  polling loop — API may not have the run yet; next iteration retries
 
   if [[ -z "$RUN_INFO" ]]; then
     continue
@@ -160,7 +160,7 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
   # so we strip them with sub() before parsing.
   RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
     [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
-  ' 2>/dev/null || true)
+  ' 2>/dev/null || true) # codebase:ignore or-true  jq may fail on empty input; polling loop retries
 done
 
 if [[ -z "$RUN_ID" ]]; then
@@ -169,7 +169,7 @@ if [[ -z "$RUN_ID" ]]; then
   exit 1
 fi
 
-RUN_URL=$(echo "$RUN_INFO" | jq -r --arg id "$RUN_ID" '.[] | select(.databaseId == ($id | tonumber)) | .url // empty' 2>/dev/null || true)
+RUN_URL=$(echo "$RUN_INFO" | jq -r --arg id "$RUN_ID" '.[] | select(.databaseId == ($id | tonumber)) | .url // empty' 2>/dev/null || true) # codebase:ignore or-true  optional cosmetic — URL is for stderr display only; run ID already found
 
 # Output run ID (for composability with ci:wait, ci:logs, etc.)
 echo "$RUN_ID"

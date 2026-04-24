@@ -9,7 +9,7 @@ if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
   exit 1
 fi
 
-MEMBERSHIPS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+MEMBERSHIPS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true) # codebase:ignore or-true  API may fail; empty result handled below
 
 if [[ -z "$MEMBERSHIPS" ]]; then
   echo "Not a member of any organizations."

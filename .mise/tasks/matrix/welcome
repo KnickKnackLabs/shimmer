@@ -52,7 +52,7 @@ ROOMS=$(docker run --rm \
   matrixcommander/matrix-commander \
   --credentials /data/credentials.json \
   --store /store-parent/store \
-  --joined-rooms 2>/dev/null || true)
+  --joined-rooms 2>/dev/null || true) # codebase:ignore or-true  docker/matrix-commander may not be available; empty shows "(none)"
 
 if [ -n "$ROOMS" ]; then
   echo "$ROOMS" | sed 's/^/  /'
@@ -68,7 +68,7 @@ INVITES=$(docker run --rm \
   matrixcommander/matrix-commander \
   --credentials /data/credentials.json \
   --store /store-parent/store \
-  --room-invites LIST 2>/dev/null || true)
+  --room-invites LIST 2>/dev/null || true) # codebase:ignore or-true  docker/matrix-commander may not be available; empty handled below
 
 if [ -n "$INVITES" ] && ! echo "$INVITES" | grep -q "No room invites"; then
   echo "Pending invites:"

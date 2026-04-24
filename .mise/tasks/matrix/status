@@ -33,7 +33,7 @@ echo "  Path: $CREDS_FILE"
 
 # Check if we can parse the credentials
 if command -v jq &> /dev/null && [ -f "$CREDS_FILE" ]; then
-  DEVICE=$(jq -r '.device_id // empty' "$CREDS_FILE" 2>/dev/null || true)
+  DEVICE=$(jq -r '.device_id // empty' "$CREDS_FILE" 2>/dev/null || true) # codebase:ignore or-true  optional display field; credentials file may lack device_id
   if [ -n "$DEVICE" ]; then
     echo "  Device: $DEVICE"
   fi

@@ -11,7 +11,7 @@ echo "$AGENT@ricon.family"
 echo ""
 
 # Identity snippet via the home's agent:identity task
-IDENTITY_FILE=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+IDENTITY_FILE=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true # codebase:ignore or-true  fzf preview — graceful degradation when agent:identity unavailable
 if [ -n "$IDENTITY_FILE" ] && [ -f "$IDENTITY_FILE" ]; then
   # Skip frontmatter, show first 8 content lines
   in_fm=false past_fm=false count=0

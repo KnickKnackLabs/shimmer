@@ -25,7 +25,7 @@ MODEL="${usage_model:-}"
 AGENTS_FLAG="${usage_agents:-}"
 
 # Discover agents
-ALL_AGENTS=$(get_agents) || true
+ALL_AGENTS=$(get_agents) || true # codebase:ignore or-true  prevents set -e abort; empty result handled by explicit error check below
 if [ -z "$ALL_AGENTS" ]; then
   echo "Error: could not list agents." >&2
   echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2

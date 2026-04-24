@@ -26,7 +26,7 @@ EOF
   export VALID_GPG_KEY
 
   # Clean up keygen dir — tests use their own GNUPGHOME
-  gpgconf --homedir "$keygen_dir" --kill gpg-agent 2>/dev/null || true
+  gpgconf --homedir "$keygen_dir" --kill gpg-agent 2>/dev/null || true # codebase:ignore or-true  gpg-agent may not be running; best-effort cleanup
   rm -rf "$keygen_dir"
 
   # Set up a clean GNUPGHOME for the test itself (also short path)
@@ -44,6 +44,6 @@ quote_wrap() {
 
 # Clean up gpg-agent and temp dirs.
 cleanup_test_gpg() {
-  gpgconf --homedir "${TEST_GNUPGHOME:-/nonexistent}" --kill gpg-agent 2>/dev/null || true
-  rm -rf "${TEST_GNUPGHOME:-}" 2>/dev/null || true
+  gpgconf --homedir "${TEST_GNUPGHOME:-/nonexistent}" --kill gpg-agent 2>/dev/null || true # codebase:ignore or-true  gpg-agent may not be running; test cleanup
+  rm -rf "${TEST_GNUPGHOME:-}" 2>/dev/null || true # codebase:ignore or-true  directory may not exist; test cleanup
 }

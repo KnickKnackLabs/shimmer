@@ -17,7 +17,7 @@ get_agents() {
   mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
 }
 
-AGENTS=$(get_agents) || true
+AGENTS=$(get_agents) || true # codebase:ignore or-true  prevents set -e abort; empty result handled by explicit error check below
 if [ -z "$AGENTS" ]; then
   echo "Error: could not list agents." >&2
   echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
@@ -103,13 +103,13 @@ echo "export GIT_COMMITTER_NAME='$AGENT'"
 echo "export AGENT_HOME='$AGENT_HOME_DIR'"
 
 # Optional: B2 blob storage bucket (don't fail if not configured)
-B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || true
+B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || true # codebase:ignore or-true  B2 storage is optional; empty handled by conditional export below
 if [ -n "$B2_BUCKET" ]; then
   echo "export B2_BUCKET='$B2_BUCKET'"
 fi
 
 # Resolve agent identity content via the home's agent:identity task
-IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true # codebase:ignore or-true  agent home may not have agent:identity task; handled by conditional below
 if [ -n "$IDENTITY" ]; then
   # Export as multi-line env var using $'...' quoting
   ESCAPED=$(printf '%s' "$IDENTITY" | sed "s/'/'\\\\''/g")

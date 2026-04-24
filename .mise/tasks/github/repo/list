@@ -94,7 +94,7 @@ if [[ -n "$OWNER" ]]; then
 else
   # Get all orgs the user belongs to
   USERNAME=$(gh api /user --jq '.login' 2>/dev/null)
-  ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+  ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true) # codebase:ignore or-true  optional — personal repos already shown; org listing is supplementary
 
   # Personal repos first
   echo "Repositories - $USERNAME (personal):"

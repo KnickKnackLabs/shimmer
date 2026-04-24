@@ -92,16 +92,16 @@ if gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   if [ "$FORCE" = "true" ]; then
     echo "[auto] --force: regenerating key..."
     EXISTING_FP=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep -A1 "^pub" | tail -1 | tr -d ' ')
-    gpg --batch --yes --delete-secret-and-public-key "$EXISTING_FP" 2>/dev/null || true
+    gpg --batch --yes --delete-secret-and-public-key "$EXISTING_FP" 2>/dev/null || true # codebase:ignore or-true  best-effort cleanup of possibly-nonexistent key during --force regen
   fi
 fi
 
 if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   # Try to import from secret store first (idempotent re-provision)
-  STORED_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key" 2>/dev/null || true)
+  STORED_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key" 2>/dev/null || true) # codebase:ignore or-true  key may not exist in store; empty triggers new key generation below
   if [ -n "$STORED_PRIVATE_KEY" ]; then
     echo "[auto] Importing GPG key from secret store ($PROVIDER)..."
-    printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
+    printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true # codebase:ignore or-true  grep -v returns 1 when all lines match the filter (no output remaining)
   else
     echo "[auto] Generating new GPG key for $EMAIL..."
     gpg --batch --gen-key << KEYSPEC
@@ -125,7 +125,7 @@ if [ "$SKIP_ORG_SIGN" = "true" ]; then
   echo "       Send to admin@ricon.family for signing"
 else
   echo "[auto] Signing with org key..."
-  gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1 || true
+  gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1 || true # codebase:ignore or-true  signing is idempotent; re-signing or already-signed warnings are expected
 fi
 
 KEY_ID=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep "^pub" | awk '{print $2}' | cut -d'/' -f2)

@@ -7,8 +7,8 @@ set -e
 AGENT="${usage_agent:?Usage: shimmer github:token:regenerate <agent>}"
 
 # Fetch credentials from secrets
-USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null || true)
-PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null || true)
+USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null || true) # codebase:ignore or-true  prevents set -e abort; empty value caught by credential check below
+PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null || true) # codebase:ignore or-true  prevents set -e abort; empty value caught by credential check below
 
 if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   echo "ERROR: Could not fetch GitHub credentials for $AGENT" >&2

@@ -7,7 +7,7 @@ export GH_PAGER=""
 # Determine target directory and repo
 TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
 SCRIPT_DIR="$(dirname "$0")"
-REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR" 2>/dev/null || true)
+REPO=$("$SCRIPT_DIR/../_get-repo-slug" "$TARGET_DIR" 2>/dev/null || true) # codebase:ignore or-true  repo detection is optional; task falls back to unscoped issue list
 
 echo "=== Open Tasks ==="
 if [[ -n "$REPO" ]]; then

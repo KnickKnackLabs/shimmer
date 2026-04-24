@@ -15,7 +15,7 @@ fi
 
 # Fetch all workflow states upfront
 REPO=$(git remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]//' | sed 's/\.git$//')
-workflow_data=$(gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null || true)
+workflow_data=$(gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null || true) # codebase:ignore or-true  best-effort status fetch; schedule info comes from workflows.yaml regardless
 
 echo "Agent Schedules"
 echo ""

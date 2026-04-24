@@ -96,11 +96,11 @@ else
   VERIFICATION_CODE=""
   for i in {1..12}; do
     # Get the most recent email from GitHub
-    LATEST_ID=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 | awk -F'|' '{print $2}' | tr -d ' ' || true)
+    LATEST_ID=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 | awk -F'|' '{print $2}' | tr -d ' ' || true) # codebase:ignore or-true  polling loop — email may not have arrived yet; retry handles it
     if [ -n "$LATEST_ID" ]; then
       # Read the email and extract the verification code (typically 6-8 digits)
-      EMAIL_BODY=$(himalaya message read "$LATEST_ID" 2>/dev/null || true)
-      VERIFICATION_CODE=$(echo "$EMAIL_BODY" | grep -oE '[0-9]{6,8}' | head -1 || true)
+      EMAIL_BODY=$(himalaya message read "$LATEST_ID" 2>/dev/null || true) # codebase:ignore or-true  polling loop — read may fail transiently; retry handles it
+      VERIFICATION_CODE=$(echo "$EMAIL_BODY" | grep -oE '[0-9]{6,8}' | head -1 || true) # codebase:ignore or-true  grep returns 1 on no-match; empty code triggers retry or manual fallback
       if [ -n "$VERIFICATION_CODE" ]; then
         break
       fi
@@ -129,17 +129,17 @@ fi
 echo "STEP 4: Organization Setup"
 echo "------------------------------------------------------------"
 
-MEMBERSHIP=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" 2>&1 || true)
+MEMBERSHIP=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" 2>&1 || true) # codebase:ignore or-true  API returns 404 for non-members; response parsed below to decide invite
 
 if echo "$MEMBERSHIP" | grep -q '"state":"active"'; then
   echo "[auto] $GITHUB_USERNAME is already an active org member"
 else
   echo "[auto] Inviting $GITHUB_USERNAME to ricon-family org..."
-  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
+  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true # codebase:ignore or-true  idempotent invite — may 4xx if already a member
 fi
 
 echo "[auto] Adding to agents team (grants write access)..."
-gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
+gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true # codebase:ignore or-true  idempotent — may 4xx if already a team member
 
 echo ""
 echo "[YOU] Accept the org invitation as $GITHUB_USERNAME:"
@@ -192,7 +192,7 @@ fi
 
 # Set display name on GitHub profile
 echo "[auto] Setting GitHub display name to '$AGENT'..."
-GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent || true
+GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent || true # codebase:ignore or-true  best-effort profile update — PAT_TOKEN may be empty if user skipped paste
 
 wait_for_enter
 
@@ -266,7 +266,7 @@ echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
 echo ""
 
 # Set agent identity and run welcome to verify the full local identity chain
-PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null || true)
+PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null || true) # codebase:ignore or-true  PAT may not be stored yet; welcome below validates auth
 (
   export GH_TOKEN="$PAT"
   export GIT_AUTHOR_EMAIL="$EMAIL"

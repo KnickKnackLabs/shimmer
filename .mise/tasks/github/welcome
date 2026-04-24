@@ -86,7 +86,7 @@ fi
 
 # Show org memberships
 echo "Organizations:"
-ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true) # codebase:ignore or-true  best-effort org listing in welcome display; empty shows "(none)"
 if [ -n "$ORGS" ]; then
   echo "$ORGS" | sed 's/^/  /'
 else
@@ -95,7 +95,7 @@ fi
 echo ""
 
 # Check for pending invitations
-PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null || true)
+PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null || true) # codebase:ignore or-true  best-effort pending check; empty means no pending invites to show
 if [ -n "$PENDING" ]; then
   echo "Pending invitations:"
   echo "$PENDING" | sed 's/^/  /'

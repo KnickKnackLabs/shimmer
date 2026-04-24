@@ -50,7 +50,7 @@ else
   gpg --batch --import "$TMPKEY"
 
   # Set ultimate trust
-  echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true
+  echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null || true # codebase:ignore or-true  trust may warn or no-op if already set; key import already succeeded
 fi
 
 # Get the key ID

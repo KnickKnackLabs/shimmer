@@ -13,7 +13,7 @@ fi
 if [ -z "$RUN_START_TIME" ]; then
   if [ -n "$GITHUB_RUN_ID" ] && [ -n "$GITHUB_REPOSITORY" ]; then
     # Fetch run start time from GitHub API (needs actions:read permission)
-    run_started_at=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq '.run_started_at' 2>/dev/null || true)
+    run_started_at=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq '.run_started_at' 2>/dev/null || true) # codebase:ignore or-true  API may be unavailable; task exits gracefully if start time can't be determined
     # Check if we got a valid timestamp (not an error message)
     if [[ "$run_started_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]; then
       RUN_START_TIME=$(date -d "$run_started_at" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$run_started_at" +%s 2>/dev/null)

@@ -150,7 +150,7 @@ if [[ "$CHECK_MODE" == "true" ]]; then
     DIFF_FOUND=true
   elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
     echo "Differs: $COMMITTED"
-    diff "$GENERATED" "$COMMITTED" || true
+    diff "$GENERATED" "$COMMITTED" || true # codebase:ignore or-true  diff returns 1 when files differ, which is the expected informational case
     DIFF_FOUND=true
   fi
 
@@ -165,7 +165,7 @@ if [[ "$CHECK_MODE" == "true" ]]; then
       DIFF_FOUND=true
     elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
       echo "Differs: $COMMITTED"
-      diff "$GENERATED" "$COMMITTED" || true
+      diff "$GENERATED" "$COMMITTED" || true # codebase:ignore or-true  diff returns 1 when files differ, which is the expected informational case
       DIFF_FOUND=true
     fi
   done <<< "$AGENTS"
@@ -182,7 +182,7 @@ if [[ "$CHECK_MODE" == "true" ]]; then
         DIFF_FOUND=true
       elif ! diff -q "$GENERATED" "$COMMITTED" > /dev/null 2>&1; then
         echo "Differs: $COMMITTED"
-        diff "$GENERATED" "$COMMITTED" || true
+        diff "$GENERATED" "$COMMITTED" || true # codebase:ignore or-true  diff returns 1 when files differ, which is the expected informational case
         DIFF_FOUND=true
       fi
     done
