@@ -33,7 +33,7 @@ gh run list --limit 500 --json workflowName,createdAt,updatedAt,status,conclusio
   sort_by(-.total) |
   .[] |
   "\(.workflow)\t\(.total)\t\(.success) ok\t\(.failure) fail\t\(.skipped) skip"
-' | column -t -s $'\t' # codebase:ignore
+' | column -t -s $'\t' # codebase:ignore gum-table
 
 echo ""
 echo "=== Run Duration Estimates ==="
@@ -53,7 +53,7 @@ gh run list --limit 500 --status success --json workflowName,createdAt,updatedAt
   sort_by(-.total_min) |
   .[] |
   "\(.workflow)\t\(.count) runs\t~\(.avg_min)m avg\t\(.total_min)m total"
-' | column -t -s $'\t' # codebase:ignore
+' | column -t -s $'\t' # codebase:ignore gum-table
 
 echo ""
 echo "=== Totals ==="

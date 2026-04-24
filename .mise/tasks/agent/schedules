@@ -18,10 +18,7 @@ REPO=$(git remote get-url origin 2>/dev/null | sed 's/.*github.com[:/]//' | sed 
 workflow_data=$(gh api "repos/$REPO/actions/workflows" --jq '.workflows[] | "\(.path)\t\(.state)"' 2>/dev/null || true)
 
 echo "Agent Schedules"
-echo "==============="
 echo ""
-printf "%-8s %-12s %-10s %-24s %s\n" "STATUS" "NAME" "AGENT" "SCHEDULE" "MESSAGE"
-printf "%-8s %-12s %-10s %-24s %s\n" "------" "----" "-----" "--------" "-------"
 
 # Read workflows from yaml
 WORKFLOW_COUNT=$(yq -r '.workflows | length' workflows.yaml 2>/dev/null || echo "0")
@@ -31,6 +28,8 @@ if [ "$WORKFLOW_COUNT" -eq 0 ]; then
   exit 0
 fi
 
+HEADER=$'STATUS\tNAME\tAGENT\tSCHEDULE\tMESSAGE'
+ROWS=""
 for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
   NAME=$(yq -r ".workflows[$i].name" workflows.yaml)
   AGENT=$(yq -r ".workflows[$i].agent" workflows.yaml)
@@ -55,5 +54,9 @@ for i in $(seq 0 $((WORKFLOW_COUNT - 1))); do
     status="?"
   fi
 
-  printf "%-8s %-12s %-10s %-24s %s\n" "$status" "$NAME" "$AGENT" "$SCHEDULE" "$MESSAGE" # codebase:ignore
+  ROWS+="${status}"$'\t'"${NAME}"$'\t'"${AGENT}"$'\t'"${SCHEDULE}"$'\t'"${MESSAGE}"
+  [ "$i" -lt $((WORKFLOW_COUNT - 1)) ] && ROWS+=$'\n'
 done
+
+printf '%s\n%s\n' "$HEADER" "$ROWS" | gum table --print --separator $'\t' --border rounded \
+  --border.foreground 240 --header.foreground 81

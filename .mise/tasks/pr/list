@@ -87,7 +87,7 @@ echo "$PRS" | while read -r pr; do
   # Format changes
   CHANGES="+${ADDITIONS}/-${DELETIONS}"
 
-  printf "  #%-4s  %-14s  %-12s  %4s  %s%s\n" "$NUMBER" "$STATUS" "$CHANGES" "$AGE" "$TITLE" "$STALE" # codebase:ignore
+  printf "  #%-4s  %-14s  %-12s  %4s  %s%s\n" "$NUMBER" "$STATUS" "$CHANGES" "$AGE" "$TITLE" "$STALE" # codebase:ignore gum-table
 done
 
 echo ""

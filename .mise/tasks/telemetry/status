@@ -49,6 +49,9 @@ echo ""
 
 # Tools breakdown
 echo "  By tool:"
-jq -r '.tool' "$TELEMETRY_FILE" 2>/dev/null | sort | uniq -c | sort -rn | while read -r count tool; do
-  printf "    %-20s %s\n" "$tool" "$count"
-done
+HEADER=$'tool\tcount'
+TABLE=$(jq -r '.tool' "$TELEMETRY_FILE" 2>/dev/null | sort | uniq -c | sort -rn | awk '{tool=$2; count=$1; printf "%s\t%s\n", tool, count}')
+if [ -n "$TABLE" ]; then
+  printf '%s\n%s\n' "$HEADER" "$TABLE" | gum table --print --separator $'\t' --border rounded \
+    --border.foreground 240 --header.foreground 81
+fi

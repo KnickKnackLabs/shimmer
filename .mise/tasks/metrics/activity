@@ -34,7 +34,7 @@ echo "$PR_DATA" | jq -r --arg days "$DAYS" '
   sort_by(-.total) |
   .[] |
   "\(.agent)\t\(.total) PRs (\(.merged) merged, \(.closed) closed, \(.open) open)"
-' 2>/dev/null | column -t -s $'\t' || echo "No agent PR data found" # codebase:ignore
+' 2>/dev/null | column -t -s $'\t' || echo "No agent PR data found" # codebase:ignore gum-table
 
 echo ""
 echo "=== Issues by Agent ==="
@@ -55,7 +55,7 @@ echo "$ISSUE_DATA" | jq -r --arg days "$DAYS" '
   sort_by(-.total) |
   .[] |
   "\(.agent)\t\(.total) issues (\(.open) open, \(.closed) closed)"
-' 2>/dev/null | column -t -s $'\t' || echo "No agent issue data found" # codebase:ignore
+' 2>/dev/null | column -t -s $'\t' || echo "No agent issue data found" # codebase:ignore gum-table
 
 echo ""
 echo "=== Merge Conflict Status ==="
