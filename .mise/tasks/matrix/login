@@ -28,9 +28,10 @@ if [ -f "$CREDS_DIR/credentials.json" ]; then
   exit 1
 fi
 
-# Get password: env var > secrets tool > interactive prompt
+# Get password: env var > secrets tool > interactive prompt.
+# Empty here is acceptable: the prompt below is the documented fallback.
 if [ -z "${MATRIX_PASSWORD:-}" ]; then
-  MATRIX_PASSWORD=$(secrets get "$USERNAME/matrix-password" 2>/dev/null || true)
+  MATRIX_PASSWORD=$(secrets get "$USERNAME/matrix-password" 2>/dev/null) || MATRIX_PASSWORD=""
 fi
 
 if [ -z "$MATRIX_PASSWORD" ]; then

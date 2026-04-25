@@ -92,16 +92,25 @@ if gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
   if [ "$FORCE" = "true" ]; then
     echo "[auto] --force: regenerating key..."
     EXISTING_FP=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep -A1 "^pub" | tail -1 | tr -d ' ')
-    gpg --batch --yes --delete-secret-and-public-key "$EXISTING_FP" 2>/dev/null || true
+    # Key existence was just verified above; a failure here is a real problem
+    # (locked keyring, perms), but shouldn't block the regen attempt.
+    if ! gpg --batch --yes --delete-secret-and-public-key "$EXISTING_FP" 2>/dev/null; then
+      echo "[warn] failed to delete existing key $EXISTING_FP — re-import below may fail" >&2
+    fi
   fi
 fi
 
 if ! gpg --list-keys "$EMAIL" >/dev/null 2>&1; then
-  # Try to import from secret store first (idempotent re-provision)
-  STORED_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key" 2>/dev/null || true)
+  # Try to import from secret store first (idempotent re-provision).
+  # Empty on missing key is expected (new agent); empty on provider failure
+  # will cause the gen-key branch below to create a fresh key — which is
+  # probably wrong if the provider is broken, but preferable to aborting mid-run.
+  STORED_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key" 2>/dev/null) || STORED_PRIVATE_KEY=""
   if [ -n "$STORED_PRIVATE_KEY" ]; then
     echo "[auto] Importing GPG key from secret store ($PROVIDER)..."
-    printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || true
+    # grep -v returns 1 when every line matches the filter (i.e. nothing to print).
+    # Accept that specific exit; reject other failures (e.g. broken pipe).
+    printf '%s' "$STORED_PRIVATE_KEY" | gpg --batch --import 2>&1 | grep -v "^gpg: Total" || [ $? -eq 1 ]
   else
     echo "[auto] Generating new GPG key for $EMAIL..."
     gpg --batch --gen-key << KEYSPEC
@@ -125,7 +134,17 @@ if [ "$SKIP_ORG_SIGN" = "true" ]; then
   echo "       Send to admin@ricon.family for signing"
 else
   echo "[auto] Signing with org key..."
-  gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1 || true
+  if ! gpg --batch --yes --no-tty --local-user admin@ricon.family --quick-sign-key "$FINGERPRINT" 2>&1; then
+    echo "[error] failed to sign agent key with admin@ricon.family — trust chain not established" >&2
+    echo "[error] verify admin key is present: gpg --list-secret-keys admin@ricon.family" >&2
+    exit 1
+  fi
+  # Verify the signature actually landed (catches cases where gpg reports
+  # success but the sig didn't get attached).
+  if ! gpg --list-sigs "$FINGERPRINT" | grep -q 'admin@ricon.family'; then
+    echo "[error] signing reported success but no admin signature found on agent key" >&2
+    exit 1
+  fi
 fi
 
 KEY_ID=$(gpg --list-keys --keyid-format LONG "$EMAIL" | grep "^pub" | awk '{print $2}' | cut -d'/' -f2)

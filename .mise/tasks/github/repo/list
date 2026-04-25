@@ -92,9 +92,13 @@ if [[ -n "$OWNER" ]]; then
   echo ""
   list_repos "$OWNER"
 else
-  # Get all orgs the user belongs to
+  # Get all orgs the user belongs to. Personal repos are listed regardless;
+  # if the org fetch fails, we surface it but don't abort.
   USERNAME=$(gh api /user --jq '.login' 2>/dev/null)
-  ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+  if ! ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null); then
+    echo "[warn] could not fetch org memberships — only personal repos will be listed" >&2
+    ORGS=""
+  fi
 
   # Personal repos first
   echo "Repositories - $USERNAME (personal):"

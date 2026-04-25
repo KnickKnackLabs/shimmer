@@ -7,9 +7,10 @@ set -e
 
 AGENT="${usage_agent:?Usage: shimmer token:new-personal <agent>}"
 
-# Fetch credentials from secrets
-USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null || true)
-PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null || true)
+# Fetch credentials from secrets. Either missing yields an empty value, which
+# triggers the explicit error message below.
+USERNAME=$(secrets get "$AGENT/github-username" 2>/dev/null) || USERNAME=""
+PASSWORD=$(secrets get "$AGENT/github-password" 2>/dev/null) || PASSWORD=""
 
 if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   echo "ERROR: Could not fetch GitHub credentials for $AGENT" >&2
@@ -62,15 +63,18 @@ if [ "$NEEDS_VERIFICATION" = "y" ] || [ "$NEEDS_VERIFICATION" = "Y" ]; then
   # Set agent identity so email tasks resolve the right account
   export GIT_AUTHOR_EMAIL="${AGENT}@ricon.family"
 
-  # Show recent emails
-  ENVELOPES=$(mise run -q email:list -n 5 2>/dev/null || true)
+  # Show recent emails. Empty result falls through to the "[WARN] Could not
+  # fetch emails" branch below.
+  ENVELOPES=$(mise run -q email:list -n 5 2>/dev/null) || ENVELOPES=""
   if [ -n "$ENVELOPES" ]; then
     echo "$ENVELOPES"
     echo ""
     read -r -p "Enter the email ID to read (or Enter to skip): " EMAIL_ID
     echo ""
     if [ -n "$EMAIL_ID" ]; then
-      mise run -q email:read "$EMAIL_ID" 2>/dev/null || true
+      if ! mise run -q email:read "$EMAIL_ID" 2>/dev/null; then
+        echo "[warn] could not read email $EMAIL_ID — try: shimmer email:read $EMAIL_ID" >&2
+      fi
       echo ""
     fi
   else

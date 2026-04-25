@@ -10,8 +10,9 @@ AGENT_HOME_DIR="$2"
 echo "$AGENT@ricon.family"
 echo ""
 
-# Identity snippet via the home's agent:identity task
-IDENTITY_FILE=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || true
+# Identity snippet via the home's agent:identity task. Empty on missing task
+# or other failure — the file check below handles the absence gracefully.
+IDENTITY_FILE=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY_FILE=""
 if [ -n "$IDENTITY_FILE" ] && [ -f "$IDENTITY_FILE" ]; then
   # Skip frontmatter, show first 8 content lines
   in_fm=false past_fm=false count=0

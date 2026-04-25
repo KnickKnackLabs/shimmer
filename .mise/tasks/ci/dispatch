@@ -131,9 +131,10 @@ BEFORE=$(date +%s)
 # Dispatch the workflow
 "$GH_BIN" workflow run "$WORKFLOW" -R "$REPO" "${INPUT_FLAGS[@]}"
 
-# Poll for the run ID — filter by workflow + created after dispatch
-# gh uses ISO 8601, so convert epoch to that format
-GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null || true)
+# Poll for the run ID — filter by workflow + created after dispatch.
+# GH_USER is only used to narrow run results by actor; the task works without it,
+# so empty-on-failure is acceptable.
+GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null) || GH_USER=""
 ELAPSED=0
 INTERVAL=2
 RUN_ID=""
@@ -148,8 +149,10 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
     USER_ARGS=(--user "$GH_USER")
   fi
 
+  # Polling loop: API may not have the run indexed yet on early iterations.
+  # Empty RUN_INFO triggers `continue`; the outer timeout catches persistent failures.
   RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
-    --json databaseId,createdAt,url 2>/dev/null || true)
+    --json databaseId,createdAt,url 2>/dev/null) || RUN_INFO=""
 
   if [[ -z "$RUN_INFO" ]]; then
     continue
@@ -158,9 +161,11 @@ while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
   # Find a run created after our dispatch timestamp.
   # jq's fromdateiso8601 chokes on fractional seconds (e.g., "2026-04-13T21:05:55.024Z"),
   # so we strip them with sub() before parsing.
+  # jq yields empty string on no-match and can fail on malformed input; either
+  # outcome leaves RUN_ID empty, which causes the while loop to iterate again.
   RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
     [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
-  ' 2>/dev/null || true)
+  ' 2>/dev/null) || RUN_ID=""
 done
 
 if [[ -z "$RUN_ID" ]]; then
@@ -169,7 +174,9 @@ if [[ -z "$RUN_ID" ]]; then
   exit 1
 fi
 
-RUN_URL=$(echo "$RUN_INFO" | jq -r --arg id "$RUN_ID" '.[] | select(.databaseId == ($id | tonumber)) | .url // empty' 2>/dev/null || true)
+# RUN_URL is used only for the human-friendly stderr message below; the run ID
+# has already been determined. Empty on jq failure degrades to "no URL shown".
+RUN_URL=$(echo "$RUN_INFO" | jq -r --arg id "$RUN_ID" '.[] | select(.databaseId == ($id | tonumber)) | .url // empty' 2>/dev/null) || RUN_URL=""
 
 # Output run ID (for composability with ci:wait, ci:logs, etc.)
 echo "$RUN_ID"

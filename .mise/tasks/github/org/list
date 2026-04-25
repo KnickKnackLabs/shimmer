@@ -9,7 +9,10 @@ if [ -z "$GH_TOKEN" ] && ! gh auth status &>/dev/null; then
   exit 1
 fi
 
-MEMBERSHIPS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+if ! MEMBERSHIPS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null); then
+  echo "[warn] could not fetch org memberships from GitHub API" >&2
+  MEMBERSHIPS=""
+fi
 
 if [[ -z "$MEMBERSHIPS" ]]; then
   echo "Not a member of any organizations."

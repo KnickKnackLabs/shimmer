@@ -29,17 +29,27 @@ if [ ! -f "$CREDS_DIR/credentials.json" ]; then
   exit 1
 fi
 
-OUTPUT=$(docker run --rm \
+# Fetch messages. Docker/matrix-commander failure is worth surfacing — an
+# empty output otherwise looks identical to "no messages".
+TAIL_STDERR=$(mktemp)
+if ! OUTPUT=$(docker run --rm \
   -v "$CREDS_DIR:/data" \
   -v "$STORE_PARENT:/store-parent" \
   matrixcommander/matrix-commander \
   --credentials /data/credentials.json \
   --store /store-parent/store \
-  --tail "$COUNT" -r "$ROOM" --listen-self -o JSON 2>/dev/null || true)
+  --tail "$COUNT" -r "$ROOM" --listen-self -o JSON 2>"$TAIL_STDERR"); then
+  echo "[warn] could not fetch messages from $ROOM (docker/matrix-commander may be unavailable):" >&2
+  sed 's/^/  /' "$TAIL_STDERR" >&2
+  OUTPUT=""
+fi
+rm -f "$TAIL_STDERR"
 
 if [ "$usage_raw" = "true" ]; then
   echo "$OUTPUT"
 else
-  # Extract timestamp, sender and body in readable format, reverse to show oldest first (natural reading order)
-  echo "$OUTPUT" | jq -r 'select(.source.content.body != null) | "[\(.event_datetime | split(" ")[1] // .event_datetime)] \(.sender_nick): \(.source.content.body)"' 2>/dev/null | tac || true
+  # Extract timestamp, sender and body; reverse to show oldest first (natural reading order).
+  # Pipeline ends in `tac` which exits 0 on empty input, so upstream jq failures
+  # (empty/malformed input) surface as no output rather than a set -e abort.
+  echo "$OUTPUT" | jq -r 'select(.source.content.body != null) | "[\(.event_datetime | split(" ")[1] // .event_datetime)] \(.sender_nick): \(.source.content.body)"' 2>/dev/null | tac
 fi
