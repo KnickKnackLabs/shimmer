@@ -18,6 +18,7 @@ LIMIT="${usage_limit:-10}"
 CATEGORY_FILTER=""
 if [[ -n "$CATEGORY" ]]; then
   # Get category ID by name
+  # shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
   CATEGORY_ID=$(gh api graphql -f query='
     query($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
@@ -31,6 +32,7 @@ if [[ -n "$CATEGORY" ]]; then
   if [[ -z "$CATEGORY_ID" ]]; then
     echo "Error: Category '$CATEGORY' not found"
     echo "Available categories:"
+    # shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
     gh api graphql -f query='
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {

@@ -42,7 +42,7 @@ parse_shell_words() {
             state="double"
             word_started=true
             ;;
-          '\\')
+          \\)
             state="escape"
             word_started=true
             ;;
@@ -64,7 +64,7 @@ parse_shell_words() {
           '"')
             state="unquoted"
             ;;
-          '\\')
+          \\)
             state="double_escape"
             ;;
           *)
@@ -78,7 +78,7 @@ parse_shell_words() {
         ;;
       double_escape)
         case "$ch" in
-          '"'|'\\'|'$'|'`')
+          '"'|\\|'$'|'`')
             word+="$ch"
             ;;
           *)

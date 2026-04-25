@@ -54,9 +54,9 @@ echo "Broadcasting to $AGENT_COUNT agents with ${STAGGER}s stagger"
 echo "Message: $MESSAGE"
 echo ""
 
-MODEL_ARG=""
+MODEL_ARGS=()
 if [ -n "$MODEL" ]; then
-  MODEL_ARG="--model $MODEL"
+  MODEL_ARGS=(--model "$MODEL")
 fi
 
 FIRST=true
@@ -73,7 +73,7 @@ for AGENT in $AGENTS; do
   if [ "$DRY_RUN" = "true" ]; then
     echo "[dry-run] Would message: $AGENT"
   else
-    mise run agent:dispatch "$AGENT" "$MESSAGE" $MODEL_ARG
+    mise run agent:dispatch "$AGENT" "$MESSAGE" "${MODEL_ARGS[@]}"
   fi
 done
 

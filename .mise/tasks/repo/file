@@ -26,7 +26,7 @@ fetch_file() {
   echo "=== $repo ==="
 
   # URL-encode the file path (replace / with %2F)
-  local encoded_file=$(echo "$file" | sed 's/\//%2F/g')
+  local encoded_file="${file//\//%2F}"
 
   local response
   response=$(gh api "repos/$repo/contents/$encoded_file" 2>&1) || {
@@ -40,10 +40,12 @@ fetch_file() {
   }
 
   # Check if it's a file or directory
-  local type=$(echo "$response" | jq -r '.type // "unknown"')
+  local type
+  type=$(echo "$response" | jq -r '.type // "unknown"')
 
   if [ "$type" = "file" ]; then
-    local encoding=$(echo "$response" | jq -r '.encoding')
+    local encoding
+    encoding=$(echo "$response" | jq -r '.encoding')
     if [ "$encoding" = "base64" ]; then
       echo "$response" | jq -r '.content' | base64 -d
     else

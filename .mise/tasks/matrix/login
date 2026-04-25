@@ -37,7 +37,7 @@ fi
 if [ -z "$MATRIX_PASSWORD" ]; then
   # Fall back to interactive prompt
   echo -n "Matrix password for @${USERNAME}:${DOMAIN}: "
-  read -s MATRIX_PASSWORD
+  read -rs MATRIX_PASSWORD
   echo
 fi
 

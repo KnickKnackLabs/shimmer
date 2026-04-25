@@ -18,6 +18,7 @@ OWNER="${REPO%/*}"
 REPO_NAME="${REPO#*/}"
 
 # Query discussion with comments
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 RESULT=$(gh api graphql -f query='
   query($owner: String!, $repo: String!, $number: Int!) {
     repository(owner: $owner, name: $repo) {

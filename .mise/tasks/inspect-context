@@ -15,7 +15,9 @@ mix escript.build >/dev/null 2>&1
 ./cli --log-context --agent "$AGENT" --timeout 60 "$MESSAGE"
 
 # Find the most recent log file
-LOG_FILE=$(ls -t /tmp/claude-context-*.log 2>/dev/null | head -1)
+LOG_FILE=$(find /tmp -maxdepth 1 -name 'claude-context-*.log' -print0 2>/dev/null \
+  | xargs -0 ls -t 2>/dev/null \
+  | head -1)
 
 if [ -n "$LOG_FILE" ]; then
   echo ""

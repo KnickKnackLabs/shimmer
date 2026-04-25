@@ -38,12 +38,14 @@ OWNER="${REPO%/*}"
 REPO_NAME="${REPO#*/}"
 
 # Get repository ID
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 REPO_ID=$(gh api graphql -f query='
   query($owner: String!, $repo: String!) {
     repository(owner: $owner, name: $repo) { id }
   }' -f owner="$OWNER" -f repo="$REPO_NAME" --jq '.data.repository.id')
 
 # Get category ID
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 CATEGORY_ID=$(gh api graphql -f query='
   query($owner: String!, $repo: String!) {
     repository(owner: $owner, name: $repo) {
@@ -57,6 +59,7 @@ CATEGORY_ID=$(gh api graphql -f query='
 if [[ -z "$CATEGORY_ID" ]]; then
   echo "Error: Category '$CATEGORY' not found"
   echo "Available categories:"
+  # shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
   gh api graphql -f query='
     query($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
@@ -70,6 +73,7 @@ if [[ -z "$CATEGORY_ID" ]]; then
 fi
 
 # Create discussion
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 RESULT=$(gh api graphql -f query='
   mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
     createDiscussion(input: {

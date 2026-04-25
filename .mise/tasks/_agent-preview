@@ -56,7 +56,7 @@ if [ -d "$WORKSPACE" ]; then
   if [ -n "$REPOS" ]; then
     echo ""
     echo "Repos:"
-    echo "$REPOS" | while read repo; do
+    echo "$REPOS" | while read -r repo; do
       echo "  $repo"
     done
   fi

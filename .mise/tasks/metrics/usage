@@ -14,7 +14,7 @@ echo ""
 
 # Calculate date range
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  START_DATE=$(date -v-${DAYS}d +%Y-%m-%d)
+  START_DATE=$(date -v-"${DAYS}"d +%Y-%m-%d)
 else
   START_DATE=$(date -d "-$DAYS days" +%Y-%m-%d)
 fi

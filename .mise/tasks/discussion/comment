@@ -33,6 +33,7 @@ OWNER="${REPO%/*}"
 REPO_NAME="${REPO#*/}"
 
 # Get discussion ID
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 DISCUSSION_ID=$(gh api graphql -f query='
   query($owner: String!, $repo: String!, $number: Int!) {
     repository(owner: $owner, name: $repo) {
@@ -47,6 +48,7 @@ if [[ -z "$DISCUSSION_ID" ]] || [[ "$DISCUSSION_ID" == "null" ]]; then
 fi
 
 # Add comment
+# shellcheck disable=SC2016  # $vars in 'gh api graphql -f query=...' are GraphQL server-side variable refs, not bash expansions
 RESULT=$(gh api graphql -f query='
   mutation($discussionId: ID!, $body: String!) {
     addDiscussionComment(input: {

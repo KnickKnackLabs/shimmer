@@ -138,6 +138,7 @@ git -C "$PATH_ARG" init --quiet
 if [[ -f "$TEMPLATE_FILE" ]]; then
   export PROJECT_NAME="$NAME_ARG"
   export PROJECT_DESCRIPTION="$DESC_ARG"
+  # shellcheck disable=SC2016  # envsubst's allow-list argument: literal ${VAR} tokens are the contract
   envsubst '${PROJECT_NAME} ${PROJECT_DESCRIPTION}' < "$TEMPLATE_FILE" > "$PATH_ARG/CLAUDE.md"
 else
   cat > "$PATH_ARG/CLAUDE.md" << EOF
