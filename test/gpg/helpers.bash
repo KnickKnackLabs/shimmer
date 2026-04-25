@@ -25,8 +25,11 @@ EOF
   VALID_GPG_KEY=$(GNUPGHOME="$keygen_dir" gpg --armor --export-secret-keys test@ricon.family 2>/dev/null)
   export VALID_GPG_KEY
 
-  # Clean up keygen dir — tests use their own GNUPGHOME
-  gpgconf --homedir "$keygen_dir" --kill gpg-agent 2>/dev/null || true
+  # Clean up keygen dir — tests use their own GNUPGHOME.
+  # Only try to kill the agent if one is running under this homedir.
+  if [ -S "$keygen_dir/S.gpg-agent" ]; then
+    gpgconf --homedir "$keygen_dir" --kill gpg-agent 2>/dev/null
+  fi
   rm -rf "$keygen_dir"
 
   # Set up a clean GNUPGHOME for the test itself (also short path)
@@ -44,6 +47,11 @@ quote_wrap() {
 
 # Clean up gpg-agent and temp dirs.
 cleanup_test_gpg() {
-  gpgconf --homedir "${TEST_GNUPGHOME:-/nonexistent}" --kill gpg-agent 2>/dev/null || true
-  rm -rf "${TEST_GNUPGHOME:-}" 2>/dev/null || true
+  # Only try to kill the agent if a socket exists (avoids gpgconf failing on
+  # a never-started agent).
+  if [ -n "${TEST_GNUPGHOME:-}" ] && [ -S "$TEST_GNUPGHOME/S.gpg-agent" ]; then
+    gpgconf --homedir "$TEST_GNUPGHOME" --kill gpg-agent 2>/dev/null
+  fi
+  # rm -rf is already idempotent on missing paths — no swallow needed.
+  rm -rf "${TEST_GNUPGHOME:-}"
 }

@@ -87,7 +87,10 @@ fi
 
 # Show org memberships
 echo "Organizations:"
-ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null || true)
+if ! ORGS=$(gh api "/user/memberships/orgs?state=active" --jq '.[].organization.login' 2>/dev/null); then
+  echo "[warn] could not fetch org memberships from GitHub API" >&2
+  ORGS=""
+fi
 if [ -n "$ORGS" ]; then
   while IFS= read -r line; do echo "  $line"; done <<< "$ORGS"
 else
@@ -96,7 +99,10 @@ fi
 echo ""
 
 # Check for pending invitations
-PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null || true)
+if ! PENDING=$(gh api "/user/memberships/orgs?state=pending" --jq '.[].organization.login' 2>/dev/null); then
+  echo "[warn] could not fetch pending org invitations from GitHub API" >&2
+  PENDING=""
+fi
 if [ -n "$PENDING" ]; then
   echo "Pending invitations:"
   while IFS= read -r line; do echo "  $line"; done <<< "$PENDING"

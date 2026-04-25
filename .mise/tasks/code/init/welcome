@@ -34,9 +34,11 @@ echo "Existing Projects"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# List repos from ricon-family org
+# List repos from ricon-family org. Outer `gh auth status` check already gates
+# the common failure modes; a residual failure (network, rate limit) yields an
+# empty REPOS and falls through to the "(couldn't fetch repos)" branch.
 if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
-  REPOS=$(gh repo list ricon-family --limit 20 --json name,description --jq '.[] | "  \(.name)\t\(.description // "-")"' 2>/dev/null || true)
+  REPOS=$(gh repo list ricon-family --limit 20 --json name,description --jq '.[] | "  \(.name)\t\(.description // "-")"' 2>/dev/null) || REPOS=""
   if [ -n "$REPOS" ]; then
     echo "$REPOS" | column -t -s $'\t' # codebase:ignore gum-table
   else

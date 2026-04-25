@@ -24,7 +24,7 @@ bats = "1.13.0"                            # Bash Automated Testing System
 "shiv:threads" = "0.2.1"                    # HUMAN.md thread management
 
 [_.codebase]
-lint = ["mise-settings", "gum-table", "bats-test-helper", "bats-test-task", "mcr-scope", "shellcheck"]
+lint = ["mise-settings", "gum-table", "bats-test-helper", "bats-test-task", "mcr-scope", "or-true", "shellcheck"]
 
 [_.codebase.scope]
 gum-table = ".mise/tasks"

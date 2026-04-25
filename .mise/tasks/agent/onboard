@@ -95,12 +95,16 @@ else
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
   for i in {1..12}; do
-    # Get the most recent email from GitHub
-    LATEST_ID=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 | awk -F'|' '{print $2}' | tr -d ' ' || true)
+    # Get the most recent email from GitHub. The pipeline ends in `tr`, which
+    # always exits 0, so upstream failures (himalaya not configured, grep
+    # no-match, etc.) yield an empty LATEST_ID — the empty check below handles it.
+    LATEST_ID=$(himalaya envelope list 2>/dev/null | grep -i "launch code" | head -1 | awk -F'|' '{print $2}' | tr -d ' ')
     if [ -n "$LATEST_ID" ]; then
-      # Read the email and extract the verification code (typically 6-8 digits)
-      EMAIL_BODY=$(himalaya message read "$LATEST_ID" 2>/dev/null || true)
-      VERIFICATION_CODE=$(echo "$EMAIL_BODY" | grep -oE '[0-9]{6,8}' | head -1 || true)
+      # Read the email and extract the verification code (typically 6-8 digits).
+      # A transient himalaya failure here yields an empty body; next loop iteration retries.
+      EMAIL_BODY=$(himalaya message read "$LATEST_ID" 2>/dev/null) || EMAIL_BODY=""
+      # Pipeline ends in `head`, always exits 0; no-match yields empty string.
+      VERIFICATION_CODE=$(echo "$EMAIL_BODY" | grep -oE '[0-9]{6,8}' | head -1)
       if [ -n "$VERIFICATION_CODE" ]; then
         break
       fi
@@ -129,17 +133,23 @@ fi
 echo "STEP 4: Organization Setup"
 echo "------------------------------------------------------------"
 
-MEMBERSHIP=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" 2>&1 || true)
+# Query membership state directly. A 404 (non-member) or other failure yields
+# empty STATE, which falls through to the invite branch below.
+STATE=$(gh api "orgs/ricon-family/memberships/$GITHUB_USERNAME" --jq '.state' 2>/dev/null) || STATE=""
 
-if echo "$MEMBERSHIP" | grep -q '"state":"active"'; then
+if [ "$STATE" = "active" ]; then
   echo "[auto] $GITHUB_USERNAME is already an active org member"
 else
   echo "[auto] Inviting $GITHUB_USERNAME to ricon-family org..."
-  gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
+  if ! gh api --method PUT "orgs/ricon-family/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1; then
+    echo "[warn] invite PUT failed — may already be a member, or genuine API error (401/429/5xx). Continuing; acceptance step will surface real issues." >&2
+  fi
 fi
 
 echo "[auto] Adding to agents team (grants write access)..."
-gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null || true
+if ! gh api --method PUT "orgs/ricon-family/teams/agents/memberships/$GITHUB_USERNAME" -f role=member > /dev/null 2>&1; then
+  echo "[warn] team membership PUT failed — may already be a team member, or genuine API error. Continuing; will need manual check if push/PR access fails." >&2
+fi
 
 echo ""
 echo "[YOU] Accept the org invitation as $GITHUB_USERNAME:"
@@ -190,9 +200,13 @@ else
   echo "[auto] Skipped (using existing PAT)"
 fi
 
-# Set display name on GitHub profile
+# Set display name on GitHub profile. Best-effort — PAT_TOKEN may be empty
+# (user skipped the paste step) or the PATCH may fail for scope reasons;
+# non-fatal, but worth surfacing.
 echo "[auto] Setting GitHub display name to '$AGENT'..."
-GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent || true
+if ! GH_TOKEN="$PAT_TOKEN" gh api -X PATCH /user -f "name=$AGENT" --silent 2>/dev/null; then
+  echo "[warn] could not set GitHub display name — set it manually at https://github.com/settings/profile" >&2
+fi
 
 wait_for_enter
 
@@ -261,8 +275,10 @@ echo "------------------------------------------------------------"
 echo "[auto] Running shimmer welcome as $AGENT to verify identity..."
 echo ""
 
-# Set agent identity and run welcome to verify the full local identity chain
-PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null || true)
+# Set agent identity and run welcome to verify the full local identity chain.
+# Empty PAT is acceptable here — the welcome task below validates auth and
+# surfaces a clear error if the token is missing or invalid.
+PAT=$(secrets get "$AGENT/github-pat" 2>/dev/null) || PAT=""
 GH_TOKEN="$PAT" \
 GIT_AUTHOR_EMAIL="$EMAIL" GIT_COMMITTER_EMAIL="$EMAIL" \
 GIT_AUTHOR_NAME="$AGENT" GIT_COMMITTER_NAME="$AGENT" \

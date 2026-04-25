@@ -14,17 +14,17 @@ set -eo pipefail
 
 TARGET_DIR="${1:-.}"
 
-# Try .project.toml first
+# Try .project.toml first. Empty output = missing/null .repo field; fall through.
 if [[ -f "$TARGET_DIR/.project.toml" ]]; then
-  REPO=$(yq -p toml '.repo' "$TARGET_DIR/.project.toml" 2>/dev/null || true)
+  REPO=$(yq -p toml '.repo' "$TARGET_DIR/.project.toml" 2>/dev/null) || REPO=""
   if [[ -n "$REPO" ]]; then
     echo "$REPO"
     exit 0
   fi
 fi
 
-# Fall back to gh repo view
-REPO=$(cd "$TARGET_DIR" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
+# Fall back to gh repo view. Empty output = no remote configured; final exit 1 below.
+REPO=$(cd "$TARGET_DIR" && gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || REPO=""
 if [[ -n "$REPO" ]]; then
   echo "$REPO"
   exit 0
