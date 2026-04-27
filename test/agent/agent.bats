@@ -165,6 +165,8 @@ setup() {
   run shimmer agent:dispatch --repo test/repo c0da "$message"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Woke c0da (run 12345)"* ]]
+  [[ "$output" == *"shimmer ci:logs 12345 --agent --repo test/repo"* ]]
+  [[ "$output" != *"actions/runs"* ]]
 
   log=$(cat "$GH_LOG")
   [[ "$log" == *$'message=line1\nline2'* ]]

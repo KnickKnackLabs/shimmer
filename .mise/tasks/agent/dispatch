@@ -25,8 +25,19 @@ if [[ -n "$MODEL" ]]; then
   INPUTS+=("model=$MODEL")
 fi
 
-# Dispatch the agent's workflow
-RUN_ID=$(mise run -q ci:dispatch "${AGENT}.yml" "${INPUTS[@]}" --repo "$REPO")
+# Dispatch the agent's workflow. Depending on mise output handling, stderr from
+# ci:dispatch can be folded into command-substitution output; extract the bare
+# numeric run ID instead of assuming stdout is exactly one line.
+if ! DISPATCH_OUTPUT=$(mise run -q ci:dispatch "${AGENT}.yml" "${INPUTS[@]}" --repo "$REPO" 2>&1); then
+  printf '%s\n' "$DISPATCH_OUTPUT" >&2
+  exit 1
+fi
+RUN_ID=$(printf '%s\n' "$DISPATCH_OUTPUT" | awk '/^[0-9]+$/ { id = $0 } END { print id }')
+if [[ -z "$RUN_ID" ]]; then
+  echo "Error: ci:dispatch did not return a numeric run ID" >&2
+  printf '%s\n' "$DISPATCH_OUTPUT" >&2
+  exit 1
+fi
 
 echo "✓ Woke $AGENT (run $RUN_ID)"
 echo "  → shimmer ci:logs $RUN_ID --agent --repo $REPO"
