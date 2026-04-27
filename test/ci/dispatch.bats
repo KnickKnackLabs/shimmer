@@ -79,6 +79,19 @@ setup() {
 # Polling behavior
 # ============================================================================
 
+@test "dispatch: polls immediately when run is already indexed" {
+  mock_gh 99999
+  mock_shimmer
+
+  run shimmer ci:dispatch test.yml --repo test/repo --timeout 30
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"99999"* ]]
+
+  POLL_COUNT=$(cat "$GH_POLL_COUNT")
+  [ "$POLL_COUNT" -eq 1 ]
+  [ ! -s "$SLEEP_LOG" ]
+}
+
 @test "dispatch: polls until run appears" {
   mock_gh 99999 2  # run appears after 2 polls
   mock_shimmer
@@ -100,18 +113,19 @@ setup() {
   mock_gh_no_runs
   mock_shimmer
 
-  run shimmer ci:dispatch test.yml --repo test/repo --timeout 3
+  run shimmer ci:dispatch test.yml --repo test/repo --timeout 0
   [ "$status" -eq 1 ]
-  [[ "$output" == *"timed out"* ]]
+  [[ "$output" == *"no matching run appeared within 0s"* ]]
 }
 
 @test "dispatch: timeout error includes workflow URL" {
   mock_gh_no_runs
   mock_shimmer
 
-  run shimmer ci:dispatch test.yml --repo owner/repo --timeout 3
+  run shimmer ci:dispatch test.yml --repo owner/repo --timeout 0
   [ "$status" -eq 1 ]
   [[ "$output" == *"owner/repo/actions/workflows/test.yml"* ]]
+  [[ "$output" == *"gh run list --repo 'owner/repo' --workflow 'test.yml' --limit 5"* ]]
 }
 
 # ============================================================================

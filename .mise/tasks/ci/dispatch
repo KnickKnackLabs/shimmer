@@ -3,7 +3,7 @@
 #USAGE arg "<workflow>" help="Workflow filename (e.g., zeke.yml, deploy.yml)"
 #USAGE arg "[inputs...]" help="Workflow inputs as key=value pairs"
 #USAGE flag "--repo <repo>" help="Repository (owner/name), defaults to current directory's repo"
-#USAGE flag "--timeout <seconds>" help="Max time to wait for run to appear (default: 30)"
+#USAGE flag "--timeout <seconds>" help="Max time to wait for run to appear (default: 120)"
 
 set -e
 
@@ -112,7 +112,8 @@ else
 fi
 
 WORKFLOW="${usage_workflow}"
-TIMEOUT="${usage_timeout:-30}"
+TIMEOUT="${usage_timeout:-120}"
+INTERVAL="${CI_DISPATCH_POLL_INTERVAL:-2}"
 GH_BIN="${GH_BIN:-gh}"
 
 # Build input flags (-f key=value) from positional args.
@@ -135,42 +136,59 @@ BEFORE=$(date +%s)
 # GH_USER is only used to narrow run results by actor; the task works without it,
 # so empty-on-failure is acceptable.
 GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null) || GH_USER=""
-ELAPSED=0
-INTERVAL=2
+POLL_START=$(date +%s)
 RUN_ID=""
+RUN_INFO=""
 
-while [[ -z "$RUN_ID" ]] && [[ "$ELAPSED" -lt "$TIMEOUT" ]]; do
-  sleep "$INTERVAL"
-  ELAPSED=$((ELAPSED + INTERVAL))
-
-  # Get recent runs for this workflow, filter by actor if possible
+while [[ -z "$RUN_ID" ]]; do
+  # Get recent runs for this workflow, filter by actor if possible. Poll once
+  # immediately before sleeping; GitHub usually indexes fast, and this avoids a
+  # pointless initial delay on the happy path.
   USER_ARGS=()
   if [[ -n "$GH_USER" ]]; then
     USER_ARGS=(--user "$GH_USER")
   fi
 
   # Polling loop: API may not have the run indexed yet on early iterations.
-  # Empty RUN_INFO triggers `continue`; the outer timeout catches persistent failures.
+  # Empty RUN_INFO just means "try again until timeout".
   RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
     --json databaseId,createdAt,url 2>/dev/null) || RUN_INFO=""
 
-  if [[ -z "$RUN_INFO" ]]; then
-    continue
+  if [[ -n "$RUN_INFO" ]]; then
+    # Find a run created after our dispatch timestamp.
+    # jq's fromdateiso8601 chokes on fractional seconds (e.g., "2026-04-13T21:05:55.024Z"),
+    # so we strip them with sub() before parsing.
+    # jq yields empty string on no-match and can fail on malformed input; either
+    # outcome leaves RUN_ID empty, which causes the while loop to iterate again.
+    RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
+      [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
+    ' 2>/dev/null) || RUN_ID=""
   fi
 
-  # Find a run created after our dispatch timestamp.
-  # jq's fromdateiso8601 chokes on fractional seconds (e.g., "2026-04-13T21:05:55.024Z"),
-  # so we strip them with sub() before parsing.
-  # jq yields empty string on no-match and can fail on malformed input; either
-  # outcome leaves RUN_ID empty, which causes the while loop to iterate again.
-  RUN_ID=$(echo "$RUN_INFO" | jq -r --arg before "$BEFORE" '
-    [.[] | select((.createdAt | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) >= ($before | tonumber))][0].databaseId // empty
-  ' 2>/dev/null) || RUN_ID=""
+  if [[ -n "$RUN_ID" ]]; then
+    break
+  fi
+
+  NOW=$(date +%s)
+  ELAPSED=$((NOW - POLL_START))
+  if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
+    break
+  fi
+
+  REMAINING=$((TIMEOUT - ELAPSED))
+  SLEEP_FOR="$INTERVAL"
+  if [[ "$REMAINING" -lt "$SLEEP_FOR" ]]; then
+    SLEEP_FOR="$REMAINING"
+  fi
+  if [[ "$SLEEP_FOR" -gt 0 ]]; then
+    sleep "$SLEEP_FOR"
+  fi
 done
 
 if [[ -z "$RUN_ID" ]]; then
-  echo "Error: timed out waiting for run to appear (${TIMEOUT}s)" >&2
-  echo "Workflow was dispatched — check https://github.com/$REPO/actions/workflows/$WORKFLOW" >&2
+  echo "Error: workflow was dispatched, but no matching run appeared within ${TIMEOUT}s" >&2
+  echo "Check: https://github.com/$REPO/actions/workflows/$WORKFLOW" >&2
+  echo "Or list recent runs: gh run list --repo '$REPO' --workflow '$WORKFLOW' --limit 5" >&2
   exit 1
 fi
 

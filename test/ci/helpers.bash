@@ -14,8 +14,16 @@ mock_gh() {
   mkdir -p "$MOCK_BIN"
   GH_LOG="$BATS_TEST_TMPDIR/gh-log-$$"
   GH_POLL_COUNT="$BATS_TEST_TMPDIR/gh-poll-count-$$"
+  SLEEP_LOG="$BATS_TEST_TMPDIR/sleep-log-$$"
   echo "0" > "$GH_POLL_COUNT"
-  export GH_LOG GH_POLL_COUNT
+  : > "$SLEEP_LOG"
+  export GH_LOG GH_POLL_COUNT SLEEP_LOG
+
+  cat > "$MOCK_BIN/sleep" <<'MOCK_SLEEP'
+#!/usr/bin/env bash
+echo "$@" >> "$SLEEP_LOG"
+MOCK_SLEEP
+  chmod +x "$MOCK_BIN/sleep"
 
   cat > "$MOCK_BIN/gh" <<MOCK
 #!/usr/bin/env bash
@@ -59,7 +67,15 @@ mock_gh_no_runs() {
   MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
   mkdir -p "$MOCK_BIN"
   GH_LOG="$BATS_TEST_TMPDIR/gh-log-$$"
-  export GH_LOG
+  SLEEP_LOG="$BATS_TEST_TMPDIR/sleep-log-$$"
+  : > "$SLEEP_LOG"
+  export GH_LOG SLEEP_LOG
+
+  cat > "$MOCK_BIN/sleep" <<'MOCK_SLEEP'
+#!/usr/bin/env bash
+echo "$@" >> "$SLEEP_LOG"
+MOCK_SLEEP
+  chmod +x "$MOCK_BIN/sleep"
 
   cat > "$MOCK_BIN/gh" <<'MOCK'
 #!/usr/bin/env bash
