@@ -194,7 +194,7 @@ teardown() {
   [[ "$output" == *"bob"* ]]
 }
 
-@test "as: proceeds with explicit agent when agent:list fails but identity resolves" {
+@test "as: fails when agent:list fails even if identity resolves" {
   setup_test_home "alice"
   cat > "$TEST_HOME/.mise/tasks/agent/list" <<'TASK'
 #!/usr/bin/env bash
@@ -207,10 +207,32 @@ TASK
   mock_shimmer
 
   run shimmer as alice
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"proceeding with explicit agent 'alice'"* ]]
-  [[ "$output" == *"export GIT_AUTHOR_NAME='alice'"* ]]
-  [[ "$output" == *"You are alice."* ]]
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"could not list agents"* ]]
+  [[ "$output" == *"agent:list stderr:"* ]]
+  [[ "$output" == *"agent:list unavailable"* ]]
+  [[ "$output" != *"export GIT_AUTHOR_NAME='alice'"* ]]
+  [[ "$output" != *"You are alice."* ]]
+}
+
+@test "as: rejects agent omitted from list even if identity file exists" {
+  setup_test_home "alice"
+  cat > "$TEST_HOME/notes/charlie.md" <<'EOF'
+---
+title: charlie
+tags: [agent, identity]
+---
+
+# charlie
+You are charlie.
+EOF
+  mock_shimmer
+
+  run shimmer as charlie
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Unknown agent: charlie"* ]]
+  [[ "$output" == *"alice"* ]]
+  [[ "$output" != *"You are charlie."* ]]
 }
 
 # ============ Missing agent:list (no mocks, no overlay) ============

@@ -15,31 +15,25 @@ AGENT_HOME_DIR=$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || e
 AGENT="$usage_agent"
 IDENTITY=""
 
-# Delegate agent discovery to the home's agent:list task
-get_agents() {
-  mise -C "$AGENT_HOME_DIR" run -q agent:list 2>/dev/null
-}
+# Delegate agent discovery to the home's agent:list task. This is mandatory:
+# agent:list is the authoritative set of agents supported by this home.
+AGENT_LIST_ERR=$(mktemp)
+if ! AGENTS=$(mise -C "$AGENT_HOME_DIR" run -q agent:list 2>"$AGENT_LIST_ERR"); then
+  echo "Error: could not list agents." >&2
+  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+  if [ -s "$AGENT_LIST_ERR" ]; then
+    echo "agent:list stderr:" >&2
+    sed 's/^/  /' "$AGENT_LIST_ERR" >&2
+  fi
+  rm -f "$AGENT_LIST_ERR"
+  exit 1
+fi
+rm -f "$AGENT_LIST_ERR"
 
-# Empty on failure triggers the explicit handling below. When an explicit agent
-# was supplied, agent:list is only validation/discovery; in CI we can proceed if
-# the home can resolve that agent's identity directly.
-AGENTS=$(get_agents) || AGENTS=""
 if [ -z "$AGENTS" ]; then
-  if [ -z "$AGENT" ]; then
-    echo "Error: could not list agents." >&2
-    echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
-    exit 1
-  fi
-
-  IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY=""
-  if [ -z "$IDENTITY" ]; then
-    echo "Error: could not list agents." >&2
-    echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
-    echo "Also could not resolve identity for explicit agent '$AGENT'." >&2
-    exit 1
-  fi
-
-  echo "# Warning: could not list agents; proceeding with explicit agent '$AGENT'." >&2
+  echo "Error: agent:list returned no agents." >&2
+  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+  exit 1
 fi
 
 # Interactive picker when no agent specified
@@ -83,10 +77,8 @@ fi
 
 EMAIL="${AGENT}@ricon.family"
 
-# Validate agent when discovery succeeded. If discovery failed but explicit
-# identity resolution succeeded above, AGENTS is empty and the explicit-agent
-# fallback has already validated enough for CI/non-interactive use.
-if [ -n "$AGENTS" ] && ! echo "$AGENTS" | grep -qx "$AGENT"; then
+# Validate agent against the authoritative home-provided agent list.
+if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   echo "Unknown agent: $AGENT" >&2
   echo "Available agents: $(echo "$AGENTS" | tr '\n' ' ')" >&2
   exit 1
@@ -129,11 +121,8 @@ fi
 
 # Resolve agent identity content via the home's agent:identity task.
 # Agent home may not provide an agent:identity task — the conditional below
-# prints a notice in that case. If agent:list failed above, IDENTITY is already
-# populated from the explicit-agent fallback.
-if [ -z "$IDENTITY" ]; then
-  IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY=""
-fi
+# prints a notice in that case.
+IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY=""
 if [ -n "$IDENTITY" ]; then
   # Export as multi-line env var using $'...' quoting
   ESCAPED=$(printf '%s' "$IDENTITY" | sed "s/'/'\\\\''/g")
