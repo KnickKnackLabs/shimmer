@@ -194,6 +194,25 @@ teardown() {
   [[ "$output" == *"bob"* ]]
 }
 
+@test "as: proceeds with explicit agent when agent:list fails but identity resolves" {
+  setup_test_home "alice"
+  cat > "$TEST_HOME/.mise/tasks/agent/list" <<'TASK'
+#!/usr/bin/env bash
+#MISE description="List agents"
+echo "agent:list unavailable" >&2
+exit 1
+TASK
+  chmod +x "$TEST_HOME/.mise/tasks/agent/list"
+  mock_secrets_binary "alice/github-pat=ghp_fake_test_token"
+  mock_shimmer
+
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"proceeding with explicit agent 'alice'"* ]]
+  [[ "$output" == *"export GIT_AUTHOR_NAME='alice'"* ]]
+  [[ "$output" == *"You are alice."* ]]
+}
+
 # ============ Missing agent:list (no mocks, no overlay) ============
 
 @test "as: fails gracefully when home has no agent:list" {
