@@ -114,6 +114,7 @@ fi
 WORKFLOW="${usage_workflow}"
 TIMEOUT="${usage_timeout:-120}"
 INTERVAL="${CI_DISPATCH_POLL_INTERVAL:-2}"
+CREATED_AT_GRACE="${CI_DISPATCH_CREATED_AT_GRACE:-5}"
 GH_BIN="${GH_BIN:-gh}"
 
 # Build input flags (-f key=value) from positional args.
@@ -126,32 +127,25 @@ if [[ -n "${usage_inputs:-}" ]]; then
   done
 fi
 
-# Record timestamp just before dispatch (for filtering)
-BEFORE=$(date +%s)
+# Record timestamp just before dispatch (for filtering). Give GitHub a small
+# grace window for timestamp rounding and minor local/API clock skew.
+BEFORE=$(($(date +%s) - CREATED_AT_GRACE))
 
 # Dispatch the workflow
 "$GH_BIN" workflow run "$WORKFLOW" -R "$REPO" "${INPUT_FLAGS[@]}"
 
 # Poll for the run ID — filter by workflow + created after dispatch.
-# GH_USER is only used to narrow run results by actor; the task works without it,
-# so empty-on-failure is acceptable.
-GH_USER=$("$GH_BIN" api user -q .login 2>/dev/null) || GH_USER=""
 POLL_START=$(date +%s)
 RUN_ID=""
 RUN_INFO=""
 
 while [[ -z "$RUN_ID" ]]; do
-  # Get recent runs for this workflow, filter by actor if possible. Poll once
-  # immediately before sleeping; GitHub usually indexes fast, and this avoids a
-  # pointless initial delay on the happy path.
-  USER_ARGS=()
-  if [[ -n "$GH_USER" ]]; then
-    USER_ARGS=(--user "$GH_USER")
-  fi
-
-  # Polling loop: API may not have the run indexed yet on early iterations.
-  # Empty RUN_INFO just means "try again until timeout".
-  RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 "${USER_ARGS[@]}" \
+  # Poll once immediately before sleeping; GitHub usually indexes fast, and
+  # this avoids a pointless initial delay on the happy path. Do not use
+  # `gh run list --user`: it can omit freshly-dispatched workflow_dispatch runs
+  # even when the raw Actions API reports the expected actor/triggering_actor.
+  # Workflow + created-after-dispatch is the stable match.
+  RUN_INFO=$("$GH_BIN" run list -R "$REPO" --workflow="$WORKFLOW" --limit 5 \
     --json databaseId,createdAt,url 2>/dev/null) || RUN_INFO=""
 
   if [[ -n "$RUN_INFO" ]]; then

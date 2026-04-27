@@ -129,18 +129,36 @@ setup() {
 }
 
 # ============================================================================
-# Actor filtering
+# Run matching
 # ============================================================================
 
-@test "dispatch: filters runs by actor" {
+@test "dispatch: does not filter by actor" {
   mock_gh 12345
   mock_shimmer
 
   run shimmer ci:dispatch test.yml --repo test/repo
   [ "$status" -eq 0 ]
 
-  # Should have called gh api user to get the actor
-  grep -q "api user" "$GH_LOG"
-  # Should have passed --user to gh run list
-  grep "run list" "$GH_LOG" | grep -q "\-\-user mock-user"
+  # `gh run list --user` can omit freshly-dispatched workflow_dispatch runs even
+  # when the raw Actions API reports the expected actor. Match by workflow and
+  # createdAt instead.
+  ! grep "run list" "$GH_LOG" | grep -q "\-\-user"
+}
+
+@test "dispatch: accepts run created slightly before local dispatch timestamp" {
+  mock_gh_with_created_at 12345 "2000-01-01T00:00:00Z"
+  mock_shimmer
+
+  CI_DISPATCH_CREATED_AT_GRACE=4102444800 run shimmer ci:dispatch test.yml --repo test/repo --timeout 0
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"12345"* ]]
+}
+
+@test "dispatch: rejects run older than createdAt grace window" {
+  mock_gh_with_created_at 12345 "2000-01-01T00:00:00Z"
+  mock_shimmer
+
+  CI_DISPATCH_CREATED_AT_GRACE=0 run shimmer ci:dispatch test.yml --repo test/repo --timeout 0
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no matching run appeared within 0s"* ]]
 }

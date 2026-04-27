@@ -62,6 +62,44 @@ MOCK
   export GH_BIN="$MOCK_BIN/gh"
 }
 
+# Create a mock gh that returns one run with a caller-specified createdAt.
+mock_gh_with_created_at() {
+  local run_id="${1:-12345}"
+  local created_at="${2:-2099-01-01T00:00:00Z}"
+
+  MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
+  mkdir -p "$MOCK_BIN"
+  GH_LOG="$BATS_TEST_TMPDIR/gh-log-$$"
+  SLEEP_LOG="$BATS_TEST_TMPDIR/sleep-log-$$"
+  : > "$SLEEP_LOG"
+  export GH_LOG SLEEP_LOG
+
+  cat > "$MOCK_BIN/sleep" <<'MOCK_SLEEP'
+#!/usr/bin/env bash
+echo "$@" >> "$SLEEP_LOG"
+MOCK_SLEEP
+  chmod +x "$MOCK_BIN/sleep"
+
+  cat > "$MOCK_BIN/gh" <<MOCK
+#!/usr/bin/env bash
+echo "\$@" >> "$GH_LOG"
+
+case "\$1" in
+  workflow) ;;
+  run)
+    case "\$2" in
+      list)
+        echo '[{"databaseId": $run_id, "createdAt": "$created_at", "url": "https://github.com/test/repo/actions/runs/$run_id"}]'
+        ;;
+    esac
+    ;;
+esac
+MOCK
+  chmod +x "$MOCK_BIN/gh"
+  export PATH="$MOCK_BIN:$PATH"
+  export GH_BIN="$MOCK_BIN/gh"
+}
+
 # Create a mock gh that never returns a run (for timeout testing)
 mock_gh_no_runs() {
   MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
