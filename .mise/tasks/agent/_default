@@ -57,6 +57,7 @@ if [ "$HEADLESS" = "true" ]; then
 
   # Wake the session — foreground + headless (blocks until done)
   WAKE_ARGS=("$SESSION_ID" --headless --message "$MESSAGE")
+  [ -n "$MODEL" ] && WAKE_ARGS+=(--model "$MODEL")
   [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
   sessions wake "${WAKE_ARGS[@]}"
 else

@@ -2,7 +2,7 @@
 #MISE description="Wake an agent by dispatching their workflow"
 #USAGE arg "<agent>" help="Agent to wake (e.g., zeke, baby-joel)"
 #USAGE arg "<message>" help="Message for the agent"
-#USAGE flag "--model <model>" help="Claude model to use"
+#USAGE flag "--model <model>" help="Model to use"
 #USAGE flag "--repo <repo>" help="Target repository (owner/name) — skip agent discovery"
 
 set -e

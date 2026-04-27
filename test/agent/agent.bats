@@ -97,15 +97,16 @@ setup() {
   grep -q "^wake existing-session-42 --headless --message continue work" "$SESSIONS_LOG"
 }
 
-@test "headless: forwards model to sessions new" {
+@test "headless: forwards model to sessions new and wake" {
   setup_agent
   mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless --model "claude-sonnet" "do something"
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
   [ "$status" -eq 0 ]
 
-  grep "^new " "$SESSIONS_LOG" | grep -q -- "--model claude-sonnet"
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--model openai-codex/gpt-5.5"
+  grep "^wake " "$SESSIONS_LOG" | grep -q -- "--model openai-codex/gpt-5.5"
 }
 
 @test "headless: timeout stored as metadata (not enforced)" {

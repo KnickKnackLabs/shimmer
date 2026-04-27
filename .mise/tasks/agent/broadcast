@@ -4,7 +4,7 @@
 #USAGE flag "-s --stagger <seconds>" help="Seconds to wait between agents (default: 30)"
 #USAGE flag "--agents <list>" help="Comma-separated list of agents (default: all)"
 #USAGE flag "--dry-run" help="Show what would be done without triggering"
-#USAGE flag "--model <model>" help="Claude model to use"
+#USAGE flag "--model <model>" help="Model to use"
 
 set -e
 
