@@ -2,7 +2,9 @@
 #MISE description="Validate workflows.yaml against schema"
 set -eo pipefail
 
-cd "$(git rev-parse --show-toplevel)"
+# Determine target directory (caller's directory when using shimmer alias)
+TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+cd "$TARGET_DIR"
 
-check-jsonschema --schemafile workflows.schema.json workflows.yaml
+check-jsonschema --schemafile "$MISE_PROJECT_ROOT/workflows.schema.json" workflows.yaml
 echo "workflows.yaml is valid"

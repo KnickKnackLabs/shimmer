@@ -1,9 +1,11 @@
 #!/bin/bash
 #MISE description="Validate schema and check workflows are in sync (for CI)"
-#MISE depends=["workflows:validate"]
 set -eo pipefail
 
-cd "$(git rev-parse --show-toplevel)"
+# Determine target directory (caller's directory when using shimmer alias)
+TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+cd "$TARGET_DIR"
 
-# Run generate in check mode
-mise run workflows:generate --check
+# Validate and run generate in check mode through shimmer's own task tree.
+PROJECT_DIR="$TARGET_DIR" mise -C "$MISE_PROJECT_ROOT" run -q workflows:validate
+PROJECT_DIR="$TARGET_DIR" mise -C "$MISE_PROJECT_ROOT" run -q workflows:generate --check

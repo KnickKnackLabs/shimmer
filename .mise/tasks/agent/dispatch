@@ -2,7 +2,7 @@
 #MISE description="Wake an agent by dispatching their workflow"
 #USAGE arg "<agent>" help="Agent to wake (e.g., zeke, baby-joel)"
 #USAGE arg "<message>" help="Message for the agent"
-#USAGE flag "--model <model>" help="Model to use"
+#USAGE flag "--model <model>" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE flag "--repo <repo>" help="Target repository (owner/name) — skip agent discovery"
 
 set -e
@@ -12,6 +12,16 @@ MESSAGE="${usage_message}"
 MODEL="${usage_model:-}"
 REPO_FLAG="${usage_repo:-}"
 
+if [[ -z "$MODEL" ]]; then
+  echo "Error: --model <provider/model> is required" >&2
+  exit 1
+fi
+
+if [[ "$MODEL" != */* ]]; then
+  echo "Error: --model must be provider-qualified (for example: openai-codex/gpt-5.5)" >&2
+  exit 1
+fi
+
 # Find the agent's home repo
 FIND_ARGS=("$AGENT")
 if [[ -n "$REPO_FLAG" ]]; then
@@ -20,10 +30,7 @@ fi
 REPO=$(mise run -q agent:find "${FIND_ARGS[@]}")
 
 # Build workflow inputs as positional key=value pairs
-INPUTS=("message=$MESSAGE")
-if [[ -n "$MODEL" ]]; then
-  INPUTS+=("model=$MODEL")
-fi
+INPUTS=("message=$MESSAGE" "model=$MODEL")
 
 # Dispatch the agent's workflow. Depending on mise output handling, stderr from
 # ci:dispatch can be folded into command-substitution output; extract the bare

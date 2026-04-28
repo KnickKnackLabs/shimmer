@@ -39,6 +39,24 @@ setup() {
   [[ "$output" == *"requires a message"* ]]
 }
 
+@test "headless: fails without model" {
+  setup_agent
+  mock_shimmer
+
+  run shimmer agent --headless "do something"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"requires --model"* ]]
+}
+
+@test "headless: fails with unqualified model" {
+  setup_agent
+  mock_shimmer
+
+  run shimmer agent --headless --model "gpt-5.5" "do something"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"provider-qualified"* ]]
+}
+
 @test "headless: fails when sessions not on PATH" {
   # Skip if sessions is installed — can't reliably hide it from mise subshell
   command -v sessions &>/dev/null && skip "sessions is installed"
@@ -46,7 +64,7 @@ setup() {
   setup_agent
   mock_shimmer
 
-  run shimmer agent --headless "do something"
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
   [ "$status" -ne 0 ]
   [[ "$output" == *"sessions not found"* ]]
 }
@@ -56,15 +74,17 @@ setup() {
   mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless "review the PR"
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "review the PR"
   [ "$status" -eq 0 ]
 
   # sessions new was called with agent name in session name
   grep -q "^new test-agent-headless-" "$SESSIONS_LOG"
   # sessions new includes agent.name metadata
   grep "^new " "$SESSIONS_LOG" | grep -q "agent.name=test-agent"
-  # sessions wake was called with the session ID from new
-  grep -q "^wake mock-session-id-001 --headless --message review the PR" "$SESSIONS_LOG"
+  # sessions new does not receive execution-time model selection
+  ! grep "^new " "$SESSIONS_LOG" | grep -q -- "--model"
+  # sessions wake was called with the session ID from new and explicit model
+  grep -q "^wake mock-session-id-001 --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
 @test "headless: session name uses full epoch timestamp" {
@@ -72,7 +92,7 @@ setup() {
   mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless "test"
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "test"
   [ "$status" -eq 0 ]
 
   # Extract the session name from the new call — should have full epoch (10+ digits)
@@ -88,16 +108,16 @@ setup() {
   mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless --session "existing-session-42" "continue work"
+  run shimmer agent --headless --session "existing-session-42" --model "openai-codex/gpt-5.5" "continue work"
   [ "$status" -eq 0 ]
 
   # sessions new should NOT be called
   ! grep -q "^new " "$SESSIONS_LOG"
   # sessions wake called with existing session ID
-  grep -q "^wake existing-session-42 --headless --message continue work" "$SESSIONS_LOG"
+  grep -q "^wake existing-session-42 --headless --message continue work --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
-@test "headless: forwards model to sessions new and wake" {
+@test "headless: forwards model only to sessions wake" {
   setup_agent
   mock_sessions_binary
   mock_shimmer
@@ -105,7 +125,7 @@ setup() {
   run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
   [ "$status" -eq 0 ]
 
-  grep "^new " "$SESSIONS_LOG" | grep -q -- "--model openai-codex/gpt-5.5"
+  ! grep "^new " "$SESSIONS_LOG" | grep -q -- "--model openai-codex/gpt-5.5"
   grep "^wake " "$SESSIONS_LOG" | grep -q -- "--model openai-codex/gpt-5.5"
 }
 
@@ -114,7 +134,7 @@ setup() {
   mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless --timeout 300 "do something"
+  run shimmer agent --headless --timeout 300 --model "openai-codex/gpt-5.5" "do something"
   [ "$status" -eq 0 ]
 
   # timeout passed as metadata on wake, not as a flag
@@ -157,12 +177,30 @@ setup() {
   grep -q "hello there" "$HARNESS_LOG"
 }
 
+@test "agent:dispatch requires model" {
+  mock_gh 12345
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo c0da "hello"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--model"* ]]
+}
+
+@test "agent:dispatch requires provider-qualified model" {
+  mock_gh 12345
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model gpt-5.5 c0da "hello"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"provider-qualified"* ]]
+}
+
 @test "agent:dispatch preserves embedded newlines in message input" {
   mock_gh 12345
   mock_shimmer
 
   message=$'line1\nline2'
-  run shimmer agent:dispatch --repo test/repo c0da "$message"
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 c0da "$message"
   [ "$status" -eq 0 ]
   [[ "$output" == *"Woke c0da (run 12345)"* ]]
   [[ "$output" == *"shimmer ci:logs 12345 --agent --repo test/repo"* ]]
@@ -170,4 +208,5 @@ setup() {
 
   log=$(cat "$GH_LOG")
   [[ "$log" == *$'message=line1\nline2'* ]]
+  [[ "$log" == *"model=openai-codex/gpt-5.5"* ]]
 }
