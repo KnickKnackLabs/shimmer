@@ -4,7 +4,7 @@
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
 #USAGE flag "--session <session>" help="Session file path to resume"
 #USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, stored as session metadata — not yet enforced by sessions wake)"
-#USAGE flag "--model <model>" help="Model to use"
+#USAGE flag "--model <model>" help="Model to use (required for --headless; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
@@ -29,7 +29,18 @@ fi
 # Headless mode requires a message
 if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   echo "Error: --headless requires a message" >&2
-  echo "Usage: shimmer agent --headless \"do something\"" >&2
+  echo "Usage: shimmer agent --headless --model <provider/model> \"do something\"" >&2
+  exit 1
+fi
+
+if [ "$HEADLESS" = "true" ] && [ -z "$MODEL" ]; then
+  echo "Error: --headless requires --model <provider/model>" >&2
+  echo "Usage: shimmer agent --headless --model <provider/model> \"do something\"" >&2
+  exit 1
+fi
+
+if [ "$HEADLESS" = "true" ] && [[ "$MODEL" != */* ]]; then
+  echo "Error: --model must be provider-qualified (for example: openai-codex/gpt-5.5)" >&2
   exit 1
 fi
 
@@ -51,13 +62,11 @@ if [ "$HEADLESS" = "true" ]; then
     SESSION_ID="$SESSION"
   else
     NEW_ARGS=("$SESSION_NAME" --cwd "$CWD" --meta "agent.name=$GIT_AUTHOR_NAME")
-    [ -n "$MODEL" ] && NEW_ARGS+=(--model "$MODEL")
     SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
   fi
 
   # Wake the session — foreground + headless (blocks until done)
-  WAKE_ARGS=("$SESSION_ID" --headless --message "$MESSAGE")
-  [ -n "$MODEL" ] && WAKE_ARGS+=(--model "$MODEL")
+  WAKE_ARGS=("$SESSION_ID" --headless --message "$MESSAGE" --model "$MODEL")
   [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
   sessions wake "${WAKE_ARGS[@]}"
 else

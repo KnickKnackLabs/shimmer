@@ -2,7 +2,7 @@
 #MISE description="Send a message to an agent (deprecated — use agent:dispatch)"
 #USAGE arg "<agent>" help="Agent to message (e.g., zeke, baby-joel)"
 #USAGE arg "<message>" help="Message for the agent"
-#USAGE flag "--model <model>" help="Model to use"
+#USAGE flag "--model <model>" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE flag "--repo <repo>" help="Target repository (owner/name) — skip agent discovery"
 
 set -e

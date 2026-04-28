@@ -19,7 +19,7 @@
       "title": "Workflow",
       "description": "A scheduled agent workflow",
       "type": "object",
-      "required": ["name", "agent", "schedule", "message"],
+      "required": ["name", "agent", "schedule", "message", "model"],
       "properties": {
         "name": {
           "type": "string",
@@ -45,13 +45,12 @@
         },
         "model": {
           "type": "string",
-          "description": "Claude model to use (defaults to opus if not specified)",
-          "enum": [
-            "claude-opus-4-6",
-            "claude-opus-4-5-20251101",
-            "claude-sonnet-4-6",
-            "claude-sonnet-4-5-20250929",
-            "claude-haiku-4-5-20251001"
+          "description": "Provider-qualified model to use (for example: openai-codex/gpt-5.5)",
+          "pattern": "^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$",
+          "examples": [
+            "openai-codex/gpt-5.5",
+            "github-copilot/gpt-5.5",
+            "anthropic/claude-opus-4-6"
           ]
         }
       }

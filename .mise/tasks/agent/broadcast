@@ -4,7 +4,7 @@
 #USAGE flag "-s --stagger <seconds>" help="Seconds to wait between agents (default: 30)"
 #USAGE flag "--agents <list>" help="Comma-separated list of agents (default: all)"
 #USAGE flag "--dry-run" help="Show what would be done without triggering"
-#USAGE flag "--model <model>" help="Model to use"
+#USAGE flag "--model <model>" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 
 set -e
 
@@ -23,6 +23,16 @@ STAGGER="${usage_stagger:-30}"
 DRY_RUN="${usage_dry_run:-false}"
 MODEL="${usage_model:-}"
 AGENTS_FLAG="${usage_agents:-}"
+
+if [ -z "$MODEL" ]; then
+  echo "Error: --model <provider/model> is required" >&2
+  exit 1
+fi
+
+if [[ "$MODEL" != */* ]]; then
+  echo "Error: --model must be provider-qualified (for example: openai-codex/gpt-5.5)" >&2
+  exit 1
+fi
 
 # Discover agents. Empty on failure is the signal — the explicit error check
 # below handles it.
@@ -54,10 +64,7 @@ echo "Broadcasting to $AGENT_COUNT agents with ${STAGGER}s stagger"
 echo "Message: $MESSAGE"
 echo ""
 
-MODEL_ARGS=()
-if [ -n "$MODEL" ]; then
-  MODEL_ARGS=(--model "$MODEL")
-fi
+MODEL_ARGS=(--model "$MODEL")
 
 FIRST=true
 for AGENT in $AGENTS; do
