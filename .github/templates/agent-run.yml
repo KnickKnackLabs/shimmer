@@ -282,6 +282,7 @@ jobs:
 
       - name: Post-failure diagnostics
         if: failure()
+        working-directory: ${{ github.workspace }}
         run: |
           echo "=== Diagnostics ==="
           echo ""
