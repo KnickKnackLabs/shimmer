@@ -211,7 +211,7 @@ jobs:
           fi
 
           if [ -f ".modules/config" ]; then
-            modules unlock
+            modules install-hooks
             modules init
           fi
 
