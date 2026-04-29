@@ -88,7 +88,7 @@ jobs:
         id: sessions
         run: |
           SESSIONS_DIR="$(mise where shiv:sessions)/packages/sessions"
-          echo "mix-lock-hash=$(sha256sum "$SESSIONS_DIR/cli/mix.lock" | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "mix-lock-hash=$(sha256sum "$SESSIONS_DIR/cli/mix.lock" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Cache sessions CLI build
         uses: actions/cache@v4
@@ -138,9 +138,11 @@ jobs:
             value="${SECRETS_MAP[$key]}"
             [ -z "$value" ] && continue
             DELIM="EOFVAL_$(openssl rand -hex 8)"
-            echo "${AGENT_UPPER}_${key}<<${DELIM}" >> "$GITHUB_ENV"
-            echo "$value" >> "$GITHUB_ENV"
-            echo "${DELIM}" >> "$GITHUB_ENV"
+            {
+              echo "${AGENT_UPPER}_${key}<<${DELIM}"
+              echo "$value"
+              echo "${DELIM}"
+            } >> "$GITHUB_ENV"
           done
 
           echo "SECRETS_PROVIDER=env" >> "$GITHUB_ENV"
