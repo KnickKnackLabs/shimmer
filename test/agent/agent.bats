@@ -87,6 +87,34 @@ setup() {
   grep -q "^wake mock-session-id-001 --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
+@test "headless: uses SHIV_CALLER_PWD as session cwd before scrubbing" {
+  setup_agent
+  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  mkdir -p "$caller_dir"
+  unset CALLER_PWD
+  export SHIV_CALLER_PWD="$caller_dir"
+  mock_sessions_binary
+  mock_shimmer
+
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "review the PR"
+  [ "$status" -eq 0 ]
+
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $caller_dir"
+}
+
+@test "headless: scrubs caller context before invoking sessions" {
+  setup_agent
+  export SHIV_CALLER_PWD="/stale/shiv/caller"
+  mock_sessions_binary
+  mock_shimmer
+
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "review the PR"
+  [ "$status" -eq 0 ]
+
+  grep -q '^CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^SHIV_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+}
+
 @test "headless: session name uses full epoch timestamp" {
   setup_agent
   mock_sessions_binary
@@ -153,6 +181,36 @@ setup() {
 
   # harness was called with --append-system-prompt
   grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+}
+
+@test "interactive: uses SHIV_CALLER_PWD as harness cwd before scrubbing" {
+  setup_agent
+  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  mkdir -p "$caller_dir"
+  unset CALLER_PWD
+  export SHIV_CALLER_PWD="$caller_dir"
+  mock_harness
+  mock_shimmer
+
+  run shimmer agent
+  [ "$status" -eq 0 ]
+
+  grep -q "^PWD=$caller_dir$" "$HARNESS_ENV_LOG"
+}
+
+@test "interactive: scrubs caller context before invoking harness" {
+  setup_agent
+  local caller_dir="$BATS_TEST_TMPDIR/scrub-caller"
+  mkdir -p "$caller_dir"
+  export SHIV_CALLER_PWD="$caller_dir"
+  mock_harness
+  mock_shimmer
+
+  run shimmer agent
+  [ "$status" -eq 0 ]
+
+  grep -q '^CALLER_PWD=$' "$HARNESS_ENV_LOG"
+  grep -q '^SHIV_CALLER_PWD=$' "$HARNESS_ENV_LOG"
 }
 
 @test "interactive: forwards session flag to harness" {

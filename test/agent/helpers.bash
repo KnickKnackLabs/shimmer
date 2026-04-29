@@ -24,11 +24,16 @@ mock_sessions_binary() {
   MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
   mkdir -p "$MOCK_BIN"
   SESSIONS_LOG="$BATS_TEST_TMPDIR/sessions-log-$$"
-  export SESSIONS_LOG
+  SESSIONS_ENV_LOG="$BATS_TEST_TMPDIR/sessions-env-log-$$"
+  export SESSIONS_LOG SESSIONS_ENV_LOG
 
   cat > "$MOCK_BIN/sessions" <<'MOCK'
 #!/usr/bin/env bash
 echo "$@" >> "$SESSIONS_LOG"
+{
+  printf 'CALLER_PWD=%s\n' "${CALLER_PWD-}"
+  printf 'SHIV_CALLER_PWD=%s\n' "${SHIV_CALLER_PWD-}"
+} >> "${SESSIONS_ENV_LOG:-$SESSIONS_LOG.env}"
 case "$1" in
   new) echo "mock-session-id-001" ;;
   wake) ;;
@@ -46,11 +51,17 @@ mock_harness() {
   MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
   mkdir -p "$MOCK_BIN"
   HARNESS_LOG="$BATS_TEST_TMPDIR/harness-log-$$"
-  export HARNESS_LOG
+  HARNESS_ENV_LOG="$BATS_TEST_TMPDIR/harness-env-log-$$"
+  export HARNESS_LOG HARNESS_ENV_LOG
 
   cat > "$MOCK_BIN/mock-harness" <<'MOCK'
 #!/usr/bin/env bash
 echo "$@" >> "$HARNESS_LOG"
+{
+  printf 'PWD=%s\n' "$PWD"
+  printf 'CALLER_PWD=%s\n' "${CALLER_PWD-}"
+  printf 'SHIV_CALLER_PWD=%s\n' "${SHIV_CALLER_PWD-}"
+} >> "${HARNESS_ENV_LOG:-$HARNESS_LOG.env}"
 MOCK
   chmod +x "$MOCK_BIN/mock-harness"
   export PATH="$MOCK_BIN:$PATH"

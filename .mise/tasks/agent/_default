@@ -53,8 +53,13 @@ if [ "$HEADLESS" = "true" ]; then
     exit 1
   fi
 
-  CWD="${CALLER_PWD:-.}"
+  CWD="${SHIV_CALLER_PWD:-${CALLER_PWD:-.}}"
   SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
+
+  # Caller-context variables describe this immediate shim invocation. Do not
+  # leak them into long-lived session processes, where they can become stale
+  # ambient state and redirect later tooling to the wrong repository.
+  unset CALLER_PWD SHIV_CALLER_PWD
 
   # Create a tracked session (or resume an existing one)
   if [ -n "$SESSION" ]; then
@@ -71,7 +76,9 @@ if [ "$HEADLESS" = "true" ]; then
   sessions wake "${WAKE_ARGS[@]}"
 else
   # Interactive mode calls the agent harness directly.
-  cd "${CALLER_PWD:-.}"
+  CWD="${SHIV_CALLER_PWD:-${CALLER_PWD:-.}}"
+  cd "$CWD"
+  unset CALLER_PWD SHIV_CALLER_PWD
   HARNESS="${AGENT_HARNESS:-pi}"
   if ! command -v "$HARNESS" &>/dev/null; then
     echo "$HARNESS not found on PATH." >&2
