@@ -255,7 +255,6 @@ jobs:
           echo "### AGENT SESSION START ###"
 
           cd "$HOME/$REPO_NAME"
-          export CALLER_PWD="$HOME/$REPO_NAME"
 
           # shimmer as sets identity env vars (AGENT_IDENTITY, GIT_AUTHOR_*, GH_TOKEN, etc.)
           # shimmer agent --headless delegates to sessions run for execution
