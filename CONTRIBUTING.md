@@ -36,30 +36,8 @@ Tasks are tracked as GitHub issues. Use these commands:
 
 ## Starting New Projects
 
-`shimmer code:init` exists as older experimental scaffolding. For new generator work, prefer `KnickKnackLabs/codebase`; migrate useful pieces there rather than expanding `shimmer code:*`.
+`shimmer code:init` is older experimental scaffolding and is not the current recommended path. For new KnickKnackLabs tools:
 
-### Workflow
-
-1. **Plan together** - Discuss the project with Claude: purpose, architecture, key decisions
-2. **Initialize** - Claude runs `shimmer code:init` with a seed capturing the planning context
-3. **Continue** - Start a fresh Claude session in the new directory and pick up where you left off
-
-### Quick Start
-
-```bash
-shimmer code:init ~/projects/my-thing --name "My Thing" <<'EOF'
-# My Thing
-
-A project that does X.
-
-## Overview
-
-Key decisions from planning:
-- Decision 1
-- Decision 2
-EOF
-```
-
-Run `shimmer code:init:welcome` for more details and to see existing projects.
-
-See `docs/new-project.md` for the full workflow.
+- Read fold's `notes/creating-a-codebase.md` first; it is the living guide.
+- Prefer `KnickKnackLabs/codebase` for generator/lint/scaffolding work.
+- If `shimmer code:*` still contains useful pieces, migrate them out instead of expanding them here.
