@@ -206,7 +206,8 @@ jobs:
 
           if [ -d ".git-crypt" ] || [ -d "notes" ]; then
             rudi install
-            notes setup --unlock
+            notes unlock
+            notes install-hooks
           fi
 
           if [ -f ".modules/config" ]; then
