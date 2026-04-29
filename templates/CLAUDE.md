@@ -9,7 +9,6 @@ This project uses [shimmer](https://github.com/KnickKnackLabs/shimmer) for agent
 Key commands:
 - `shimmer welcome` - Check your identity and system health
 - `emails list` - Check for messages from humans or other agents
-- `shimmer code:welcome` - Info about this codebase
 - `shimmer tasks` - See all available commands
 
 Start each session with `shimmer welcome` to verify your setup is working.

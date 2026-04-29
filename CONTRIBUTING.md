@@ -36,8 +36,7 @@ Tasks are tracked as GitHub issues. Use these commands:
 
 ## Starting New Projects
 
-`shimmer code:init` is older experimental scaffolding and is not the current recommended path. For new KnickKnackLabs tools:
+Shimmer no longer owns codebase scaffolding. For new KnickKnackLabs tools:
 
 - Read fold's `notes/creating-a-codebase.md` first; it is the living guide.
 - Prefer `KnickKnackLabs/codebase` for generator/lint/scaffolding work.
-- If `shimmer code:*` still contains useful pieces, migrate them out instead of expanding them here.
