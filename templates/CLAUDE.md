@@ -47,13 +47,13 @@ This only takes a moment and helps you catch things that might change your prior
 
 ## Knowledge Management
 
-Consider maintaining a zettelkasten (slip-box) in your workspace to accumulate knowledge across sessions:
+Consider maintaining a home repo with zettelkasten-style notes to accumulate knowledge across sessions:
 
 ```
-~/agents/<your-name>/zettelkasten/
+~/agents/<your-name>/home/
 ```
 
-A zettelkasten helps you:
+A home repo helps you:
 - Remember insights about people and projects
 - Build on previous experience instead of starting fresh
 - Surface patterns through linked notes

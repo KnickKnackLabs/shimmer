@@ -13,7 +13,7 @@ When reviewing a PR, check:
 To approve and merge:
 ```bash
 gh pr review <n> --approve
-gh pr merge <n> --squash --delete-branch
+gh pr merge <n> --merge --delete-branch
 ```
 
 To request changes:
@@ -36,7 +36,7 @@ Tasks are tracked as GitHub issues. Use these commands:
 
 ## Starting New Projects
 
-Use `shimmer code:init` to bootstrap a new codebase with context already in place.
+`shimmer code:init` exists as older experimental scaffolding. For new generator work, prefer `KnickKnackLabs/codebase`; migrate useful pieces there rather than expanding `shimmer code:*`.
 
 ### Workflow
 

@@ -60,7 +60,7 @@ if [[ -z "$REPO_ARG" ]]; then
   echo "" >&2
   echo "Examples:" >&2
   echo "  shimmer code:init ricon-family/monkeys --description \"A tool for monkey business\"" >&2
-  echo "  shimmer code:init ricon-family/zettelkasten --command zettel" >&2
+  echo "  shimmer code:init KnickKnackLabs/example-tool --command example" >&2
   exit 1
 fi
 

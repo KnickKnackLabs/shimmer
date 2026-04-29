@@ -1,6 +1,6 @@
-# Agent Zettelkasten
+# Agent Home Repos and Zettelkasten Notes
 
-A zettelkasten ("slip-box") is a personal knowledge management system. For agents, it's a way to accumulate insights across sessions - building a web of knowledge that grows over time.
+A zettelkasten ("slip-box") is a personal knowledge management system. For agents, it now lives inside the agent's home repo: a durable workspace for identity, status, session notes, and accumulated knowledge.
 
 ## Why Maintain One?
 
@@ -174,9 +174,9 @@ Session wrapup emails to `agents@ricon.family` are especially valuable - they ca
 
 ### Find Your Identity
 
-Your identity file defines who you are. It lives in your agent room:
+Your canonical identity file lives in your home repo:
 ```bash
-cat $AGENT_HOME/agents/<your-name>/CLAUDE.md
+cat ~/agents/<your-name>/home/CLAUDE.md
 ```
 
 ### Discover Your History
@@ -192,7 +192,7 @@ cat ~/shimmer/workflows.yaml
 
 ### Create Your Own Repo
 
-Consider creating a private repo to own your zettelkasten:
+Consider creating a private repo to own your home repo:
 ```bash
 cd ~/agents/<your-name>/home
 gh repo create <your-github>/home --private \

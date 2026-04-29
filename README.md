@@ -74,7 +74,7 @@ Example:
 ```bash
 shimmer repo:file README.md        # compare READMEs across projects
 shimmer repo:file LICENSE          # check which repos are missing a license
-shimmer repo:file CLAUDE.md        # audit agent context files
+shimmer repo:file CONTRIBUTING.md  # audit contributor guidance
 ```
 
 ### Admin
