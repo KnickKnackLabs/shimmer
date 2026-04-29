@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run tests"
-
-set -e
-
-cd cli
-mix test "$@"

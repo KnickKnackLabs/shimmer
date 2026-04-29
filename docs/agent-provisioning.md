@@ -143,7 +143,7 @@ rikonor@gmail.com (personal)
 - name: Setup email
   env:
     EMAIL_PASSWORD: ${{ secrets.<AGENT>_EMAIL_PASSWORD }}
-  run: mise run email:setup <agent>
+  run: emails setup <agent>
 
 - name: Setup Matrix
   env:

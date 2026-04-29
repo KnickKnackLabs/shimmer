@@ -27,12 +27,10 @@ Now you can run `shimmer <task>` from anywhere.
 
 This project uses [mise](https://mise.jdx.dev/) for task management. Run `shimmer tasks` to see all available tasks.
 
-### Code
+### Checks
 
-- `shimmer code:check` - Run all checks (test, format, lint) before committing
-- `shimmer code:test` - Run tests
-- `shimmer code:format` - Check formatting (use `--fix` to auto-fix)
-- `shimmer code:lint` - Run Credo linter
+- `shimmer test` - Run the BATS test suite
+- `codebase lint:*` - Run configured codebase lint checks from [KnickKnackLabs/codebase](https://github.com/KnickKnackLabs/codebase)
 
 ### Workflow Monitoring
 
@@ -74,7 +72,7 @@ Example:
 ```bash
 shimmer repo:file README.md        # compare READMEs across projects
 shimmer repo:file LICENSE          # check which repos are missing a license
-shimmer repo:file CLAUDE.md        # audit agent context files
+shimmer repo:file CONTRIBUTING.md  # audit contributor guidance
 ```
 
 ### Admin

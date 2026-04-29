@@ -13,7 +13,7 @@ When reviewing a PR, check:
 To approve and merge:
 ```bash
 gh pr review <n> --approve
-gh pr merge <n> --squash --delete-branch
+gh pr merge <n> --merge --delete-branch
 ```
 
 To request changes:
@@ -36,30 +36,7 @@ Tasks are tracked as GitHub issues. Use these commands:
 
 ## Starting New Projects
 
-Use `shimmer code:init` to bootstrap a new codebase with context already in place.
+Shimmer no longer owns codebase scaffolding. For new KnickKnackLabs tools:
 
-### Workflow
-
-1. **Plan together** - Discuss the project with Claude: purpose, architecture, key decisions
-2. **Initialize** - Claude runs `shimmer code:init` with a seed capturing the planning context
-3. **Continue** - Start a fresh Claude session in the new directory and pick up where you left off
-
-### Quick Start
-
-```bash
-shimmer code:init ~/projects/my-thing --name "My Thing" <<'EOF'
-# My Thing
-
-A project that does X.
-
-## Overview
-
-Key decisions from planning:
-- Decision 1
-- Decision 2
-EOF
-```
-
-Run `shimmer code:init:welcome` for more details and to see existing projects.
-
-See `docs/new-project.md` for the full workflow.
+- Read fold's `notes/creating-a-codebase.md` first; it is the living guide.
+- Prefer `KnickKnackLabs/codebase` for generator/lint/scaffolding work.

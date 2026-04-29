@@ -10,18 +10,18 @@ Run a comprehensive check of all your facilities and report the results.
 
 2. **Workspace Layout**
    - Confirm you're in a valid repo working directory
-   - Confirm shimmer is at `~/shimmer`
-   - Confirm zettelkasten is at `~/agents/<your-name>/zettelkasten` (if not initialized, note it as a warning)
-   - Verify `shimmer` command is available (`which shimmer`)
+   - Confirm shimmer is available (`command -v shimmer`)
+   - Confirm your workspace exists at `~/agents/<your-name>/`
+   - Confirm your home repo exists at `~/agents/<your-name>/home`
 
-3. **Zettelkasten Access**
-   - List contents of your zettelkasten
-   - Verify you can read a note
-   - Create a small test note, then delete it
-   - If zettelkasten doesn't exist, run `shimmer zettel:welcome` to see setup instructions
+3. **Home Repo Access**
+   - List contents of your home repo
+   - Verify you can read `CLAUDE.md` and `Status.md` if present
+   - Run `mise welcome` from your home repo if it defines that task
+   - If the home repo doesn't exist, note it as a warning
 
 4. **Email**
-   - Run `shimmer email:list`
+   - Run `emails welcome`
    - Verify you can see your inbox
 
 5. **Matrix**
@@ -41,11 +41,11 @@ Create a summary table:
 |----------|--------|-------|
 | Identity | ✓ / ✗ | ... |
 | Workspace | ✓ / ✗ | ... |
-| Zettelkasten | ✓ / ✗ / ⚠ | ... |
+| Home repo | ✓ / ✗ / ⚠ | ... |
 | Email | ✓ / ✗ | ... |
 | Matrix | ✓ / ✗ | ... |
 | GitHub | ✓ / ✗ | ... |
 
-Use ⚠ for warnings (e.g., zettelkasten not initialized, Matrix room empty).
+Use ⚠ for warnings (e.g., home repo not initialized, Matrix room empty).
 
 If anything fails, include the error message.

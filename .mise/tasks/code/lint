@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Run Credo linter"
-
-set -e
-
-cd cli
-mix credo "$@"

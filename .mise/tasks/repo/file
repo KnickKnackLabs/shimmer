@@ -12,7 +12,6 @@ REPO="${usage_repo:-}"
 PROJECTS=(
   "KnickKnackLabs/shimmer"
   "ricon-family/fold"
-  "ricon-family/zettelkasten"
   "ricon-family/food-life"
   "KnickKnackLabs/wallpapers"
   "KnickKnackLabs/monkeys"
