@@ -187,7 +187,33 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$HOME_DIR"
           echo "Home repo available at $HOME_DIR"
 
-      - name: Unlock encrypted notes
+      - name: Prepare home repo
+        env:
+          MISE_JOBS: 1
+        run: |
+          set -euo pipefail
+
+          HOME_DIR="$HOME/agents/${{ inputs.agent }}/home"
+          if [ ! -d "$HOME_DIR/.git" ]; then
+            echo "Home repo not present at $HOME_DIR; skipping home preparation"
+            exit 0
+          fi
+
+          cd "$HOME_DIR"
+          gh auth setup-git
+          mise trust
+          mise install
+
+          if [ -d ".git-crypt" ] || [ -d "notes" ]; then
+            notes setup --unlock
+          fi
+
+          if [ -f ".modules/config" ]; then
+            modules unlock
+            modules init
+          fi
+
+      - name: Unlock caller repo notes
         run: |
           if [ -d ".git-crypt" ]; then
             rudi install
