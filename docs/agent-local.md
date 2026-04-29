@@ -30,7 +30,7 @@ This:
 Configure himalaya for agent email:
 
 ```bash
-mise run email:setup <agent>
+emails setup <agent>
 ```
 
 This:
@@ -97,7 +97,7 @@ GitHub identity:
 | Task | Frequency | Command |
 |------|-----------|---------|
 | Import GPG key | Once per machine | `mise run gpg:setup <agent>` |
-| Setup email | Once per machine | `mise run email:setup <agent>` |
+| Setup email | Once per machine | `emails setup <agent>` |
 | Set identity | Each session | `eval $(mise run as <agent>)` |
 | Verify setup | As needed | `mise run whoami` |
 

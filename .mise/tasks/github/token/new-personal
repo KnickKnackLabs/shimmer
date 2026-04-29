@@ -65,21 +65,21 @@ if [ "$NEEDS_VERIFICATION" = "y" ] || [ "$NEEDS_VERIFICATION" = "Y" ]; then
 
   # Show recent emails. Empty result falls through to the "[WARN] Could not
   # fetch emails" branch below.
-  ENVELOPES=$(mise run -q email:list -n 5 2>/dev/null) || ENVELOPES=""
+  ENVELOPES=$(emails list -n 5 2>/dev/null) || ENVELOPES=""
   if [ -n "$ENVELOPES" ]; then
     echo "$ENVELOPES"
     echo ""
     read -r -p "Enter the email ID to read (or Enter to skip): " EMAIL_ID
     echo ""
     if [ -n "$EMAIL_ID" ]; then
-      if ! mise run -q email:read "$EMAIL_ID" 2>/dev/null; then
-        echo "[warn] could not read email $EMAIL_ID — try: shimmer email:read $EMAIL_ID" >&2
+      if ! emails read "$EMAIL_ID" 2>/dev/null; then
+        echo "[warn] could not read email $EMAIL_ID — try: emails read $EMAIL_ID" >&2
       fi
       echo ""
     fi
   else
     echo "[WARN] Could not fetch emails. Check manually:"
-    echo "  shimmer email:list"
+    echo "  emails list"
     echo ""
   fi
 fi

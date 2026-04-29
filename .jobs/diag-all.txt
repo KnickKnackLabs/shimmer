@@ -21,7 +21,7 @@ Run a comprehensive check of all your facilities and report the results.
    - If the home repo doesn't exist, note it as a warning
 
 4. **Email**
-   - Run `shimmer email:list`
+   - Run `emails welcome`
    - Verify you can see your inbox
 
 5. **Matrix**
