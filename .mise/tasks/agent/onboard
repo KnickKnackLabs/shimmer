@@ -90,7 +90,7 @@ else
   echo "------------------------------------------------------------"
   echo "[auto] Checking for GitHub verification email..."
 
-  mise -C "$MISE_PROJECT_ROOT" run email:setup "$AGENT" > /dev/null
+  emails setup "$AGENT" > /dev/null
 
   # Poll for GitHub verification email (up to 60 seconds)
   VERIFICATION_CODE=""
