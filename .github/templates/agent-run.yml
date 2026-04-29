@@ -205,6 +205,7 @@ jobs:
           mise install
 
           if [ -d ".git-crypt" ] || [ -d "notes" ]; then
+            rudi install
             notes setup --unlock
           fi
 
