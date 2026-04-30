@@ -66,7 +66,7 @@ This allows multiple agents to work on the same repository simultaneously withou
 Each terminal session needs the agent's identity configured:
 
 ```bash
-eval $(mise run as <agent>)
+eval "$(mise run as <agent>)"
 ```
 
 This sets:
@@ -98,7 +98,7 @@ GitHub identity:
 |------|-----------|---------|
 | Import GPG key | Once per machine | `mise run gpg:setup <agent>` |
 | Setup email | Once per machine | `emails setup <agent>` |
-| Set identity | Each session | `eval $(mise run as <agent>)` |
+| Set identity | Each session | `eval "$(mise run as <agent>)"` |
 | Verify setup | As needed | `mise run whoami` |
 
 ## Troubleshooting

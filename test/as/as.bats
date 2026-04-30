@@ -85,6 +85,43 @@ teardown() {
   echo "$output" | grep -q "export GH_TOKEN='ghp_bob_token'"
 }
 
+@test "as: eval preserves apostrophes in exported values" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
+  mock_shimmer
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$GH_TOKEN" = "ghp_fake'quoted" ]
+  [ "$B2_BUCKET" = "bucket'quoted" ]
+}
+
+@test "as: unquoted eval preserves apostrophes in exported values" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-apostrophe.sh"
+  cat > "$script" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+printf 'token=%s\n' "$GH_TOKEN"
+printf 'bucket=%s\n' "$B2_BUCKET"
+SCRIPT
+  chmod +x "$script"
+
+  run "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"token=ghp_fake'quoted"* ]]
+  [[ "$output" == *"bucket=bucket'quoted"* ]]
+}
+
 @test "as: exports B2_BUCKET when available" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake" "alice/b2-bucket=my-bucket"
@@ -172,6 +209,65 @@ teardown() {
 
   # B2_BUCKET should be cleared since alice has no bucket configured
   [ -z "${B2_BUCKET:-}" ]
+}
+
+@test "as: unquoted eval works in bash" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-bash.sh"
+  cat > "$script" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+# Intentionally unquoted: this preserves compatibility with the historical
+# documented form, `eval $(shimmer as <agent>)`.
+eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+printf 'name=%s\n' "$GIT_AUTHOR_NAME"
+printf 'host=%s\n' "$GH_HOST"
+printf 'identity=%s\n' "$AGENT_IDENTITY"
+SCRIPT
+  chmod +x "$script"
+
+  run "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"name=alice"* ]]
+  [[ "$output" == *"host=github.com"* ]]
+  [[ "$output" == *"You are alice."* ]]
+}
+
+@test "as: unquoted eval works in zsh" {
+  command -v zsh >/dev/null 2>&1 || skip "zsh not installed"
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-zsh.zsh"
+  cat > "$script" <<'SCRIPT'
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+# Intentionally unquoted: this preserves compatibility with the historical
+# documented form, `eval $(shimmer as <agent>)`.
+eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+print -r -- "name=$GIT_AUTHOR_NAME"
+print -r -- "host=$GH_HOST"
+print -r -- "identity=$AGENT_IDENTITY"
+SCRIPT
+
+  run zsh "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"name=alice"* ]]
+  [[ "$output" == *"host=github.com"* ]]
+  [[ "$output" == *"You are alice."* ]]
 }
 
 # ============ Validation (no mocks — fails before secrets) ============

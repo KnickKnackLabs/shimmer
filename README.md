@@ -59,7 +59,7 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `shimme
 
 Example:
 ```bash
-eval $(shimmer as quick)
+eval "$(shimmer as quick)"
 shimmer whoami
 ```
 
