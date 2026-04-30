@@ -61,10 +61,10 @@ git commit -m "Update agent schedules"
 Validate workflows match the manifest:
 
 ```bash
-shimmer workflows:check
+shimmer workflows:generate --check
 ```
 
-`workflows:check` validates `workflows.yaml` against shimmer's schema and regenerates into a temporary directory to catch drift between committed workflows and generated output.
+`workflows:generate --check` validates `workflows.yaml` when present and regenerates into a temporary directory to catch drift between committed workflows and generated output.
 
 ## Manual Agent Dispatch
 
@@ -120,7 +120,7 @@ Headless execution requires an explicit provider-qualified model. Shimmer create
 
    ```bash
    shimmer workflows:generate
-   shimmer workflows:check
+   shimmer workflows:generate --check
    ```
 
 4. Commit the manifest and generated workflow files.
