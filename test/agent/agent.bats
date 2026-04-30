@@ -6,6 +6,22 @@ setup() {
   load helpers
 }
 
+# --- Workflow template ---
+
+@test "workflow: home preparation delegates to home agent:prepare task" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+  prepare_block=$(awk '
+    /- name: Prepare home repo/ { show = 1 }
+    /- name: Unlock caller repo notes/ { show = 0 }
+    show { print }
+  ' "$template")
+
+  [[ "$prepare_block" == *"mise run agent:prepare"* ]] || return 1
+  [[ "$prepare_block" != *"rudi install"* ]] || return 1
+  [[ "$prepare_block" != *"notes unlock"* ]] || return 1
+  [[ "$prepare_block" != *"modules init"* ]] || return 1
+}
+
 # --- Identity checks ---
 
 @test "headless: fails without GIT_AUTHOR_NAME" {
