@@ -85,6 +85,17 @@ teardown() {
   echo "$output" | grep -q "export GH_TOKEN='ghp_bob_token'"
 }
 
+@test "as: shell-quotes secrets with apostrophes" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
+  mock_shimmer
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$GH_TOKEN" = "ghp_fake'quoted" ]
+  [ "$B2_BUCKET" = "bucket'quoted" ]
+}
+
 @test "as: exports B2_BUCKET when available" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake" "alice/b2-bucket=my-bucket"
