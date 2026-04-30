@@ -29,7 +29,7 @@ Full-access token for account management. Created once during onboarding.
 
 ```bash
 shimmer github:token:new-personal <agent>  # Opens browser with all scopes pre-selected
-shimmer github:token:store <agent> <token> # Store token in 1Password
+shimmer github:token:store <agent> <token> # Store token as <agent>/github-pat
 shimmer github:token:scopes                # Check current token's scopes
 ```
 
@@ -49,8 +49,10 @@ Narrow tokens for specific work contexts (repos, orgs). Created as needed.
 <agent>-wallpapers   # Project token (KnickKnackLabs/wallpapers)
 ```
 
-The personal token is stored in 1Password and used via `shimmer as <agent>`.
-Project tokens can be stored in the agent's password manager (vaultwarden) once available.
+The personal token's source of truth is the flat secret key `<agent>/github-pat`
+(backed by the configured `secrets` provider, commonly 1Password) and used via
+`shimmer as <agent>`. Project tokens can be stored in the agent's password
+manager (vaultwarden) once available.
 
 ## Organization Tasks
 
@@ -73,7 +75,7 @@ Creates the agent's cryptographic identity:
 - Creates 1Password entries with generated passwords:
   - `<agent> - Email` (for mail.ricon.family)
   - `<agent> - GPG` (key details + public key for easy copy)
-  - `<agent> - GitHub` (account credentials)
+  - `<agent> - GitHub` (account credentials; not the PAT source of truth)
   - `<agent> - Matrix` (for matrix.ricon.family)
 
 ### agent:onboard
@@ -85,7 +87,7 @@ Interactive walkthrough for full agent setup:
 4. **Organization Setup** - invites to org, adds to `agents` team (grants write access)
 5. **Upload GPG Key** - shows public key to copy
 6. **Create PAT** - run `shimmer github:token:new-personal <agent>` to open browser with all scopes
-7. **Store PAT** - run `shimmer github:token:store <agent> <token>` to save in 1Password
+7. **Store PAT** - run `shimmer github:token:store <agent> <token>` to save as the flat secret `<agent>/github-pat`
 8. **Matrix Setup** - create user in Synapse Admin, store password as GitHub secret
 9. **Blob Storage** - store B2 credentials; configure via the standalone [`blobs`](https://github.com/KnickKnackLabs/blobs) tool (previously `shimmer blob:*`).
 10. **Verify** - triggers test workflow to confirm signed commits work
@@ -122,13 +124,19 @@ rikonor@gmail.com (personal)
 | `<AGENT>_B2_APPLICATION_KEY` | Backblaze B2 application key |
 | `<AGENT>_B2_BUCKET` | Backblaze B2 bucket name |
 
-### 1Password (Agents vault)
+### Secret store (source of truth)
+
+| Key | Contents |
+|-----|----------|
+| `<agent>/github-pat` | GitHub personal access token |
+
+### 1Password structured login items (Agents vault)
 
 | Item | Contents |
 |------|----------|
 | `<agent> - Email` | username, email, password, URL |
 | `<agent> - GPG` | Key ID, Fingerprint, Email, Private Key, Public Key, GitHub Title |
-| `<agent> - GitHub` | username, email, password, country, URL, PAT |
+| `<agent> - GitHub` | username, email, password, country, URL (account login only; not PAT source of truth) |
 | `<agent> - Matrix` | username, password, URL |
 | `<agent> - B2` | Endpoint, Key ID, Application Key, Bucket |
 
