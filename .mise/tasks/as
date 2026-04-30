@@ -77,6 +77,25 @@ fi
 
 EMAIL="${AGENT}@ricon.family"
 
+shell_quote() {
+  local value="$1"
+  printf "'%s'" "$(printf '%s' "$value" | sed "s/'/'\\''/g")"
+}
+
+ansi_c_quote() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  value=${value//\'/\\\'}
+  printf "\$'%s'" "$value"
+}
+
+emit() {
+  printf '%s;\n' "$1"
+}
+
 # Validate agent against the authoritative home-provided agent list.
 if ! echo "$AGENTS" | grep -qx "$AGENT"; then
   echo "Unknown agent: $AGENT" >&2
@@ -88,10 +107,10 @@ fi
 # `shimmer as` from leaking through if any resolution step below fails.
 # This must come before PAT resolution — if secrets lookup exits early,
 # eval still clears the previous session's vars.
-echo "unset AGENT_IDENTITY B2_BUCKET"
-echo "unset GH_HOST GH_TOKEN"
-echo "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
-echo "unset AGENT_HOME"
+emit "unset AGENT_IDENTITY B2_BUCKET"
+emit "unset GH_HOST GH_TOKEN"
+emit "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
+emit "unset AGENT_HOME"
 
 # Fetch GitHub PAT via secrets tool
 PAT=$(secrets get "$AGENT/github-pat") || {
@@ -104,19 +123,19 @@ PAT=$(secrets get "$AGENT/github-pat") || {
 # NOTE: GH_HOST is hardcoded to github.com — all shimmer agents currently target
 # github.com. If an agent ever needs to target a GHE instance, this should become
 # configurable (e.g., per-agent config or secret store field).
-echo "export GH_HOST='github.com'"
-echo "export GH_TOKEN='$PAT'"
-echo "export GIT_AUTHOR_EMAIL='$EMAIL'"
-echo "export GIT_COMMITTER_EMAIL='$EMAIL'"
-echo "export GIT_AUTHOR_NAME='$AGENT'"
-echo "export GIT_COMMITTER_NAME='$AGENT'"
-echo "export AGENT_HOME='$AGENT_HOME_DIR'"
+emit "export GH_HOST=$(shell_quote 'github.com')"
+emit "export GH_TOKEN=$(shell_quote "$PAT")"
+emit "export GIT_AUTHOR_EMAIL=$(shell_quote "$EMAIL")"
+emit "export GIT_COMMITTER_EMAIL=$(shell_quote "$EMAIL")"
+emit "export GIT_AUTHOR_NAME=$(shell_quote "$AGENT")"
+emit "export GIT_COMMITTER_NAME=$(shell_quote "$AGENT")"
+emit "export AGENT_HOME=$(shell_quote "$AGENT_HOME_DIR")"
 
 # Optional: B2 blob storage bucket (don't fail if not configured).
 # Empty on missing or provider failure; conditional export below handles it.
 B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || B2_BUCKET=""
 if [ -n "$B2_BUCKET" ]; then
-  echo "export B2_BUCKET='$B2_BUCKET'"
+  emit "export B2_BUCKET=$(shell_quote "$B2_BUCKET")"
 fi
 
 # Resolve agent identity content via the home's agent:identity task.
@@ -124,9 +143,10 @@ fi
 # prints a notice in that case.
 IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY=""
 if [ -n "$IDENTITY" ]; then
-  # Export as multi-line env var using $'...' quoting
-  ESCAPED=$(printf '%s' "$IDENTITY" | sed "s/'/'\\\\''/g")
-  echo "export AGENT_IDENTITY='$ESCAPED'"
+  # Export as encoded ANSI-C quoting so unquoted command substitution
+  # (`eval $(shimmer as agent)`) cannot collapse literal newlines inside
+  # AGENT_IDENTITY before eval sees the command stream.
+  emit "export AGENT_IDENTITY=$(ansi_c_quote "$IDENTITY")"
 else
   echo "# Note: agent home has no agent:identity task — AGENT_IDENTITY not set" >&2
   echo "# (was cleared above to prevent stale values)" >&2

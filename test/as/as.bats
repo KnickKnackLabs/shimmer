@@ -174,6 +174,29 @@ teardown() {
   [ -z "${B2_BUCKET:-}" ]
 }
 
+@test "as: unquoted eval works in bash" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  run bash -c 'eval $(CALLER_PWD="$1" mise -C "$2" run -q as alice 2>/dev/null); printf "%s|%s|%s\n" "$GIT_AUTHOR_NAME" "$GH_HOST" "$AGENT_IDENTITY"' _ "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"alice|github.com|"* ]]
+  [[ "$output" == *"You are alice."* ]]
+}
+
+@test "as: unquoted eval works in zsh" {
+  command -v zsh >/dev/null 2>&1 || skip "zsh not installed"
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  run zsh -fc 'eval $(CALLER_PWD="$1" mise -C "$2" run -q as alice 2>/dev/null); print -r -- "$GIT_AUTHOR_NAME|$GH_HOST|$AGENT_IDENTITY"' _ "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"alice|github.com|"* ]]
+  [[ "$output" == *"You are alice."* ]]
+}
+
 # ============ Validation (no mocks — fails before secrets) ============
 
 @test "as: rejects unknown agent" {
