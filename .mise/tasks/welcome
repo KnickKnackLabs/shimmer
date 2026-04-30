@@ -81,7 +81,7 @@ if [ -n "$AGENT" ]; then
   if [ -z "$GH_TOKEN" ]; then
     print_status "GitHub" "✗" "no token" "eval \$(shimmer as $AGENT)"
   elif ! GH_RESPONSE=$(gh api /user -i 2>&1); then
-    print_status "GitHub" "✗" "token expired or invalid" "shimmer github:token:new-personal $AGENT"
+    print_status "GitHub" "✗" "token expired or invalid" "shimmer github:welcome"
   else
     GH_USER=$(echo "$GH_RESPONSE" | grep '"login"' | head -1 | sed 's/.*"login":"\([^"]*\)".*/\1/')
     GH_EXPIRY=$(echo "$GH_RESPONSE" | grep -i 'github-authentication-token-expiration:' | sed 's/.*: //' | tr -d '\r')
