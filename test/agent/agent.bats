@@ -10,16 +10,20 @@ setup() {
 
 @test "workflow: home preparation delegates to home agent:prepare task" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
-  prepare_block=$(awk '
-    /- name: Prepare home repo/ { show = 1 }
-    /- name: Unlock caller repo notes/ { show = 0 }
-    show { print }
-  ' "$template")
 
-  [[ "$prepare_block" == *"mise run agent:prepare"* ]] || return 1
-  [[ "$prepare_block" != *"rudi install"* ]] || return 1
-  [[ "$prepare_block" != *"notes unlock"* ]] || return 1
-  [[ "$prepare_block" != *"modules init"* ]] || return 1
+  # Parse the YAML structurally so we assert on the step's run: body, not on
+  # incidental matches in comments or neighbouring steps.
+  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run' "$template")
+
+  [ -n "$run_block" ] || {
+    echo "could not locate 'Prepare home repo' step in $template" >&2
+    return 1
+  }
+
+  echo "$run_block" | grep -qF 'mise run agent:prepare'
+  ! echo "$run_block" | grep -qF 'rudi install'
+  ! echo "$run_block" | grep -qF 'notes unlock'
+  ! echo "$run_block" | grep -qF 'modules init'
 }
 
 # --- Identity checks ---
