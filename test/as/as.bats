@@ -174,6 +174,16 @@ teardown() {
   [ -z "${B2_BUCKET:-}" ]
 }
 
+@test "as: eval preserves apostrophes in exported values" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quote"
+  mock_shimmer
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$GH_TOKEN" = "ghp_fake'quote" ]
+}
+
 @test "as: unquoted eval works in bash" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake"

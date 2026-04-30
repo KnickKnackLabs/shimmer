@@ -79,7 +79,8 @@ EMAIL="${AGENT}@ricon.family"
 
 shell_quote() {
   local value="$1"
-  printf "'%s'" "$(printf '%s' "$value" | sed "s/'/'\\''/g")"
+  value=${value//\'/\'\\\'\'}
+  printf "'%s'" "$value"
 }
 
 ansi_c_quote() {
