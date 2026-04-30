@@ -6,6 +6,29 @@ setup() {
   load helpers
 }
 
+# --- Workflow template ---
+
+@test "workflow: home preparation delegates to home agent:prepare task" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  # Parse the YAML structurally so we assert on the step's run: body, not on
+  # incidental matches in comments or neighbouring steps.
+  # `// ""` collapses a missing or null .run (e.g. a step that uses `uses:`
+  # instead of `run:`) to the empty string so the guard below catches it
+  # explicitly rather than asserting against the literal string "null".
+  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
+
+  [ -n "$run_block" ] || {
+    echo "could not locate 'Prepare home repo' step's run: block in $template" >&2
+    return 1
+  }
+
+  echo "$run_block" | grep -qF 'mise run agent:prepare'
+  ! echo "$run_block" | grep -qF 'rudi install'
+  ! echo "$run_block" | grep -qF 'notes unlock'
+  ! echo "$run_block" | grep -qF 'modules init'
+}
+
 # --- Identity checks ---
 
 @test "headless: fails without GIT_AUTHOR_NAME" {
