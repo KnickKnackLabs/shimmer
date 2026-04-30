@@ -39,7 +39,7 @@ if ! USER_RESPONSE=$(gh api /user -i 2>&1); then
   echo ""
   echo "To rotate your token:"
   echo "  1. shimmer github:token:new-personal $AGENT   (create new token in browser)"
-  echo "  2. shimmer github:token:store $AGENT <token>   (save to 1Password)"
+  echo "  2. shimmer github:token:store $AGENT <token>   (save as $AGENT/github-pat)"
   echo "  3. shimmer agent:sync-secrets                   (push to GitHub secrets)"
   echo ""
   exit 0
