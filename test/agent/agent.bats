@@ -13,10 +13,13 @@ setup() {
 
   # Parse the YAML structurally so we assert on the step's run: body, not on
   # incidental matches in comments or neighbouring steps.
-  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run' "$template")
+  # `// ""` collapses a missing or null .run (e.g. a step that uses `uses:`
+  # instead of `run:`) to the empty string so the guard below catches it
+  # explicitly rather than asserting against the literal string "null".
+  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
 
   [ -n "$run_block" ] || {
-    echo "could not locate 'Prepare home repo' step in $template" >&2
+    echo "could not locate 'Prepare home repo' step's run: block in $template" >&2
     return 1
   }
 
