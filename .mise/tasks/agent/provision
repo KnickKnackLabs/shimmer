@@ -17,7 +17,7 @@ EMAIL="${AGENT}@ricon.family"
 UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 
 # Target caller's repo for GitHub secrets (not shimmer's)
-TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}}"
 cd "$TARGET_DIR"
 
 # After cd, bare `mise run` resolves tasks from cwd (the caller's repo).
