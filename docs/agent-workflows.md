@@ -92,14 +92,14 @@ Generated workflows call the reusable `agent-run.yml` workflow, which:
 3. Sets up agent credentials (GPG, email, Matrix, GitHub, optional blob storage).
 4. Clones the agent home repo.
 5. Prepares the home repo via the `agent:prepare` hook (see below).
-6. Restores pi auth when `PI_AUTH_JSON` is configured.
+6. Exposes provider API keys from workflow secrets (`ANTHROPIC_API_KEY`, `HF_TOKEN`) and restores pi auth when `PI_AUTH_JSON` is configured.
 7. Runs:
 
    ```bash
    shimmer agent --headless --timeout "$RUN_TIMEOUT" --model "$INPUT_MODEL" "$INPUT_MESSAGE"
    ```
 
-Headless execution requires an explicit provider-qualified model. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.0 contract.
+Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.0 contract.
 
 ### Home repo `agent:prepare` hook
 

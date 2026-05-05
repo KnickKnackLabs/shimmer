@@ -29,6 +29,28 @@ setup() {
   ! echo "$run_block" | grep -qF 'modules init'
 }
 
+@test "workflow: exposes Hugging Face auth to pi" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  hf_token_declared=$(yq -r '.on.workflow_call.secrets.HF_TOKEN | has("required")' "$template")
+  hf_token_required=$(yq -r '.on.workflow_call.secrets.HF_TOKEN.required' "$template")
+  run_env=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
+  pi_install=$(yq -r '.jobs.run.steps[] | select(.name == "Install pi") | .run // ""' "$template")
+
+  [ "$hf_token_declared" = "true" ]
+  [ "$hf_token_required" = "false" ]
+  [ "$run_env" = '${{ secrets.HF_TOKEN }}' ]
+  echo "$pi_install" | grep -qF 'github:badlogic/pi-mono@0.73.0'
+}
+
+@test "workflow: generated callers forward Hugging Face token" {
+  scheduled_template="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
+  generator="$SHIMMER_DIR/.mise/tasks/workflows/generate"
+
+  grep -qF 'HF_TOKEN: ${{ secrets.HF_TOKEN }}' "$scheduled_template"
+  grep -qF 'HF_TOKEN: \${{ secrets.HF_TOKEN }}' "$generator"
+}
+
 # --- Identity checks ---
 
 @test "headless: fails without GIT_AUTHOR_NAME" {
