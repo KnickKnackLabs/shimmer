@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#MISE description="Preview pane for the shimmer agent model picker"
+#MISE hide=true
+#
+# Called by fzf inside `_model-picker` with one argument: a `provider/model`
+# string. Looks up the row in `pi --list-models` and prints a multi-line
+# detail block.
+#
+# Stays best-effort — if a model isn't in pi's list (race with custom
+# models.json edits, stale fzf cache), the preview degrades gracefully
+# rather than failing the picker.
+
+set -eo pipefail
+
+INPUT="${1:-}"
+[ -z "$INPUT" ] && exit 0
+
+# Defensive split: a malformed input without a slash would otherwise leave
+# both sides equal to INPUT and produce a misleading preview.
+if [[ "$INPUT" != */* ]]; then
+  printf '%s\n\n(unrecognized model id — expected provider/model)\n' "$INPUT"
+  exit 0
+fi
+PROVIDER="${INPUT%%/*}"
+MODEL="${INPUT#*/}"
+
+# Look up the row from pi --list-models. Match exact provider+model so we
+# don't false-match across the column-aligned text output.
+ROW=$(pi --list-models 2>/dev/null \
+  | awk -v p="$PROVIDER" -v m="$MODEL" '$1==p && $2==m {print; exit}')
+
+if [ -z "$ROW" ]; then
+  printf '%s\n\n(not in pi --list-models on this machine)\n' "$INPUT"
+  exit 0
+fi
+
+# pi --list-models columns: provider model context max-out thinking images
+read -r _ _ CTX MAX_OUT THINKING IMAGES <<<"$ROW"
+
+printf '%s\n\n' "$INPUT"
+printf 'Provider:           %s\n' "$PROVIDER"
+printf 'Model:              %s\n' "$MODEL"
+printf 'Context window:     %s\n' "$CTX"
+printf 'Max output:         %s\n' "$MAX_OUT"
+printf 'Extended thinking:  %s\n' "$THINKING"
+printf 'Image input:        %s\n' "$IMAGES"
+
+# Mark pi's configured default — useful when scrolling unfamiliar models.
+SETTINGS="$HOME/.pi/agent/settings.json"
+if [ -f "$SETTINGS" ] && command -v jq >/dev/null 2>&1; then
+  DP=$(jq -r '.defaultProvider // empty' "$SETTINGS" 2>/dev/null || true)
+  DM=$(jq -r '.defaultModel // empty' "$SETTINGS" 2>/dev/null || true)
+  if [ "$DP" = "$PROVIDER" ] && [ "$DM" = "$MODEL" ]; then
+    printf '\n(current pi default)\n'
+  fi
+fi

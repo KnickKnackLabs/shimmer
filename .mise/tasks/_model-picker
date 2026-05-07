@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#MISE description="Interactive model picker for shimmer agent"
+#MISE hide=true
+#
+# Outputs the selected `provider/model` string on stdout.
+#
+# Sources the model list from `pi --list-models` (per-machine, reflects
+# whatever providers are configured locally). The cursor lands on pi's
+# `defaultProvider/defaultModel` from `~/.pi/agent/settings.json` if present.
+#
+# Used by `shimmer agent` (interactive mode) when --model isn't passed.
+# Errors with a clear message if not run on a TTY.
+
+set -eo pipefail
+
+# TTY check — picker is interactive by definition.
+if [ ! -t 0 ] || [ ! -t 1 ]; then
+  echo "Error: model picker requires a TTY. Pass --model <provider/model> instead." >&2
+  exit 1
+fi
+
+# Dependency checks.
+for tool in fzf pi jq; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "Error: '$tool' is required for the model picker." >&2
+    exit 1
+  }
+done
+
+# Read pi --list-models, drop header, format each row as `provider/model`.
+LIST=$(pi --list-models 2>/dev/null | awk 'NR>1 && NF>=2 {print $1 "/" $2}')
+if [ -z "$LIST" ]; then
+  echo "Error: pi --list-models returned no models." >&2
+  exit 1
+fi
+
+# Pi's configured default → cursor position. Falls back to first item if
+# unset or not in the list (e.g., user removed the model from a custom
+# models.json without updating settings.json).
+SETTINGS="$HOME/.pi/agent/settings.json"
+DEFAULT=""
+if [ -f "$SETTINGS" ]; then
+  DP=$(jq -r '.defaultProvider // empty' "$SETTINGS" 2>/dev/null || true)
+  DM=$(jq -r '.defaultModel // empty' "$SETTINGS" 2>/dev/null || true)
+  [ -n "$DP" ] && [ -n "$DM" ] && DEFAULT="$DP/$DM"
+fi
+
+if [ -n "$DEFAULT" ] && grep -qxF "$DEFAULT" <<<"$LIST"; then
+  LIST=$(printf '%s\n' "$DEFAULT"; grep -vxF "$DEFAULT" <<<"$LIST")
+fi
+
+# Preview script lives next to this one.
+TASK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Picker UX modeled on `shimmer as` (see .mise/tasks/as) so the visual
+# language stays consistent across shimmer's interactive pickers.
+SELECTED=$(printf '%s\n' "$LIST" | fzf \
+  --style=full \
+  --height=100% \
+  --layout=reverse \
+  --border=rounded \
+  --border-label=" choose model " \
+  --border-label-pos=3 \
+  --preview-label=" details " \
+  --pointer="▸" \
+  --prompt="  " \
+  --ghost="Type to filter…" \
+  --margin=5% \
+  --padding=1,2 \
+  --color="
+    bg:-1,bg+:#2a2d3d
+    border:dim,preview-border:dim
+    label:bold,preview-label:bold
+    pointer:bright-cyan
+    gutter:-1
+    info:dim
+  " \
+  --preview="$TASK_DIR/_model-preview {}" \
+  --preview-window="right,55%,border-rounded,wrap,<60(down,50%,border-horizontal)" \
+) || exit 1
+
+if [ -z "$SELECTED" ]; then
+  echo "No model selected." >&2
+  exit 1
+fi
+
+printf '%s\n' "$SELECTED"

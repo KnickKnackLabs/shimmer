@@ -4,7 +4,7 @@
 #USAGE flag "--headless" help="Non-interactive mode: process message and exit"
 #USAGE flag "--session <session>" help="Session file path to resume"
 #USAGE flag "--timeout <seconds>" help="Timeout in seconds (headless only, stored as session metadata — not yet enforced by sessions wake)"
-#USAGE flag "--model <model>" help="Model to use (required for --headless; provider-qualified, e.g. openai-codex/gpt-5.5)"
+#USAGE flag "--model <model>" help="Model to use (provider-qualified, e.g. openai-codex/gpt-5.5; required for --headless or non-TTY interactive; otherwise opens a picker)"
 #USAGE arg "[message]" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
@@ -94,7 +94,25 @@ else
     exit 1
   fi
 
-  ARGS=(--append-system-prompt "$AGENT_IDENTITY
+  # Resolve model: explicit --model wins; otherwise launch the picker.
+  # The picker errors out on non-TTY environments, surfacing the missing
+  # flag rather than guessing a default.
+  #
+  # Use BASH_SOURCE-relative resolution rather than $MISE_CONFIG_ROOT so
+  # the picker is found whether shimmer is invoked from its own repo, a
+  # shiv install, or a test overlay (where MISE_CONFIG_ROOT points at the
+  # overlay's mise.toml, not shimmer's tasks dir).
+  if [ -z "$MODEL" ]; then
+    SHIMMER_TASKS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+    MODEL=$("$SHIMMER_TASKS_DIR/_model-picker") || exit 1
+  fi
+
+  if [[ "$MODEL" != */* ]]; then
+    echo "Error: --model must be provider-qualified (for example: anthropic/claude-opus-4-7)" >&2
+    exit 1
+  fi
+
+  ARGS=(--model "$MODEL" --append-system-prompt "$AGENT_IDENTITY
 
 ## Session Context
 This is a local interactive session started via \`shimmer agent\`. A human is present and directing you.")

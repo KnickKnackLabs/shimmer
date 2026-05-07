@@ -223,11 +223,44 @@ setup() {
   mock_harness
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model test/model
   [ "$status" -eq 0 ]
 
   # harness was called with --append-system-prompt
   grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+}
+
+@test "interactive: forwards model to harness" {
+  setup_agent
+  mock_harness
+  mock_shimmer
+
+  run shimmer agent --model test/model
+  [ "$status" -eq 0 ]
+
+  grep -q -- "--model test/model" "$HARNESS_LOG"
+}
+
+@test "interactive: rejects unqualified model" {
+  setup_agent
+  mock_harness
+  mock_shimmer
+
+  run shimmer agent --model claude-opus-4-7
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"provider-qualified"* ]]
+}
+
+@test "interactive: errors when no --model and no TTY (picker unavailable)" {
+  setup_agent
+  mock_harness
+  mock_shimmer
+
+  # BATS runs without a TTY by default, so this exercises the no-TTY path
+  # of _model-picker without needing a separate harness for stdin/stdout.
+  run shimmer agent
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"requires a TTY"* ]] || [[ "$output" == *"--model"* ]]
 }
 
 @test "interactive: uses SHIMMER_CALLER_PWD as harness cwd before scrubbing" {
@@ -239,7 +272,7 @@ setup() {
   mock_harness
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model test/model
   [ "$status" -eq 0 ]
 
   grep -q "^PWD=$caller_dir$" "$HARNESS_ENV_LOG"
@@ -254,7 +287,7 @@ setup() {
   mock_harness
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model test/model
   [ "$status" -eq 0 ]
 
   grep -q '^CALLER_PWD=$' "$HARNESS_ENV_LOG"
@@ -267,7 +300,7 @@ setup() {
   mock_harness
   mock_shimmer
 
-  run shimmer agent --session "/tmp/my-session"
+  run shimmer agent --model test/model --session "/tmp/my-session"
   [ "$status" -eq 0 ]
 
   grep -q -- "--session /tmp/my-session" "$HARNESS_LOG"
@@ -278,7 +311,7 @@ setup() {
   mock_harness
   mock_shimmer
 
-  run shimmer agent "hello there"
+  run shimmer agent --model test/model "hello there"
   [ "$status" -eq 0 ]
 
   grep -q "hello there" "$HARNESS_LOG"
