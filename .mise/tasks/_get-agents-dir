@@ -12,7 +12,7 @@
 set -euo pipefail
 
 TASK_DIR="$MISE_CONFIG_ROOT/.mise/tasks"
-TARGET_DIR="${1:-${CALLER_PWD:-.}}"
+TARGET_DIR="${1:-${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}}"
 
 # Check target directory first
 if [ -d "$TARGET_DIR/agents" ]; then

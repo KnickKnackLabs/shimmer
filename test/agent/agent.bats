@@ -132,12 +132,12 @@ setup() {
   grep -q "^wake mock-session-id-001 --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
-@test "headless: uses SHIV_CALLER_PWD as session cwd before scrubbing" {
+@test "headless: uses SHIMMER_CALLER_PWD as session cwd before scrubbing" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
   unset CALLER_PWD
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
   mock_sessions_binary
   mock_shimmer
 
@@ -149,7 +149,8 @@ setup() {
 
 @test "headless: scrubs caller context before invoking sessions" {
   setup_agent
-  export SHIV_CALLER_PWD="/stale/shiv/caller"
+  export SHIMMER_CALLER_PWD="/stale/shimmer/caller"
+  export OTHER_CALLER_PWD="/stale/other/caller"
   mock_sessions_binary
   mock_shimmer
 
@@ -157,7 +158,8 @@ setup() {
   [ "$status" -eq 0 ]
 
   grep -q '^CALLER_PWD=$' "$SESSIONS_ENV_LOG"
-  grep -q '^SHIV_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^SHIMMER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^OTHER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
 }
 
 @test "headless: session name uses full epoch timestamp" {
@@ -228,12 +230,12 @@ setup() {
   grep -q -- "--append-system-prompt" "$HARNESS_LOG"
 }
 
-@test "interactive: uses SHIV_CALLER_PWD as harness cwd before scrubbing" {
+@test "interactive: uses SHIMMER_CALLER_PWD as harness cwd before scrubbing" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
   unset CALLER_PWD
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
   mock_harness
   mock_shimmer
 
@@ -247,7 +249,8 @@ setup() {
   setup_agent
   local caller_dir="$BATS_TEST_TMPDIR/scrub-caller"
   mkdir -p "$caller_dir"
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
+  export OTHER_CALLER_PWD="/stale/other/caller"
   mock_harness
   mock_shimmer
 
@@ -255,7 +258,8 @@ setup() {
   [ "$status" -eq 0 ]
 
   grep -q '^CALLER_PWD=$' "$HARNESS_ENV_LOG"
-  grep -q '^SHIV_CALLER_PWD=$' "$HARNESS_ENV_LOG"
+  grep -q '^SHIMMER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
+  grep -q '^OTHER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
 }
 
 @test "interactive: forwards session flag to harness" {

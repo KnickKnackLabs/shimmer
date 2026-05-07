@@ -109,7 +109,7 @@ set -euo pipefail
 home="$1"
 overlay="$2"
 
-eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
 
 printf 'token=%s\n' "$GH_TOKEN"
 printf 'bucket=%s\n' "$B2_BUCKET"
@@ -149,7 +149,7 @@ SCRIPT
   mock_shimmer
 
   # Set old env var, verify task still works (bridge picks it up)
-  run env SHIMMER_SECRETS_PROVIDER=keychain CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
+  run env SHIMMER_SECRETS_PROVIDER=keychain SHIMMER_CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
 }
@@ -226,7 +226,7 @@ overlay="$2"
 
 # Intentionally unquoted: this preserves compatibility with the historical
 # documented form, `eval $(shimmer as <agent>)`.
-eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
 
 printf 'name=%s\n' "$GIT_AUTHOR_NAME"
 printf 'host=%s\n' "$GH_HOST"
@@ -256,7 +256,7 @@ overlay="$2"
 
 # Intentionally unquoted: this preserves compatibility with the historical
 # documented form, `eval $(shimmer as <agent>)`.
-eval $(CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
 
 print -r -- "name=$GIT_AUTHOR_NAME"
 print -r -- "host=$GH_HOST"

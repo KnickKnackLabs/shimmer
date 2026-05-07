@@ -8,7 +8,7 @@
 
 set -e
 
-CALLER_DIR="${CALLER_PWD:-$(pwd)}"
+CALLER_DIR="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-$(pwd)}}"
 
 # Resolve the agent home
 AGENT_HOME_DIR="${AGENT_HOME:-$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")}"
