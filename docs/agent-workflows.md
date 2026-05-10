@@ -99,7 +99,7 @@ Generated workflows call the reusable `agent-run.yml` workflow, which:
    shimmer agent --headless --timeout "$RUN_TIMEOUT" --model "$INPUT_MODEL" "$INPUT_MESSAGE"
    ```
 
-Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.0 contract.
+Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.1 contract.
 
 ### Home repo `agent:prepare` hook
 
