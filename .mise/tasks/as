@@ -184,7 +184,10 @@ if [ -n "$SIGNING_KEY" ]; then
   emit_git_config_entry "commit.gpgsign" "true"
   emit_git_config_entry "tag.gpgsign" "true"
 else
-  echo "# Warning: no signing key found for $AGENT under $AGENTS_ROOT/$AGENT; Git signing key override not emitted" >&2
+  emit_git_config_entry "user.signingkey" ""
+  emit_git_config_entry "commit.gpgsign" "false"
+  emit_git_config_entry "tag.gpgsign" "false"
+  echo "# Warning: no signing key found for $AGENT under $AGENTS_ROOT/$AGENT; Git signing disabled to avoid stale signing key overrides" >&2
 fi
 emit "export GIT_CONFIG_COUNT=$(shell_quote "$NEXT_GIT_CONFIG_INDEX")"
 

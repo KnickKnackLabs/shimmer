@@ -208,7 +208,7 @@ SCRIPT
   [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-bob" ]
 }
 
-@test "as: warns and skips signing overrides when agent signing key is missing" {
+@test "as: disables signing overrides when agent signing key is missing" {
   setup_test_home "alice"
   rm -rf "$TEST_AGENTS_ROOT/alice"
   mock_secrets_binary "alice/github-pat=ghp_fake"
@@ -218,15 +218,32 @@ SCRIPT
   [ "$status" -eq 0 ]
   [[ "$output" == *"Warning: no signing key found for alice"* ]]
   echo "$output" | grep -q "export GIT_CONFIG_KEY_0='user.name'"
-  echo "$output" | grep -q "export GIT_CONFIG_COUNT='2'"
-  if echo "$output" | grep -q "user.signingkey"; then
-    echo "unexpected signing key override" >&2
-    return 1
-  fi
-  if echo "$output" | grep -q "commit.gpgsign"; then
-    echo "unexpected commit signing override" >&2
-    return 1
-  fi
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_2='user.signingkey'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2=''"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_3='commit.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_3='false'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_4='tag.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_4='false'"
+  echo "$output" | grep -q "export GIT_CONFIG_COUNT='5'"
+}
+
+@test "as: missing signing key does not reuse previous agent signing overrides" {
+  setup_test_home "alice" "bob"
+  rm -rf "$TEST_AGENTS_ROOT/bob"
+  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
+  mock_shimmer
+
+  local repo="$BATS_TEST_TMPDIR/work-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+
+  eval "$(shimmer as alice 2>/dev/null)"
+  eval "$(shimmer as bob 2>/dev/null)"
+
+  [ "$(git -C "$repo" config user.name)" = "bob" ]
+  [ "$(git -C "$repo" config user.signingkey)" = "" ]
+  [ "$(git -C "$repo" config commit.gpgsign)" = "false" ]
+  [ "$(git -C "$repo" config tag.gpgsign)" = "false" ]
 }
 
 @test "as: exports B2_BUCKET when available" {
