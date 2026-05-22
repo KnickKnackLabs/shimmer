@@ -3,6 +3,7 @@
 # Suite-specific: setup_test_home with agent:list, agent:identity, and identity files.
 # Shared helpers (mock_task, mock_shimmer, shimmer wrapper) loaded from test/helpers.bash.
 
+# shellcheck source=test/helpers.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
 
 # Create a test home with agent:list, agent:identity, and identity files.
@@ -40,7 +41,11 @@ fi
 TASK
   chmod +x "$TEST_HOME/.mise/tasks/agent/identity"
 
-  # Identity files
+  TEST_AGENTS_ROOT="$BATS_TEST_TMPDIR/agents-root-$$"
+  export TEST_AGENTS_ROOT
+  export SHIMMER_AGENTS_ROOT="$TEST_AGENTS_ROOT"
+
+  # Identity files + private agent homes with signing config.
   for agent in "${agents[@]}"; do
     cat > "$TEST_HOME/notes/$agent.md" <<EOF
 ---
@@ -51,6 +56,14 @@ tags: [agent, identity]
 # $agent
 You are $agent.
 EOF
+
+    mkdir -p "$TEST_AGENTS_ROOT/$agent/home"
+    git -C "$TEST_AGENTS_ROOT/$agent/home" init -q -b main
+    git -C "$TEST_AGENTS_ROOT/$agent/home" config user.name "$agent"
+    git -C "$TEST_AGENTS_ROOT/$agent/home" config user.email "$agent@ricon.family"
+    git -C "$TEST_AGENTS_ROOT/$agent/home" config user.signingkey "TESTKEY-$agent"
+    git -C "$TEST_AGENTS_ROOT/$agent/home" config commit.gpgsign true
+    git -C "$TEST_AGENTS_ROOT/$agent/home" config tag.gpgsign true
   done
 
   # Git init

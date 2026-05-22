@@ -120,13 +120,23 @@ mise run gpg:setup <agent>
 
 ### Wrong signing key used
 
-Check for local git config overrides:
+`eval "$(shimmer as <agent>)"` appends transient Git config overrides for the active agent's `user.name`, `user.email`, `user.signingkey`, `commit.gpgsign`, and `tag.gpgsign`. Verify the active shell first:
+
 ```bash
-git config --local user.signingkey
+shimmer whoami
+git config user.signingkey
 ```
 
-If set, remove it to use the global config:
+If the signing key is still wrong, check for missing agent GPG setup:
+
 ```bash
+shimmer gpg:status <agent>
+```
+
+Older shells or repos without the transient overrides may still be affected by local git config overrides:
+
+```bash
+git config --local user.signingkey
 git config --local --unset user.signingkey
 ```
 
