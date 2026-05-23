@@ -14,7 +14,7 @@ setup_agent() {
   export GIT_AUTHOR_NAME="$name"
   export GIT_AUTHOR_EMAIL="${name}@ricon.family"
   export AGENT_IDENTITY="You are ${name}."
-  export CALLER_PWD="$BATS_TEST_TMPDIR"
+  export SHIMMER_CALLER_PWD="$BATS_TEST_TMPDIR"
 }
 
 # Create a mock `sessions` binary on PATH.
@@ -32,7 +32,8 @@ mock_sessions_binary() {
 echo "$@" >> "$SESSIONS_LOG"
 {
   printf 'CALLER_PWD=%s\n' "${CALLER_PWD-}"
-  printf 'SHIV_CALLER_PWD=%s\n' "${SHIV_CALLER_PWD-}"
+  printf 'SHIMMER_CALLER_PWD=%s\n' "${SHIMMER_CALLER_PWD-}"
+  printf 'OTHER_CALLER_PWD=%s\n' "${OTHER_CALLER_PWD-}"
 } >> "${SESSIONS_ENV_LOG:-$SESSIONS_LOG.env}"
 case "$1" in
   new) echo "mock-session-id-001" ;;
@@ -60,7 +61,8 @@ echo "$@" >> "$HARNESS_LOG"
 {
   printf 'PWD=%s\n' "$PWD"
   printf 'CALLER_PWD=%s\n' "${CALLER_PWD-}"
-  printf 'SHIV_CALLER_PWD=%s\n' "${SHIV_CALLER_PWD-}"
+  printf 'SHIMMER_CALLER_PWD=%s\n' "${SHIMMER_CALLER_PWD-}"
+  printf 'OTHER_CALLER_PWD=%s\n' "${OTHER_CALLER_PWD-}"
 } >> "${HARNESS_ENV_LOG:-$HARNESS_LOG.env}"
 MOCK
   chmod +x "$MOCK_BIN/mock-harness"

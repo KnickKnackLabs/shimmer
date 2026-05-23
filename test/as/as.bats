@@ -5,7 +5,7 @@ setup() {
 }
 
 teardown() {
-  rm -rf "$TEST_HOME" "$OVERLAY" "$BATS_TEST_TMPDIR/mocks-$$" "$BATS_TEST_TMPDIR/mock-bin-$$"
+  rm -rf "$TEST_HOME" "$OVERLAY" "$TEST_AGENTS_ROOT" "$BATS_TEST_TMPDIR/mocks-$$" "$BATS_TEST_TMPDIR/mock-bin-$$"
 }
 
 # ============ Agent discovery (no mocks needed) ============
@@ -37,6 +37,13 @@ teardown() {
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
   echo "$output" | grep -q "export GIT_AUTHOR_EMAIL='alice@ricon.family'"
   echo "$output" | grep -q "export GH_TOKEN='ghp_fake_test_token'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_0='user.name'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_0='alice'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_2='user.signingkey'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2='TESTKEY-alice'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_3='commit.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_4='tag.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_COUNT='5'"
 }
 
 @test "as: sets AGENT_HOME to the home directory" {
@@ -59,6 +66,22 @@ teardown() {
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export AGENT_IDENTITY="
   echo "$output" | grep -q "You are alice."
+}
+
+@test "as: falls back to private home when caller repo has no agent:list" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local caller="$BATS_TEST_TMPDIR/plain-repo"
+  mkdir -p "$caller"
+  git -C "$caller" init -q -b main
+
+  run env SHIMMER_CALLER_PWD="$caller" mise -C "$OVERLAY" run -q as alice 2>&1
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"does not provide agent:list; using"* ]]
+  echo "$output" | grep -q "export AGENT_HOME='$TEST_AGENTS_ROOT/alice/home'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2='TESTKEY-alice'"
 }
 
 @test "as: works for each agent independently" {
@@ -85,6 +108,144 @@ teardown() {
   echo "$output" | grep -q "export GH_TOKEN='ghp_bob_token'"
 }
 
+@test "as: eval preserves apostrophes in exported values" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
+  mock_shimmer
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$GH_TOKEN" = "ghp_fake'quoted" ]
+  [ "$B2_BUCKET" = "bucket'quoted" ]
+}
+
+@test "as: unquoted eval preserves apostrophes in exported values" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-apostrophe.sh"
+  cat > "$script" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+printf 'token=%s\n' "$GH_TOKEN"
+printf 'bucket=%s\n' "$B2_BUCKET"
+SCRIPT
+  chmod +x "$script"
+
+  run "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"token=ghp_fake'quoted"* ]]
+  [[ "$output" == *"bucket=bucket'quoted"* ]]
+}
+
+@test "as: eval makes Git config use active agent signing identity in other repos" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local repo="$BATS_TEST_TMPDIR/work-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+  git -C "$repo" config user.name "Wrong Name"
+  git -C "$repo" config user.email "wrong@example.invalid"
+  git -C "$repo" config user.signingkey "WRONGKEY"
+  git -C "$repo" config commit.gpgsign false
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$(git -C "$repo" config user.name)" = "alice" ]
+  [ "$(git -C "$repo" config user.email)" = "alice@ricon.family" ]
+  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-alice" ]
+  [ "$(git -C "$repo" config commit.gpgsign)" = "true" ]
+  [ "$(git -C "$repo" config tag.gpgsign)" = "true" ]
+}
+
+@test "as: appends Git config overrides without dropping existing entries" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local repo="$BATS_TEST_TMPDIR/work-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+
+  export GIT_CONFIG_COUNT=1
+  export GIT_CONFIG_KEY_0="core.editor"
+  export GIT_CONFIG_VALUE_0="vim"
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ "$GIT_CONFIG_COUNT" = "6" ]
+  [ "$GIT_CONFIG_KEY_0" = "core.editor" ]
+  [ "$GIT_CONFIG_VALUE_0" = "vim" ]
+  [ "$(git -C "$repo" config core.editor)" = "vim" ]
+  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-alice" ]
+
+  unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
+}
+
+@test "as: switching agents makes later Git config overrides win" {
+  setup_test_home "alice" "bob"
+  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
+  mock_shimmer
+
+  local repo="$BATS_TEST_TMPDIR/work-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+
+  eval "$(shimmer as alice 2>/dev/null)"
+  eval "$(shimmer as bob 2>/dev/null)"
+
+  [ "$(git -C "$repo" config user.name)" = "bob" ]
+  [ "$(git -C "$repo" config user.email)" = "bob@ricon.family" ]
+  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-bob" ]
+}
+
+@test "as: disables signing overrides when agent signing key is missing" {
+  setup_test_home "alice"
+  rm -rf "$TEST_AGENTS_ROOT/alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  run shimmer as alice
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Warning: no signing key found for alice"* ]]
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_0='user.name'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_2='user.signingkey'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2=''"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_3='commit.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_3='false'"
+  echo "$output" | grep -q "export GIT_CONFIG_KEY_4='tag.gpgsign'"
+  echo "$output" | grep -q "export GIT_CONFIG_VALUE_4='false'"
+  echo "$output" | grep -q "export GIT_CONFIG_COUNT='5'"
+}
+
+@test "as: missing signing key does not reuse previous agent signing overrides" {
+  setup_test_home "alice" "bob"
+  rm -rf "$TEST_AGENTS_ROOT/bob"
+  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
+  mock_shimmer
+
+  local repo="$BATS_TEST_TMPDIR/work-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+
+  eval "$(shimmer as alice 2>/dev/null)"
+  eval "$(shimmer as bob 2>/dev/null)"
+
+  [ "$(git -C "$repo" config user.name)" = "bob" ]
+  [ "$(git -C "$repo" config user.signingkey)" = "" ]
+  [ "$(git -C "$repo" config commit.gpgsign)" = "false" ]
+  [ "$(git -C "$repo" config tag.gpgsign)" = "false" ]
+}
+
 @test "as: exports B2_BUCKET when available" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake" "alice/b2-bucket=my-bucket"
@@ -103,7 +264,10 @@ teardown() {
   run shimmer as alice
   [ "$status" -eq 0 ]
   # Should NOT contain B2_BUCKET export
-  ! echo "$output" | grep -q "export B2_BUCKET="
+  if echo "$output" | grep -q "export B2_BUCKET="; then
+    echo "unexpected B2_BUCKET export" >&2
+    return 1
+  fi
 }
 
 @test "as: bridges SHIMMER_SECRETS_PROVIDER to SECRETS_PROVIDER" {
@@ -112,7 +276,7 @@ teardown() {
   mock_shimmer
 
   # Set old env var, verify task still works (bridge picks it up)
-  run env SHIMMER_SECRETS_PROVIDER=keychain CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
+  run env SHIMMER_SECRETS_PROVIDER=keychain SHIMMER_CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
   [ "$status" -eq 0 ]
   echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
 }
@@ -131,6 +295,9 @@ teardown() {
   # Every exported var should be unset first
   local var
   for var in $(echo "$output" | grep -oE "export [A-Z_]+" | awk '{print $2}' | sort -u); do
+    case "$var" in
+      GIT_CONFIG_*) continue ;;
+    esac
     echo "$output" | grep -q "unset.*$var" || {
       echo "exported var $var is not unset" >&2
       return 1
@@ -172,6 +339,65 @@ teardown() {
 
   # B2_BUCKET should be cleared since alice has no bucket configured
   [ -z "${B2_BUCKET:-}" ]
+}
+
+@test "as: unquoted eval works in bash" {
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-bash.sh"
+  cat > "$script" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+# Intentionally unquoted: this preserves compatibility with the historical
+# documented form, `eval $(shimmer as <agent>)`.
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+printf 'name=%s\n' "$GIT_AUTHOR_NAME"
+printf 'host=%s\n' "$GH_HOST"
+printf 'identity=%s\n' "$AGENT_IDENTITY"
+SCRIPT
+  chmod +x "$script"
+
+  run "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"name=alice"* ]]
+  [[ "$output" == *"host=github.com"* ]]
+  [[ "$output" == *"You are alice."* ]]
+}
+
+@test "as: unquoted eval works in zsh" {
+  command -v zsh >/dev/null 2>&1 || skip "zsh not installed"
+  setup_test_home "alice"
+  mock_secrets_binary "alice/github-pat=ghp_fake"
+  mock_shimmer
+
+  local script="$BATS_TEST_TMPDIR/unquoted-eval-zsh.zsh"
+  cat > "$script" <<'SCRIPT'
+set -euo pipefail
+
+home="$1"
+overlay="$2"
+
+# Intentionally unquoted: this preserves compatibility with the historical
+# documented form, `eval $(shimmer as <agent>)`.
+eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
+
+print -r -- "name=$GIT_AUTHOR_NAME"
+print -r -- "host=$GH_HOST"
+print -r -- "identity=$AGENT_IDENTITY"
+SCRIPT
+
+  run zsh "$script" "$TEST_HOME" "$OVERLAY"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"name=alice"* ]]
+  [[ "$output" == *"host=github.com"* ]]
+  [[ "$output" == *"You are alice."* ]]
 }
 
 # ============ Validation (no mocks — fails before secrets) ============

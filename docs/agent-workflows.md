@@ -61,10 +61,10 @@ git commit -m "Update agent schedules"
 Validate workflows match the manifest:
 
 ```bash
-shimmer workflows:check
+shimmer workflows:generate --check
 ```
 
-`workflows:check` validates `workflows.yaml` against shimmer's schema and regenerates into a temporary directory to catch drift between committed workflows and generated output.
+`workflows:generate --check` validates `workflows.yaml` when present and regenerates into a temporary directory to catch drift between committed workflows and generated output.
 
 ## Manual Agent Dispatch
 
@@ -91,14 +91,33 @@ Generated workflows call the reusable `agent-run.yml` workflow, which:
 2. Installs mise-managed tools.
 3. Sets up agent credentials (GPG, email, Matrix, GitHub, optional blob storage).
 4. Clones the agent home repo.
-5. Restores pi auth when `PI_AUTH_JSON` is configured.
-6. Runs:
+5. Prepares the home repo via the `agent:prepare` hook (see below).
+6. Exposes provider API keys from workflow secrets (`ANTHROPIC_API_KEY`, `HF_TOKEN`) and restores pi auth when `PI_AUTH_JSON` is configured.
+7. Runs:
 
    ```bash
    shimmer agent --headless --timeout "$RUN_TIMEOUT" --model "$INPUT_MODEL" "$INPUT_MESSAGE"
    ```
 
-Headless execution requires an explicit provider-qualified model. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.0 contract.
+Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4.1 contract.
+
+### Home repo `agent:prepare` hook
+
+The `Prepare home repo` step is owned by the agent's home repo. After `mise trust && mise install` in the home, the workflow runs:
+
+```bash
+if mise tasks info agent:prepare >/dev/null 2>&1; then
+  mise run agent:prepare
+else
+  echo "::warning::No agent:prepare task found in home repo; skipping home-specific preparation. ..."
+fi
+```
+
+If the home declares an `agent:prepare` mise task, it runs. Otherwise the step emits a GitHub Actions `::warning::` annotation and continues — a missing hook does not fail the run.
+
+**What `agent:prepare` should do:** anything home-specific that needs to happen before every headless session — typically `notes unlock`, `notes install-hooks`, `modules install-hooks`, `modules init`, `rudi install`, plus anything else that home owns. It must be idempotent and safe to run on every dispatch (CI re-runs it from scratch each time; locally agents may also invoke it during interactive sessions).
+
+**Why it's a delegation hook, not a hardcoded block:** the workflow template used to assume every home spoke den/fold's tooling stack (notes/rudi/modules). Agent homes vary — some may use only a subset, some may need additional setup (cache warming, secret pre-fetch). The hook hands ownership of that decision to each home repo's `mise.toml`.
 
 ## Adding a Scheduled Job
 
@@ -120,7 +139,7 @@ Headless execution requires an explicit provider-qualified model. Shimmer create
 
    ```bash
    shimmer workflows:generate
-   shimmer workflows:check
+   shimmer workflows:generate --check
    ```
 
 4. Commit the manifest and generated workflow files.
