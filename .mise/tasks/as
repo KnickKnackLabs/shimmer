@@ -1,32 +1,41 @@
 #!/usr/bin/env bash
 #MISE description="Switch to an agent's identity for local work"
-#USAGE arg "[agent]" help="Agent to switch to (omit for interactive picker)"
+#USAGE arg "[agent]" default="" help="Agent to switch to (omit for interactive picker)"
 
-set -e
+set -euo pipefail
 
 # Bridge env var during migration: shimmer callers may still set SHIMMER_SECRETS_PROVIDER
 export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
 
-CALLER_DIR="${CALLER_PWD:-$(pwd)}"
+CALLER_DIR="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-$(pwd)}}"
 
 # Resolve the agent home (the repo the user is calling from)
 AGENT_HOME_DIR=$(git -C "$CALLER_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$CALLER_DIR")
 
-AGENT="$usage_agent"
+AGENT="${usage_agent:-}"
 IDENTITY=""
+AGENTS_ROOT="${SHIMMER_AGENTS_ROOT:-$HOME/agents}"
 
-# Delegate agent discovery to the home's agent:list task. This is mandatory:
-# agent:list is the authoritative set of agents supported by this home.
+# Prefer the caller home's authoritative agent:list task. When a concrete
+# agent is specified from an arbitrary repo or a private home that does not
+# expose agent:list, fall back to that agent's private home under AGENTS_ROOT.
 AGENT_LIST_ERR=$(mktemp)
 if ! AGENTS=$(mise -C "$AGENT_HOME_DIR" run -q agent:list 2>"$AGENT_LIST_ERR"); then
-  echo "Error: could not list agents." >&2
-  echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
-  if [ -s "$AGENT_LIST_ERR" ]; then
-    echo "agent:list stderr:" >&2
-    sed 's/^/  /' "$AGENT_LIST_ERR" >&2
+  private_agent_home="$AGENTS_ROOT/$AGENT/home"
+  if [ -n "$AGENT" ] && [ ! -e "$AGENT_HOME_DIR/.mise/tasks/agent/list" ] && [ -d "$private_agent_home" ]; then
+    AGENTS="$AGENT"
+    AGENT_HOME_DIR="$private_agent_home"
+    echo "# Note: $CALLER_DIR does not provide agent:list; using $AGENT_HOME_DIR" >&2
+  else
+    echo "Error: could not list agents." >&2
+    echo "Does $AGENT_HOME_DIR provide an 'agent:list' task?" >&2
+    if [ -s "$AGENT_LIST_ERR" ]; then
+      echo "agent:list stderr:" >&2
+      sed 's/^/  /' "$AGENT_LIST_ERR" >&2
+    fi
+    rm -f "$AGENT_LIST_ERR"
+    exit 1
   fi
-  rm -f "$AGENT_LIST_ERR"
-  exit 1
 fi
 rm -f "$AGENT_LIST_ERR"
 
@@ -76,6 +85,59 @@ if [ -z "$AGENT" ]; then
 fi
 
 EMAIL="${AGENT}@ricon.family"
+NEXT_GIT_CONFIG_INDEX="${GIT_CONFIG_COUNT:-0}"
+case "$NEXT_GIT_CONFIG_INDEX" in
+  ''|*[!0-9]*)
+    echo "# Warning: GIT_CONFIG_COUNT is not numeric; resetting transient Git config index" >&2
+    NEXT_GIT_CONFIG_INDEX=0
+    ;;
+esac
+
+shell_quote() {
+  local value="$1"
+  value=${value//\'/\'\\\'\'}
+  printf "'%s'" "$value"
+}
+
+ansi_c_quote() {
+  local value="$1"
+  value=${value//\\/\\\\}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  value=${value//\'/\\\'}
+  printf "\$'%s'" "$value"
+}
+
+emit() {
+  printf '%s;\n' "$1"
+}
+
+resolve_signing_key() {
+  local agent="$1"
+  local private_home="$AGENTS_ROOT/$agent/home"
+  local agent_gitconfig="$AGENTS_ROOT/$agent/.gitconfig"
+
+  if [ -f "$private_home/.git/config" ]; then
+    git config --file "$private_home/.git/config" --get user.signingkey 2>/dev/null && return 0
+  fi
+
+  if [ -f "$agent_gitconfig" ]; then
+    git config --file "$agent_gitconfig" --get user.signingkey 2>/dev/null && return 0
+  fi
+
+  return 1
+}
+
+emit_git_config_entry() {
+  local key="$1"
+  local value="$2"
+  local index="$NEXT_GIT_CONFIG_INDEX"
+
+  emit "export GIT_CONFIG_KEY_$index=$(shell_quote "$key")"
+  emit "export GIT_CONFIG_VALUE_$index=$(shell_quote "$value")"
+  NEXT_GIT_CONFIG_INDEX=$((NEXT_GIT_CONFIG_INDEX + 1))
+}
 
 # Validate agent against the authoritative home-provided agent list.
 if ! echo "$AGENTS" | grep -qx "$AGENT"; then
@@ -87,11 +149,13 @@ fi
 # Clear all identity vars first to prevent stale values from a previous
 # `shimmer as` from leaking through if any resolution step below fails.
 # This must come before PAT resolution — if secrets lookup exits early,
-# eval still clears the previous session's vars.
-echo "unset AGENT_IDENTITY B2_BUCKET"
-echo "unset GH_HOST GH_TOKEN"
-echo "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
-echo "unset AGENT_HOME"
+# eval still clears the previous session's vars. GIT_CONFIG_* is intentionally
+# not cleared: caller-provided transient config must be preserved, and shimmer
+# appends later identity overrides below so the active agent wins.
+emit "unset AGENT_IDENTITY B2_BUCKET"
+emit "unset GH_HOST GH_TOKEN"
+emit "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
+emit "unset AGENT_HOME"
 
 # Fetch GitHub PAT via secrets tool
 PAT=$(secrets get "$AGENT/github-pat") || {
@@ -104,19 +168,34 @@ PAT=$(secrets get "$AGENT/github-pat") || {
 # NOTE: GH_HOST is hardcoded to github.com — all shimmer agents currently target
 # github.com. If an agent ever needs to target a GHE instance, this should become
 # configurable (e.g., per-agent config or secret store field).
-echo "export GH_HOST='github.com'"
-echo "export GH_TOKEN='$PAT'"
-echo "export GIT_AUTHOR_EMAIL='$EMAIL'"
-echo "export GIT_COMMITTER_EMAIL='$EMAIL'"
-echo "export GIT_AUTHOR_NAME='$AGENT'"
-echo "export GIT_COMMITTER_NAME='$AGENT'"
-echo "export AGENT_HOME='$AGENT_HOME_DIR'"
+emit "export GH_HOST=$(shell_quote 'github.com')"
+emit "export GH_TOKEN=$(shell_quote "$PAT")"
+emit "export GIT_AUTHOR_EMAIL=$(shell_quote "$EMAIL")"
+emit "export GIT_COMMITTER_EMAIL=$(shell_quote "$EMAIL")"
+emit "export GIT_AUTHOR_NAME=$(shell_quote "$AGENT")"
+emit "export GIT_COMMITTER_NAME=$(shell_quote "$AGENT")"
+emit "export AGENT_HOME=$(shell_quote "$AGENT_HOME_DIR")"
+
+SIGNING_KEY=$(resolve_signing_key "$AGENT") || SIGNING_KEY=""
+emit_git_config_entry "user.name" "$AGENT"
+emit_git_config_entry "user.email" "$EMAIL"
+if [ -n "$SIGNING_KEY" ]; then
+  emit_git_config_entry "user.signingkey" "$SIGNING_KEY"
+  emit_git_config_entry "commit.gpgsign" "true"
+  emit_git_config_entry "tag.gpgsign" "true"
+else
+  emit_git_config_entry "user.signingkey" ""
+  emit_git_config_entry "commit.gpgsign" "false"
+  emit_git_config_entry "tag.gpgsign" "false"
+  echo "# Warning: no signing key found for $AGENT under $AGENTS_ROOT/$AGENT; Git signing disabled to avoid stale signing key overrides" >&2
+fi
+emit "export GIT_CONFIG_COUNT=$(shell_quote "$NEXT_GIT_CONFIG_INDEX")"
 
 # Optional: B2 blob storage bucket (don't fail if not configured).
 # Empty on missing or provider failure; conditional export below handles it.
 B2_BUCKET=$(secrets get "$AGENT/b2-bucket" 2>/dev/null) || B2_BUCKET=""
 if [ -n "$B2_BUCKET" ]; then
-  echo "export B2_BUCKET='$B2_BUCKET'"
+  emit "export B2_BUCKET=$(shell_quote "$B2_BUCKET")"
 fi
 
 # Resolve agent identity content via the home's agent:identity task.
@@ -124,9 +203,10 @@ fi
 # prints a notice in that case.
 IDENTITY=$(mise -C "$AGENT_HOME_DIR" run -q agent:identity "$AGENT" 2>/dev/null) || IDENTITY=""
 if [ -n "$IDENTITY" ]; then
-  # Export as multi-line env var using $'...' quoting
-  ESCAPED=$(printf '%s' "$IDENTITY" | sed "s/'/'\\\\''/g")
-  echo "export AGENT_IDENTITY='$ESCAPED'"
+  # Export as encoded ANSI-C quoting so unquoted command substitution
+  # (`eval $(shimmer as agent)`) cannot collapse literal newlines inside
+  # AGENT_IDENTITY before eval sees the command stream.
+  emit "export AGENT_IDENTITY=$(ansi_c_quote "$IDENTITY")"
 else
   echo "# Note: agent home has no agent:identity task — AGENT_IDENTITY not set" >&2
   echo "# (was cleared above to prevent stale values)" >&2

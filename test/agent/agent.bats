@@ -6,6 +6,51 @@ setup() {
   load helpers
 }
 
+# --- Workflow template ---
+
+@test "workflow: home preparation delegates to home agent:prepare task" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  # Parse the YAML structurally so we assert on the step's run: body, not on
+  # incidental matches in comments or neighbouring steps.
+  # `// ""` collapses a missing or null .run (e.g. a step that uses `uses:`
+  # instead of `run:`) to the empty string so the guard below catches it
+  # explicitly rather than asserting against the literal string "null".
+  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
+
+  [ -n "$run_block" ] || {
+    echo "could not locate 'Prepare home repo' step's run: block in $template" >&2
+    return 1
+  }
+
+  echo "$run_block" | grep -qF 'mise run agent:prepare'
+  ! echo "$run_block" | grep -qF 'rudi install'
+  ! echo "$run_block" | grep -qF 'notes unlock'
+  ! echo "$run_block" | grep -qF 'modules init'
+}
+
+@test "workflow: exposes Hugging Face auth to pi" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  hf_token_declared=$(yq -r '.on.workflow_call.secrets.HF_TOKEN | has("required")' "$template")
+  hf_token_required=$(yq -r '.on.workflow_call.secrets.HF_TOKEN.required' "$template")
+  run_env=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
+  pi_install=$(yq -r '.jobs.run.steps[] | select(.name == "Install pi") | .run // ""' "$template")
+
+  [ "$hf_token_declared" = "true" ]
+  [ "$hf_token_required" = "false" ]
+  [ "$run_env" = '${{ secrets.HF_TOKEN }}' ]
+  echo "$pi_install" | grep -qF 'github:badlogic/pi-mono@0.73.0'
+}
+
+@test "workflow: generated callers forward Hugging Face token" {
+  scheduled_template="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
+  generator="$SHIMMER_DIR/.mise/tasks/workflows/generate"
+
+  grep -qF 'HF_TOKEN: ${{ secrets.HF_TOKEN }}' "$scheduled_template"
+  grep -qF 'HF_TOKEN: \${{ secrets.HF_TOKEN }}' "$generator"
+}
+
 # --- Identity checks ---
 
 @test "headless: fails without GIT_AUTHOR_NAME" {
@@ -87,12 +132,12 @@ setup() {
   grep -q "^wake mock-session-id-001 --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
-@test "headless: uses SHIV_CALLER_PWD as session cwd before scrubbing" {
+@test "headless: uses SHIMMER_CALLER_PWD as session cwd before scrubbing" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
   unset CALLER_PWD
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
   mock_sessions_binary
   mock_shimmer
 
@@ -104,7 +149,8 @@ setup() {
 
 @test "headless: scrubs caller context before invoking sessions" {
   setup_agent
-  export SHIV_CALLER_PWD="/stale/shiv/caller"
+  export SHIMMER_CALLER_PWD="/stale/shimmer/caller"
+  export OTHER_CALLER_PWD="/stale/other/caller"
   mock_sessions_binary
   mock_shimmer
 
@@ -112,7 +158,8 @@ setup() {
   [ "$status" -eq 0 ]
 
   grep -q '^CALLER_PWD=$' "$SESSIONS_ENV_LOG"
-  grep -q '^SHIV_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^SHIMMER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^OTHER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
 }
 
 @test "headless: session name uses full epoch timestamp" {
@@ -183,12 +230,12 @@ setup() {
   grep -q -- "--append-system-prompt" "$HARNESS_LOG"
 }
 
-@test "interactive: uses SHIV_CALLER_PWD as harness cwd before scrubbing" {
+@test "interactive: uses SHIMMER_CALLER_PWD as harness cwd before scrubbing" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/shiv-caller"
+  local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
   unset CALLER_PWD
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
   mock_harness
   mock_shimmer
 
@@ -202,7 +249,8 @@ setup() {
   setup_agent
   local caller_dir="$BATS_TEST_TMPDIR/scrub-caller"
   mkdir -p "$caller_dir"
-  export SHIV_CALLER_PWD="$caller_dir"
+  export SHIMMER_CALLER_PWD="$caller_dir"
+  export OTHER_CALLER_PWD="/stale/other/caller"
   mock_harness
   mock_shimmer
 
@@ -210,7 +258,8 @@ setup() {
   [ "$status" -eq 0 ]
 
   grep -q '^CALLER_PWD=$' "$HARNESS_ENV_LOG"
-  grep -q '^SHIV_CALLER_PWD=$' "$HARNESS_ENV_LOG"
+  grep -q '^SHIMMER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
+  grep -q '^OTHER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
 }
 
 @test "interactive: forwards session flag to harness" {

@@ -24,6 +24,8 @@ on:
     secrets:
       ANTHROPIC_API_KEY:
         required: false
+      HF_TOKEN:
+        required: false
       PI_AUTH_JSON:
         required: false
       AGENT_GITHUB_PAT:
@@ -85,6 +87,12 @@ jobs:
           mise trust
           mise install
 
+      - name: Trust shiv package configs
+        run: |
+          while IFS= read -r -d '' config; do
+            mise trust -q "$config"
+          done < <(find "$HOME/.local/share/mise/installs" -path '*/packages/*/mise.toml' -print0)
+
       - name: Compute sessions CLI cache key
         id: sessions
         run: |
@@ -105,7 +113,7 @@ jobs:
         run: sessions cli:build
 
       - name: Install pi
-        run: mise use -g github:badlogic/pi-mono@0.70.5
+        run: mise use -g github:badlogic/pi-mono@0.73.0
 
       - name: Setup secrets for env provider
         env:
@@ -211,15 +219,10 @@ jobs:
           mise trust
           mise install
 
-          if [ -d ".git-crypt" ] || [ -d "notes" ]; then
-            rudi install
-            notes unlock
-            notes install-hooks
-          fi
-
-          if [ -f ".modules/config" ]; then
-            modules install-hooks
-            modules init
+          if mise tasks info agent:prepare >/dev/null 2>&1; then
+            mise run agent:prepare
+          else
+            echo "::warning::No agent:prepare task found in home repo; skipping home-specific preparation. Add an agent:prepare task to silence this warning."
           fi
 
       - name: Unlock caller repo notes
@@ -252,6 +255,7 @@ jobs:
         env:
           AGENT: ${{ inputs.agent }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           BROWSER_GITHUB_COM_PASSWORD: ${{ secrets.AGENT_GITHUB_PASSWORD }}
           BROWSER_GITHUB_COM_USERNAME: ${{ inputs.agent }}-ricon
           DISPATCH_CONTEXT: ${{ github.triggering_actor }}

@@ -108,6 +108,7 @@ MOCK
 # Usage: shimmer welcome
 # Usage: shimmer as alice
 shimmer() {
-  CALLER_PWD="${TEST_HOME:-.}" mise -C "$OVERLAY" run -q "$@" 2>&1
+  local caller="${SHIMMER_CALLER_PWD:-${TEST_HOME:-.}}"
+  SHIMMER_CALLER_PWD="$caller" mise -C "$OVERLAY" run -q "$@" 2>&1
 }
 export -f shimmer

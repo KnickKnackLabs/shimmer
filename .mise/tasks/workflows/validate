@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # Determine target directory (caller's directory when using shimmer alias)
-TARGET_DIR="${PROJECT_DIR:-${CALLER_PWD:-.}}"
+TARGET_DIR="${PROJECT_DIR:-${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}}"
 cd "$TARGET_DIR"
 
 check-jsonschema --schemafile "$MISE_PROJECT_ROOT/workflows.schema.json" workflows.yaml

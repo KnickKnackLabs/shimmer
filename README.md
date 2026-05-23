@@ -54,12 +54,12 @@ This project uses [mise](https://mise.jdx.dev/) for task management. Run `shimme
 
 ### Identity
 
-- `shimmer as <agent>` - Switch to an agent's identity for local work (use with `eval`)
+- `shimmer as <agent>` - Switch to an agent's identity for local work (use with `eval`); also appends transient Git config so commits/tags use the active agent's name, email, and signing key
 - `shimmer whoami` - Show current git and GitHub identity
 
 Example:
 ```bash
-eval $(shimmer as quick)
+eval "$(shimmer as quick)"
 shimmer whoami
 ```
 
