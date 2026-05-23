@@ -33,7 +33,7 @@ echo "After logging in, find the token named '$AGENT' and click 'Regenerate'."
 echo ""
 echo "After regenerating:"
 echo "  1. Copy the new token value"
-echo "  2. shimmer github:token:store $AGENT <token>"
+echo "  2. shimmer github:token:store $AGENT <token>   (save as $AGENT/github-pat)"
 echo "  3. shimmer agent:sync-secrets"
 echo ""
 
