@@ -27,6 +27,12 @@ teardown() {
 
 # ============ Full as flow (secrets binary mocked) ============
 
+@test "as: test helper clears ambient Git config overrides" {
+  [ -z "${GIT_CONFIG_COUNT:-}" ]
+  [ -z "${GIT_CONFIG_KEY_0:-}" ]
+  [ -z "${GIT_CONFIG_VALUE_0:-}" ]
+}
+
 @test "as: outputs export statements for valid agent" {
   setup_test_home "alice" "bob"
   mock_secrets_binary "alice/github-pat=ghp_fake_test_token"

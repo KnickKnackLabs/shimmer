@@ -29,6 +29,20 @@ setup() {
   ! echo "$run_block" | grep -qF 'modules init'
 }
 
+@test "workflow: mise action uses resolved current version" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  resolve_step=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise version") | .run // ""' "$template")
+  resolve_id=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise version") | .id // ""' "$template")
+  mise_version=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.version // ""' "$template")
+
+  [ "$resolve_id" = "mise-version" ]
+  echo "$resolve_step" | grep -qF 'curl -fsSL https://mise.jdx.dev/VERSION'
+  echo "$resolve_step" | grep -qF 'Unexpected mise version'
+  echo "$resolve_step" | grep -qF 'GITHUB_OUTPUT'
+  [ "$mise_version" = '${{ steps.mise-version.outputs.version }}' ]
+}
+
 @test "workflow: exposes Hugging Face auth to pi" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 

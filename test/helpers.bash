@@ -14,6 +14,22 @@
 # codebase tool's lint:mcr-scope rule enforces this pattern.
 SHIMMER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Agent sessions inject command-scope git config via GIT_CONFIG_* so real
+# workspace commits use the active agent identity/signing key. Tests should not
+# inherit that ambient launch context: suites that exercise `shimmer as` need to
+# start from a predictable empty command-scope config, and can still set their
+# own GIT_CONFIG_* values inside individual tests.
+_clear_ambient_git_config_for_tests() {
+  local name _value
+  unset GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS
+  while IFS='=' read -r name _value; do
+    case "$name" in
+      GIT_CONFIG_KEY_*|GIT_CONFIG_VALUE_*) unset "$name" ;;
+    esac
+  done < <(env)
+}
+_clear_ambient_git_config_for_tests
+
 # Create a mock task file. Call this before mock_shimmer.
 # Usage: mock_task "email/quota" 'echo "Usage: 50%"'
 mock_task() {
