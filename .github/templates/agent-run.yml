@@ -76,7 +76,8 @@ jobs:
       - name: Resolve mise version
         id: mise-version
         run: |
-          version=$(curl -fsSL https://mise.jdx.dev/VERSION)
+          version=$(curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 2 --retry-all-errors https://mise.jdx.dev/VERSION)
+          version=${version%$'\r'}
           if [[ ! "$version" =~ ^[0-9]{4}\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Unexpected mise version: $version"
             exit 1

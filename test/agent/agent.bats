@@ -37,7 +37,8 @@ setup() {
   mise_version=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.version // ""' "$template")
 
   [ "$resolve_id" = "mise-version" ]
-  echo "$resolve_step" | grep -qF 'curl -fsSL https://mise.jdx.dev/VERSION'
+  echo "$resolve_step" | grep -qF 'curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 2 --retry-all-errors https://mise.jdx.dev/VERSION'
+  echo "$resolve_step" | grep -qF 'version=${version%$'"'"'\r'"'"'}'
   echo "$resolve_step" | grep -qF 'Unexpected mise version'
   echo "$resolve_step" | grep -qF 'GITHUB_OUTPUT'
   [ "$mise_version" = '${{ steps.mise-version.outputs.version }}' ]
