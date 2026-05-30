@@ -133,14 +133,27 @@ setup() {
   grep -q '^put sessions/session-002/latest\.tar\.gz .*$' "$BLOBS_LOG"
 }
 
-@test "sessions:backup skips upload when credentials are absent" {
-  mock_sessions_backup_tools '[{"session_id":"session-001"}]'
+@test "sessions:backup skips before session inspection when credentials are absent" {
+  mock_sessions_backup_tools '__FAIL__'
   export AGENT="missing-agent"
   mock_shimmer
 
   run shimmer sessions:backup --all
   [ "$status" -eq 0 ]
   [[ "$output" == *"B2 credentials not configured; skipping session backup"* ]]
+  [ ! -f "$SESSIONS_LOG" ]
+  [ ! -f "$BLOBS_LOG" ]
+}
+
+@test "sessions:backup fails when configured backup cannot list sessions" {
+  mock_sessions_backup_tools '__FAIL__'
+  export AGENT="test-agent"
+  mock_shimmer
+
+  run shimmer sessions:backup --all
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"could not list sessions"* ]]
+  [[ "$output" == *"mock list failure"* ]]
   grep -q '^list --all --json --limit 10000$' "$SESSIONS_LOG"
   [ ! -f "$BLOBS_LOG" ]
 }

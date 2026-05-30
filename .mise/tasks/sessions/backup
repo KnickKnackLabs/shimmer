@@ -51,10 +51,10 @@ collect_all_sessions() {
   sessions_err=$(mktemp)
 
   if ! sessions_json=$(sessions list --all --json --limit "$LIMIT" 2>"$sessions_err"); then
-    printf_status "could not list sessions; skipping"
+    printf_error "could not list sessions"
     sed 's/^/[sessions:backup] sessions: /' "$sessions_err" >&2
     rm -f "$sessions_err"
-    exit 0
+    exit 1
   fi
   rm -f "$sessions_err"
 
@@ -156,17 +156,27 @@ backup_one_session() {
   blobs put "$latest_key" "$archive"
 }
 
-require_command jq
-require_command sessions
-
 TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/shimmer-sessions-backup.XXXXXX")
 
 parse_session_args
-if [ "$ALL" = "true" ]; then
-  collect_all_sessions
-elif [ ${#SESSION_IDS[@]} -eq 0 ]; then
+if [ "$ALL" != "true" ] && [ ${#SESSION_IDS[@]} -eq 0 ]; then
   printf_error "provide session IDs or pass --all"
   exit 1
+fi
+
+if [ "$DRY_RUN" != "true" ]; then
+  if ! ensure_blob_env; then
+    printf_status "B2 credentials not configured; skipping session backup"
+    exit 0
+  fi
+else
+  printf_status "dry run; not uploading"
+fi
+
+require_command sessions
+if [ "$ALL" = "true" ]; then
+  require_command jq
+  collect_all_sessions
 fi
 
 if [ ${#SESSION_IDS[@]} -eq 0 ]; then
@@ -175,18 +185,11 @@ if [ ${#SESSION_IDS[@]} -eq 0 ]; then
 fi
 
 if [ "$DRY_RUN" != "true" ]; then
-  if ! ensure_blob_env; then
-    printf_status "B2 credentials not configured; skipping session backup"
-    exit 0
-  fi
-
   trust_blobs_package_config
   require_command blobs
 
   printf_status "ensuring blob alias $B2_ALIAS"
   blobs setup >&2
-else
-  printf_status "dry run; not uploading"
 fi
 
 for session_id in "${SESSION_IDS[@]}"; do

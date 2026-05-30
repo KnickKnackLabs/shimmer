@@ -60,6 +60,10 @@ mock_sessions_backup_tools() {
 echo "$@" >> "$SESSIONS_LOG"
 case "$1" in
   list)
+    if [ "$SESSIONS_LIST_JSON" = "__FAIL__" ]; then
+      echo "mock list failure" >&2
+      exit 42
+    fi
     printf '%s\n' "$SESSIONS_LIST_JSON"
     ;;
   export)
