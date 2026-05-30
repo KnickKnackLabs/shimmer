@@ -89,7 +89,7 @@ Generated workflows call the reusable `agent-run.yml` workflow, which:
 
 1. Checks out the repo.
 2. Installs mise-managed tools.
-3. Sets up agent credentials (GPG, email, Matrix, GitHub, optional blob storage).
+3. Sets up agent credentials (GPG, email, GitHub, optional blob storage).
 4. Clones the agent home repo.
 5. Prepares the home repo via the `agent:prepare` hook (see below).
 6. Exposes provider API keys from workflow secrets (`ANTHROPIC_API_KEY`, `HF_TOKEN`) and restores pi auth when `PI_AUTH_JSON` is configured.

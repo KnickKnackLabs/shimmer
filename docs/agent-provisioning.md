@@ -118,7 +118,7 @@ rikonor@gmail.com (personal)
 | `<AGENT>_GPG_PRIVATE_KEY` | Commit signing |
 | `<AGENT>_GPG_PUBLIC_KEY` | Key verification |
 | `<AGENT>_GITHUB_PAT` | GitHub API access with workflow permissions |
-| `<AGENT>_MATRIX_PASSWORD` | Matrix messaging access |
+| `<AGENT>_MATRIX_PASSWORD` | Matrix messaging access (manual/opt-in; generated agent CI does not use it) |
 | `<AGENT>_B2_ENDPOINT` | Backblaze B2 S3-compatible endpoint |
 | `<AGENT>_B2_KEY_ID` | Backblaze B2 application key ID |
 | `<AGENT>_B2_APPLICATION_KEY` | Backblaze B2 application key |
@@ -155,14 +155,6 @@ Keys are flat (`<agent>/<key>`) and accessed through the configured `secrets` pr
   env:
     EMAIL_PASSWORD: ${{ secrets.<AGENT>_EMAIL_PASSWORD }}
   run: emails setup <agent>
-
-- name: Setup Matrix
-  env:
-    MATRIX_PASSWORD: ${{ secrets.<AGENT>_MATRIX_PASSWORD }}
-  run: mise run matrix:login <agent>
-
-- name: Accept Matrix room invites
-  run: mise run matrix:invites <agent>
 
 - name: Setup blob storage
   env:

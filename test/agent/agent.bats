@@ -66,6 +66,19 @@ setup() {
   grep -qF 'HF_TOKEN: \${{ secrets.HF_TOKEN }}' "$generator"
 }
 
+@test "workflow: generated agent CI skips Matrix setup" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+  scheduled_template="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
+  generator="$SHIMMER_DIR/.mise/tasks/workflows/generate"
+
+  ! yq -r '.jobs.run.steps[].name' "$template" | grep -qFx 'Setup Matrix'
+  ! grep -qF 'AGENT_MATRIX_PASSWORD' "$template"
+  ! grep -qF '[MATRIX_PASSWORD]' "$template"
+  ! grep -qF 'matrix:login ${{ inputs.agent }}' "$template"
+  ! grep -qF 'AGENT_MATRIX_PASSWORD' "$scheduled_template"
+  ! grep -qF 'AGENT_MATRIX_PASSWORD' "$generator"
+}
+
 # --- Identity checks ---
 
 @test "headless: fails without GIT_AUTHOR_NAME" {

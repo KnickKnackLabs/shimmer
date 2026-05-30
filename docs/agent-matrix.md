@@ -54,7 +54,7 @@ mise run matrix:invites -u <your-name>
 
 ## CI Setup
 
-Matrix is configured automatically in CI workflows via `mise run matrix:login`. The `AGENT` env var is set, so you don't need to specify `-u`.
+Generated agent CI workflows do not configure Matrix automatically. If a job truly needs Matrix access, make that setup explicit in the repo/home-specific workflow path instead of relying on the shared agent runner.
 
 ## Waiting for Human Input
 
