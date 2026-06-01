@@ -58,16 +58,16 @@ setup() {
   echo "$pi_install" | grep -qF 'github:badlogic/pi-mono@0.73.0'
 }
 
-@test "workflow: generated callers forward Hugging Face and B2 tokens" {
+@test "workflow: generated per-agent wrappers forward Hugging Face and B2 tokens" {
   scheduled_template="$SHIMMER_DIR/.github/templates/agent-scheduled.yml"
   generator="$SHIMMER_DIR/.mise/tasks/workflows/generate"
 
-  grep -qF 'HF_TOKEN: ${{ secrets.HF_TOKEN }}' "$scheduled_template"
+  grep -qF 'uses: ./.github/workflows/${AGENT}.yml' "$scheduled_template"
+  grep -qF 'secrets: inherit' "$scheduled_template"
+  grep -qF 'workflow_call:' "$generator"
   grep -qF 'HF_TOKEN: \${{ secrets.HF_TOKEN }}' "$generator"
-  grep -qF 'AGENT_B2_ENDPOINT: ${{ secrets.${AGENT_UPPER}_B2_ENDPOINT }}' "$scheduled_template"
-  grep -qF 'AGENT_B2_ENDPOINT: \${{ secrets.${AGENT_UPPER}_B2_ENDPOINT }}' "$generator"
-  grep -qF 'AGENT_B2_APPLICATION_KEY: ${{ secrets.${AGENT_UPPER}_B2_APPLICATION_KEY }}' "$scheduled_template"
-  grep -qF 'AGENT_B2_APPLICATION_KEY: \${{ secrets.${AGENT_UPPER}_B2_APPLICATION_KEY }}' "$generator"
+  grep -qF 'AGENT_B2_ENDPOINT: \${{ secrets.${agent_upper}_B2_ENDPOINT }}' "$generator"
+  grep -qF 'AGENT_B2_APPLICATION_KEY: \${{ secrets.${agent_upper}_B2_APPLICATION_KEY }}' "$generator"
 }
 
 @test "workflow: generated agent CI skips Matrix setup" {

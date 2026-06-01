@@ -2,16 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/KnickKnackLabs/shimmer/workflows.schema.json",
   "title": "Workflow Configuration",
-  "description": "Defines scheduled agent workflows for workflow generation",
+  "description": "Defines generated agent workflow triggers",
 
   "type": "object",
-  "required": ["workflows"],
   "properties": {
     "workflows": {
       "type": "array",
       "description": "List of scheduled workflows",
       "items": { "$ref": "#/$defs/workflow" }
-    }
+    },
+    "mention_wakes": { "$ref": "#/$defs/mention_wakes" }
   },
 
   "$defs": {
@@ -43,17 +43,60 @@
           "type": "string",
           "description": "Message/instruction for the agent"
         },
-        "model": {
-          "type": "string",
-          "description": "Provider-qualified model to use (for example: openai-codex/gpt-5.5)",
-          "pattern": "^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$",
-          "examples": [
-            "openai-codex/gpt-5.5",
-            "github-copilot/gpt-5.5",
-            "anthropic/claude-opus-4-6"
-          ]
-        }
+        "model": { "$ref": "#/$defs/provider_qualified_model" }
       }
+    },
+    "mention_wakes": {
+      "title": "Mention wake configuration",
+      "description": "Issue-comment mention wake trigger configuration",
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Generate the issue_comment mention wake workflow"
+        },
+        "model": { "$ref": "#/$defs/provider_qualified_model" },
+        "allowed_associations": {
+          "type": "array",
+          "description": "GitHub comment author associations allowed to wake agents",
+          "items": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "MEMBER",
+              "COLLABORATOR",
+              "CONTRIBUTOR",
+              "FIRST_TIMER",
+              "FIRST_TIME_CONTRIBUTOR",
+              "MANNEQUIN",
+              "NONE"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "enabled": { "const": true } },
+            "required": ["enabled"]
+          },
+          "then": { "required": ["model"] }
+        }
+      ]
+    },
+    "provider_qualified_model": {
+      "type": "string",
+      "description": "Provider-qualified model to use (for example: openai-codex/gpt-5.5)",
+      "pattern": "^[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "examples": [
+        "openai-codex/gpt-5.5",
+        "github-copilot/gpt-5.5",
+        "anthropic/claude-opus-4-6",
+        "huggingface/moonshotai/Kimi-K2.6:novita"
+      ]
     }
   }
 }

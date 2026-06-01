@@ -4,27 +4,31 @@ How agent CI workflows are defined and generated.
 
 ## Overview
 
-Agent workflows are **generated** from a repo-local `workflows.yaml` manifest plus shimmer's workflow templates. Do not edit generated `.github/workflows/*.yml` files directly; regenerate them with `shimmer workflows:generate`.
+Agent workflows are **generated** from a repo-local `agent:list --ci` task plus an optional `workflows.yaml` manifest. Do not edit generated `.github/workflows/*.yml` files directly; regenerate them with `shimmer workflows:generate`.
 
-There are two generated workflow types:
+Generated workflow layers:
 
-- **Per-agent manual workflows** (`.github/workflows/<agent>.yml`) — expose `workflow_dispatch` inputs for `message` and required provider-qualified `model`.
-- **Scheduled job workflows** (`.github/workflows/<name>.yml`) — call the reusable `agent-run.yml` workflow on a cron schedule.
+- **Reusable runner** (`.github/workflows/agent-run.yml`) — the low-level `workflow_call` that sets up credentials and runs `shimmer agent --headless`.
+- **Per-agent entrypoints** (`.github/workflows/<agent>.yml`) — expose both manual `workflow_dispatch` and reusable `workflow_call` inputs for `message` and provider-qualified `model`; each entrypoint owns that agent's secret mapping into `agent-run.yml`.
+- **Scheduled job workflows** (`.github/workflows/<name>.yml`) — generated from `workflows.yaml` schedules; call the target per-agent entrypoint.
+- **Mention wake workflow** (`.github/workflows/agent-mention.yml`) — optional; generated from `workflows.yaml` `mention_wakes`; detects trusted GitHub issue/PR comment mentions and calls the matched per-agent entrypoints.
 
-Both ultimately call `.github/workflows/agent-run.yml`, which sets up credentials and runs `shimmer agent --headless`.
+The clean mental model: `agent-run.yml` is the execution engine. All other generated workflows are trigger/caller workflows.
 
 ## Structure
 
 ```text
-workflows.yaml                    # Source of truth for scheduled jobs
-.github/templates/agent-run.yml   # Reusable agent runner template
+workflows.yaml                         # Optional source of truth for schedules and opt-in triggers
+.github/templates/agent-run.yml        # Reusable agent runner template
 .github/templates/agent-scheduled.yml  # Scheduled workflow template
-.github/workflows/*.yml           # Generated files (do not edit directly)
+.github/templates/agent-mention-detect.py  # Mention detector copied into target repos
+.github/workflows/*.yml                # Generated files (do not edit directly)
+.github/scripts/agent-mention-detect.py  # Generated/copied when mention_wakes.enabled=true
 ```
 
 ## Manifest Format
 
-`workflows.yaml` defines scheduled agent jobs:
+`workflows.yaml` can define scheduled agent jobs and opt-in trigger workflows:
 
 ```yaml
 workflows:
@@ -34,9 +38,14 @@ workflows:
     schedule:
       - "0 15 * * *"
     message: "Check your home repo for job instructions and execute them."
+
+mention_wakes:
+  enabled: true
+  model: openai-codex/gpt-5.5
+  allowed_associations: [OWNER, MEMBER]
 ```
 
-Required fields:
+Scheduled workflow fields:
 
 - `name` — workflow filename stem (`.github/workflows/<name>.yml`); lowercase letters, numbers, and hyphens.
 - `agent` — agent identity to run.
@@ -44,27 +53,35 @@ Required fields:
 - `schedule` — one or more cron expressions.
 - `message` — instruction passed to the headless agent.
 
+Mention wake fields:
+
+- `enabled` — when true, generate `agent-mention.yml` and copy the detector script.
+- `model` — provider-qualified model used for mention-triggered runs.
+- `allowed_associations` — GitHub comment author associations allowed to wake agents. For public-safety, prefer `[OWNER, MEMBER]`; do not include broader associations unless the repo intentionally accepts that risk.
+
+Mention wakes use the same roster as manual workflows: `mise run agent:list -- --ci`. The current generated detector maps each agent name to the textual GitHub handle `@<agent>-ricon`, ignores naked aliases like `@quick`, strips blockquotes and fenced code, and leaves team fanout disabled.
+
 ## Managing Workflows
 
-Add or modify scheduled jobs:
+Add or modify schedules/triggers:
 
 ```bash
-# 1. Edit workflows.yaml
+# 1. Edit workflows.yaml when changing schedules or opt-in triggers
 # 2. Regenerate workflow files
 shimmer workflows:generate
 
-# 3. Commit both manifest and generated files
-git add workflows.yaml .github/workflows/
-git commit -m "Update agent schedules"
+# 3. Commit both manifest and generated files/scripts
+git add workflows.yaml .github/workflows/ .github/scripts/
+git commit -m "Update agent workflows"
 ```
 
-Validate workflows match the manifest:
+Validate generated files match the manifest and current agent roster:
 
 ```bash
 shimmer workflows:generate --check
 ```
 
-`workflows:generate --check` validates `workflows.yaml` when present and regenerates into a temporary directory to catch drift between committed workflows and generated output.
+`workflows:generate --check` validates `workflows.yaml` when present and regenerates into a temporary directory to catch drift between committed workflows/scripts and generated output.
 
 ## Manual Agent Dispatch
 
@@ -85,7 +102,7 @@ shimmer agent:dispatch junior \
 
 ## How Generated Workflows Run Agents
 
-Generated workflows call the reusable `agent-run.yml` workflow, which:
+Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml`:
 
 1. Checks out the repo.
 2. Installs mise-managed tools.
@@ -168,3 +185,27 @@ shimmer sessions:backup --dry-run <session-id>...
    ```
 
 4. Commit the manifest and generated workflow files.
+
+## Enabling Mention Wakes
+
+1. Add or update the `mention_wakes` block in `workflows.yaml`:
+
+   ```yaml
+   mention_wakes:
+     enabled: true
+     model: openai-codex/gpt-5.5
+     allowed_associations: [OWNER, MEMBER]
+   ```
+
+2. Ensure `agent:list --ci` exposes only agents that should be wakeable from that repo.
+
+3. Generate and check workflows:
+
+   ```bash
+   shimmer workflows:generate
+   shimmer workflows:generate --check
+   ```
+
+4. Commit `workflows.yaml`, `.github/workflows/agent-mention.yml`, and `.github/scripts/agent-mention-detect.py`.
+
+Team fanout is intentionally not generated yet. Add it only after designing authorization, caps, jitter, and per-thread/per-agent concurrency semantics.

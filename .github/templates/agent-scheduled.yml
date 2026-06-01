@@ -11,20 +11,8 @@ __SCHEDULE_ENTRIES__
 
 jobs:
   run:
-    uses: ./.github/workflows/agent-run.yml
+    uses: ./.github/workflows/${AGENT}.yml
     with:
-      agent: ${AGENT}
       message: ${MESSAGE}
       model: ${MODEL}
-    secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      PI_AUTH_JSON: ${{ secrets.PI_AUTH_JSON }}
-      AGENT_GITHUB_PAT: ${{ secrets.${AGENT_UPPER}_GITHUB_PAT }}
-      AGENT_GPG_PRIVATE_KEY: ${{ secrets.${AGENT_UPPER}_GPG_PRIVATE_KEY }}
-      AGENT_EMAIL_PASSWORD: ${{ secrets.${AGENT_UPPER}_EMAIL_PASSWORD }}
-      AGENT_GITHUB_PASSWORD: ${{ secrets.${AGENT_UPPER}_GITHUB_PASSWORD }}
-      AGENT_B2_ENDPOINT: ${{ secrets.${AGENT_UPPER}_B2_ENDPOINT }}
-      AGENT_B2_KEY_ID: ${{ secrets.${AGENT_UPPER}_B2_KEY_ID }}
-      AGENT_B2_APPLICATION_KEY: ${{ secrets.${AGENT_UPPER}_B2_APPLICATION_KEY }}
-      AGENT_B2_BUCKET: ${{ secrets.${AGENT_UPPER}_B2_BUCKET }}
+    secrets: inherit
