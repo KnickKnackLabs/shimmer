@@ -252,7 +252,7 @@ MOCK
     usage_headless="true" \
     usage_model="openai-codex/gpt-5.5" \
     usage_message="review the PR" \
-    bash "$SHIMMER_DIR/.mise/tasks/agent/_default"
+    bash "$SHIMMER_DIR/.mise/tasks/agent/_default" # codebase:ignore bats-test-helper — intentional direct invocation to isolate post-cleanup PATH without mise-added shims
   [ "$status" -ne 0 ]
   [[ "$output" == *"sessions not found on PATH"* ]]
   [[ "$output" != *"stale direct sessions should not run"* ]]
