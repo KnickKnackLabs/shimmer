@@ -206,6 +206,7 @@ generate_mention_workflow() {
   local output_file="$OUTPUT_DIR/agent-mention.yml"
 
   mkdir -p "$SCRIPT_DIR"
+  rm -f "$SCRIPT_DIR/agent-mention-detect.py"
   cp "$MISE_PROJECT_ROOT/.github/templates/agent-mention-detect.nu" "$SCRIPT_DIR/agent-mention-detect.nu"
 
   cat > "$output_file" <<WORKFLOW_EOF
@@ -399,6 +400,10 @@ if [[ "$CHECK_MODE" == "true" ]]; then
   if [[ "$MENTION_ENABLED" == "true" ]]; then
     compare_generated_file "$OUTPUT_DIR/agent-mention.yml" ".github/workflows/agent-mention.yml"
     compare_generated_file "$SCRIPT_DIR/agent-mention-detect.nu" ".github/scripts/agent-mention-detect.nu"
+    if [[ -f ".github/scripts/agent-mention-detect.py" ]]; then
+      echo "Unexpected: .github/scripts/agent-mention-detect.py (legacy mention detector; regenerate with current shimmer)"
+      DIFF_FOUND=true
+    fi
   else
     if [[ -f ".github/workflows/agent-mention.yml" ]]; then
       echo "Unexpected: .github/workflows/agent-mention.yml (mention_wakes is not enabled)"

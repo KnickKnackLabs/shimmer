@@ -234,6 +234,13 @@ assert_detector_case() {
     return 1
   }
 
+  printf 'legacy detector\n' > "$TARGET_REPO/.github/scripts/agent-mention-detect.py"
+
+  run generate_workflows --check
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Unexpected: .github/scripts/agent-mention-detect.py (legacy mention detector"* ]]
+
+  rm "$TARGET_REPO/.github/scripts/agent-mention-detect.py"
   printf '\n# drift\n' >> "$TARGET_REPO/.github/scripts/agent-mention-detect.nu"
 
   run generate_workflows --check
