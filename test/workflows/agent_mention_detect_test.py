@@ -98,6 +98,7 @@ def main() -> int:
     assert_case("team alias disabled", "@ricon-family/agents hello", [])
     assert_case("quoted handle ignored", "> @quick-ricon quoted", [])
     assert_case("fenced handle ignored", "```\n@quick-ricon fenced\n```", [])
+    assert_case("inline code handle ignored", "Type `@quick-ricon` only when waking quick.", [])
     assert_case("nested path does not partial match", "@quick-ricon/foo no", [])
     assert_case("collaborator association ignored", "@quick-ricon hello", [], association="COLLABORATOR")
     assert_case("untrusted association ignored", "@quick-ricon hello", [], association="NONE")
