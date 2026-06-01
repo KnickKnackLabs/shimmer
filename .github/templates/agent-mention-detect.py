@@ -21,6 +21,28 @@ def csv_env(name: str, default: str) -> list[str]:
     return [item.strip().lower() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
+def strip_inline_code(line: str) -> str:
+    stripped: list[str] = []
+    index = 0
+    while index < len(line):
+        if line[index] != "`":
+            stripped.append(line[index])
+            index += 1
+            continue
+
+        end = index + 1
+        while end < len(line) and line[end] == "`":
+            end += 1
+        delimiter = line[index:end]
+        close = line.find(delimiter, end)
+        if close == -1:
+            stripped.append(delimiter)
+            index = end
+            continue
+        index = close + len(delimiter)
+    return "".join(stripped)
+
+
 def strip_non_waking_text(body: str) -> str:
     lines: list[str] = []
     in_fence = False
@@ -33,7 +55,7 @@ def strip_non_waking_text(body: str) -> str:
             continue
         if line.lstrip().startswith(">"):
             continue
-        lines.append(line)
+        lines.append(strip_inline_code(line))
 
     return "\n".join(lines)
 

@@ -27,13 +27,21 @@ def event(body: str, association: str = "MEMBER") -> dict:
     }
 
 
-def parse_output(output: str) -> dict[str, str]:
+def parse_github_output(output: str) -> dict[str, str]:
     parsed: dict[str, str] = {}
-    for line in output.splitlines():
-        if "=" not in line:
+    lines = iter(output.splitlines())
+    for line in lines:
+        if "<<" in line:
+            key, delimiter = line.split("<<", 1)
+            value_lines: list[str] = []
+            for value_line in lines:
+                if value_line == delimiter:
+                    break
+                value_lines.append(value_line)
+            parsed[key] = "\n".join(value_lines)
             continue
-        key, value = line.split("=", 1)
-        if key == "message" or key.startswith("agent_") or key in {"should_wake", "reason", "matched_agents"}:
+        if "=" in line:
+            key, value = line.split("=", 1)
             parsed[key] = value
     return parsed
 
@@ -41,11 +49,13 @@ def parse_output(output: str) -> dict[str, str]:
 def run_detector(body: str, association: str = "MEMBER") -> dict[str, str]:
     with tempfile.TemporaryDirectory() as tmp:
         event_path = Path(tmp) / "event.json"
+        output_path = Path(tmp) / "github-output.txt"
         event_path.write_text(json.dumps(event(body, association)), encoding="utf-8")
         env = os.environ.copy()
         env.update(
             {
                 "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_OUTPUT": str(output_path),
                 "AGENT_ROSTER": ",".join(ROSTER),
                 "AGENT_HANDLE_SUFFIX": "-ricon",
                 # Team aliases intentionally disabled for the individual-handle pilot.
@@ -53,7 +63,7 @@ def run_detector(body: str, association: str = "MEMBER") -> dict[str, str]:
                 "ALLOWED_ASSOCIATIONS": "OWNER,MEMBER",
             }
         )
-        result = subprocess.run(
+        subprocess.run(
             [sys.executable, str(SCRIPT)],
             check=True,
             text=True,
@@ -61,7 +71,7 @@ def run_detector(body: str, association: str = "MEMBER") -> dict[str, str]:
             stderr=subprocess.PIPE,
             env=env,
         )
-        return parse_output(result.stdout)
+        return parse_github_output(output_path.read_text(encoding="utf-8"))
 
 
 def assert_case(name: str, body: str, expected_agents: list[str], association: str = "MEMBER") -> None:
@@ -88,6 +98,7 @@ def main() -> int:
     assert_case("team alias disabled", "@ricon-family/agents hello", [])
     assert_case("quoted handle ignored", "> @quick-ricon quoted", [])
     assert_case("fenced handle ignored", "```\n@quick-ricon fenced\n```", [])
+    assert_case("inline code handle ignored", "Type `@quick-ricon` only when waking quick.", [])
     assert_case("nested path does not partial match", "@quick-ricon/foo no", [])
     assert_case("collaborator association ignored", "@quick-ricon hello", [], association="COLLABORATOR")
     assert_case("untrusted association ignored", "@quick-ricon hello", [], association="NONE")
