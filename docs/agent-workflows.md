@@ -21,9 +21,9 @@ The clean mental model: `agent-run.yml` is the execution engine. All other gener
 workflows.yaml                         # Optional source of truth for schedules and opt-in triggers
 .github/templates/agent-run.yml        # Reusable agent runner template
 .github/templates/agent-scheduled.yml  # Scheduled workflow template
-.github/templates/agent-mention-detect.py  # Mention detector copied into target repos
+.github/templates/agent-mention-detect.nu  # Mention detector copied into target repos
 .github/workflows/*.yml                # Generated files (do not edit directly)
-.github/scripts/agent-mention-detect.py  # Generated/copied when mention_wakes.enabled=true
+.github/scripts/agent-mention-detect.nu  # Generated/copied when mention_wakes.enabled=true
 ```
 
 ## Manifest Format
@@ -59,7 +59,7 @@ Mention wake fields:
 - `model` — provider-qualified model used for mention-triggered runs.
 - `allowed_associations` — GitHub comment author associations allowed to wake agents. For public-safety, prefer `[OWNER, MEMBER]`; do not include broader associations unless the repo intentionally accepts that risk.
 
-Mention wakes use the same roster as manual workflows: `mise run agent:list -- --ci`. The current generated detector maps each agent name to the textual GitHub handle `@<agent>-ricon`, ignores naked aliases like `@quick`, strips blockquotes and fenced code, and leaves team fanout disabled.
+Mention wakes use the same roster as manual workflows: `mise run agent:list -- --ci`. The generated detector is a Nushell script run via `mise exec aqua:nushell/nushell@0.113.1`; this keeps the workflow self-contained without requiring every target repo to declare Nu as a project tool. The detector maps each agent name to the textual GitHub handle `@<agent>-ricon`, ignores naked aliases like `@quick`, strips blockquotes plus fenced/inline code, and leaves team fanout disabled.
 
 ## Managing Workflows
 
@@ -206,6 +206,6 @@ shimmer sessions:backup --dry-run <session-id>...
    shimmer workflows:generate --check
    ```
 
-4. Commit `workflows.yaml`, `.github/workflows/agent-mention.yml`, and `.github/scripts/agent-mention-detect.py`.
+4. Commit `workflows.yaml`, `.github/workflows/agent-mention.yml`, and `.github/scripts/agent-mention-detect.nu`.
 
 Team fanout is intentionally not generated yet. Add it only after designing authorization, caps, jitter, and per-thread/per-agent concurrency semantics.
