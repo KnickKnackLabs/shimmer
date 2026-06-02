@@ -51,6 +51,13 @@ collect_all_sessions() {
   sessions_err=$(mktemp)
 
   if ! sessions_json=$(sessions list --all --json --limit "$LIMIT" 2>"$sessions_err"); then
+    if grep -qi "No sessions directory" "$sessions_err"; then
+      printf_status "no sessions directory; skipping"
+      sed 's/^/[sessions:backup] sessions: /' "$sessions_err" >&2
+      rm -f "$sessions_err"
+      return 0
+    fi
+
     printf_error "could not list sessions"
     sed 's/^/[sessions:backup] sessions: /' "$sessions_err" >&2
     rm -f "$sessions_err"
