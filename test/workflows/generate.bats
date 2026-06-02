@@ -285,7 +285,7 @@ EOF
   [ "$(yq -r '.jobs."wake-quick".with.model' "$mention_workflow")" = "huggingface/moonshotai/Kimi-K2.6:novita" ]
 }
 
-@test "workflows:generate rejects unsafe agent names and unknown scheduled agents" {
+@test "workflows:generate rejects unsafe or duplicate agent names" {
   make_target_repo
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
@@ -298,6 +298,79 @@ EOF
   run generate_workflows
   [ "$status" -ne 0 ]
   [[ "$output" == *"invalid agent name '../scripts/owned'"* ]]
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+printf '123\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"invalid agent name '123'"* ]]
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+printf 'quick\n'
+printf 'quick\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"generated workflow name 'quick' from agent:list entry 'quick' conflicts"* ]]
+}
+
+@test "workflows:generate rejects scheduled workflow name collisions and unknown agents" {
+  make_target_repo
+
+  cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
+workflows:
+  - name: quick
+    agent: quick
+    model: openai-codex/gpt-5.5
+    schedule:
+      - "0 15 * * *"
+    message: "Do not overwrite the quick wrapper."
+EOF
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"generated workflow name 'quick' from workflow 'quick' conflicts"* ]]
+
+  cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
+workflows:
+  - name: agent-run
+    agent: quick
+    model: openai-codex/gpt-5.5
+    schedule:
+      - "0 15 * * *"
+    message: "Do not overwrite the reusable runner."
+EOF
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"generated workflow name 'agent-run' from workflow 'agent-run' conflicts"* ]]
+
+  cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
+workflows:
+  - name: repeated
+    agent: quick
+    model: openai-codex/gpt-5.5
+    schedule:
+      - "0 15 * * *"
+    message: "First."
+  - name: repeated
+    agent: quick
+    model: openai-codex/gpt-5.5
+    schedule:
+      - "0 16 * * *"
+    message: "Second."
+EOF
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"generated workflow name 'repeated' from workflow 'repeated' conflicts"* ]]
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
