@@ -464,6 +464,46 @@ MOCK
   [[ "$output" == *"provider-qualified"* ]]
 }
 
+@test "agent:dispatch requires an inline message or message file" {
+  mock_gh 12345
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 c0da
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"message is required"* ]]
+  [ ! -f "$GH_LOG" ]
+}
+
+@test "agent:dispatch fails when inline message and message file are both supplied" {
+  mock_gh 12345
+  printf 'file message\n' > "$BATS_TEST_TMPDIR/message.md"
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 --message-file message.md c0da "inline message"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"either inline <message> or --message-file, not both"* ]]
+  [ ! -f "$GH_LOG" ]
+}
+
+@test "agent:dispatch fails clearly when message file cannot be read" {
+  mock_gh 12345
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 --message-file missing.md c0da
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"cannot read --message-file: missing.md"* ]]
+  [ ! -f "$GH_LOG" ]
+}
+
+@test "agent:dispatch help documents message file" {
+  mock_shimmer
+
+  run mise -C "$OVERLAY" tasks info agent:dispatch
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"flag --message-file"* ]]
+  [[ "$output" == *"Read message for the agent from a file"* ]]
+}
+
 @test "agent:dispatch preserves embedded newlines in message input" {
   mock_gh 12345
   mock_shimmer
@@ -477,5 +517,28 @@ MOCK
 
   log=$(cat "$GH_LOG")
   [[ "$log" == *$'message=line1\nline2'* ]]
+  [[ "$log" == *"model=openai-codex/gpt-5.5"* ]]
+}
+
+@test "agent:dispatch reads message from file without interpolation" {
+  mock_gh 12345
+  cat > "$BATS_TEST_TMPDIR/dispatch-packet.md" <<'PACKET'
+Please review `KnickKnackLabs/websites#30`.
+
+- Check `$VARS` are not interpolated.
+- Preserve "quotes" and bullets.
+PACKET
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 --message-file "$BATS_TEST_TMPDIR/dispatch-packet.md" c0da
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Woke c0da (run 12345)"* ]]
+
+  log=$(cat "$GH_LOG")
+  [[ "$log" == *$'message=Please review `KnickKnackLabs/websites#30`.
+
+- Check `$VARS` are not interpolated.
+- Preserve "quotes" and bullets.
+'* ]]
   [[ "$log" == *"model=openai-codex/gpt-5.5"* ]]
 }

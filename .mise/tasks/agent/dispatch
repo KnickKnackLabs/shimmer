@@ -1,16 +1,42 @@
 #!/usr/bin/env bash
 #MISE description="Wake an agent by dispatching their workflow"
 #USAGE arg "<agent>" help="Agent to wake (e.g., zeke, baby-joel)"
-#USAGE arg "<message>" help="Message for the agent"
+#USAGE arg "[message]" default="" help="Message for the agent"
+#USAGE flag "--message-file <path>" default="" help="Read message for the agent from a file"
 #USAGE flag "--model <model>" default="" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE flag "--repo <repo>" default="" help="Target repository (owner/name) — skip agent discovery"
 
 set -e
 
 AGENT="${usage_agent}"
-MESSAGE="${usage_message}"
+MESSAGE="${usage_message:-}"
+MESSAGE_FILE="${usage_message_file:-}"
 MODEL="${usage_model:-}"
 REPO_FLAG="${usage_repo:-}"
+
+if [[ -n "$MESSAGE" && -n "$MESSAGE_FILE" ]]; then
+  echo "Error: provide either inline <message> or --message-file, not both" >&2
+  exit 1
+fi
+
+if [[ -n "$MESSAGE_FILE" ]]; then
+  MESSAGE_FILE_PATH="$MESSAGE_FILE"
+  case "$MESSAGE_FILE_PATH" in
+    /*) ;;
+    *) MESSAGE_FILE_PATH="${SHIMMER_CALLER_PWD:-$PWD}/$MESSAGE_FILE_PATH" ;;
+  esac
+  if [[ ! -f "$MESSAGE_FILE_PATH" || ! -r "$MESSAGE_FILE_PATH" ]]; then
+    echo "Error: cannot read --message-file: $MESSAGE_FILE" >&2
+    exit 1
+  fi
+  MESSAGE="$(cat "$MESSAGE_FILE_PATH"; printf x)"
+  MESSAGE="${MESSAGE%x}"
+fi
+
+if [[ -z "$MESSAGE" ]]; then
+  echo "Error: message is required (pass inline <message> or --message-file)" >&2
+  exit 1
+fi
 
 if [[ -z "$MODEL" ]]; then
   echo "Error: --model <provider/model> is required" >&2
