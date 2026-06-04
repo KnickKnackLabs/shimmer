@@ -542,3 +542,25 @@ PACKET
 '* ]]
   [[ "$log" == *"model=openai-codex/gpt-5.5"* ]]
 }
+
+@test "agent:dispatch resolves relative message file from caller cwd" {
+  mock_gh 12345
+  local caller_dir="$BATS_TEST_TMPDIR/caller"
+  mkdir -p "$caller_dir"
+  cat > "$caller_dir/dispatch-packet.md" <<'PACKET'
+Relative packet line 1
+$RELATIVE_VARS stay literal
+PACKET
+  export SHIMMER_CALLER_PWD="$caller_dir"
+  mock_shimmer
+
+  run shimmer agent:dispatch --repo test/repo --model openai-codex/gpt-5.5 --message-file dispatch-packet.md c0da
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Woke c0da (run 12345)"* ]]
+
+  log=$(cat "$GH_LOG")
+  [[ "$log" == *$'message=Relative packet line 1
+$RELATIVE_VARS stay literal
+'* ]]
+  [[ "$log" == *"model=openai-codex/gpt-5.5"* ]]
+}
