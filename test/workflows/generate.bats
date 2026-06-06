@@ -6,7 +6,7 @@ setup() {
   load ../helpers
 }
 
-ROSTER="brownie c0da iris johnson junior k7r2 quick rho x1f9"
+ROSTER="tinef schmendrik nudnik"
 
 make_target_repo() {
   TARGET_REPO="$BATS_TEST_TMPDIR/target-repo"
@@ -21,15 +21,26 @@ EOF
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
-printf 'quick\n'
-printf 'c0da\n'
+for arg in "$@"; do
+  if [ "$arg" = "--json" ]; then
+    cat <<'JSON'
+[
+  {"name":"tinef","ci":true,"github_login":"dreckbot"},
+  {"name":"schmendrik","ci":true,"github_login":"shmegegge"}
+]
+JSON
+    exit 0
+  fi
+done
+printf 'tinef\n'
+printf 'schmendrik\n'
 EOF
   chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
 
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: daily-probe
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
@@ -96,6 +107,19 @@ agent_expected() {
   return 1
 }
 
+agent_login() {
+  case "$1" in
+    tinef) printf 'dreckbot\n' ;;
+    schmendrik) printf 'shmegegge\n' ;;
+    nudnik) printf 'kvetch-master\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+agent_login_map_json() {
+  jq -n -c '{tinef: "dreckbot", schmendrik: "shmegegge", nudnik: "kvetch-master"}'
+}
+
 run_detector() {
   local body="$1"
   local association="${2:-MEMBER}"
@@ -112,7 +136,7 @@ run_detector() {
       comment: {
         html_url: "https://github.com/ricon-family/fold/issues/72#issuecomment-test",
         author_association: $association,
-        user: {login: "quick-ricon"},
+        user: {login: "dreckbot"},
         body: $body
       }
     }' > "$event_path"
@@ -121,7 +145,7 @@ run_detector() {
   GITHUB_EVENT_PATH="$event_path" \
     GITHUB_OUTPUT="$DETECTOR_OUTPUT" \
     AGENT_ROSTER="${ROSTER// /,}" \
-    AGENT_HANDLE_SUFFIX="-ricon" \
+    AGENT_GITHUB_LOGINS="$(agent_login_map_json)" \
     TEAM_ALIASES="" \
     ALLOWED_ASSOCIATIONS="OWNER,MEMBER" \
     python3 "$SHIMMER_DIR/.github/templates/agent-mention-detect.py"
@@ -183,44 +207,140 @@ assert_detector_case() {
     return 1
   }
 
-  quick_workflow="$TARGET_REPO/.github/workflows/quick.yml"
-  c0da_workflow="$TARGET_REPO/.github/workflows/c0da.yml"
+  tinef_workflow="$TARGET_REPO/.github/workflows/tinef.yml"
+  schmendrik_workflow="$TARGET_REPO/.github/workflows/schmendrik.yml"
   scheduled_workflow="$TARGET_REPO/.github/workflows/daily-probe.yml"
   mention_workflow="$TARGET_REPO/.github/workflows/agent-mention.yml"
   mention_script="$TARGET_REPO/.github/scripts/agent-mention-detect.py"
 
-  [ -f "$quick_workflow" ]
-  [ -f "$c0da_workflow" ]
+  [ -f "$tinef_workflow" ]
+  [ -f "$schmendrik_workflow" ]
   [ -f "$scheduled_workflow" ]
   [ -f "$mention_workflow" ]
   [ -f "$mention_script" ]
 
-  [ "$(yq -r '.on.workflow_dispatch.inputs.message.required' "$quick_workflow")" = "true" ]
-  [ "$(yq -r '.on.workflow_call.inputs.message.required' "$quick_workflow")" = "true" ]
-  [ "$(yq -r '.on.workflow_call.secrets.QUICK_GITHUB_PAT.required' "$quick_workflow")" = "true" ]
-  [ "$(yq -r '.jobs.run.uses' "$quick_workflow")" = "./.github/workflows/agent-run.yml" ]
-  [ "$(yq -r '.jobs.run.with.agent' "$quick_workflow")" = "quick" ]
-  [ "$(yq -r '.jobs.run.secrets.AGENT_GITHUB_PAT' "$quick_workflow")" = '${{ secrets.QUICK_GITHUB_PAT }}' ]
-  [ "$(yq -r '.jobs.run.secrets.AGENT_B2_ENDPOINT' "$quick_workflow")" = '${{ secrets.QUICK_B2_ENDPOINT }}' ]
+  [ "$(yq -r '.on.workflow_dispatch.inputs.message.required' "$tinef_workflow")" = "true" ]
+  [ "$(yq -r '.on.workflow_call.inputs.message.required' "$tinef_workflow")" = "true" ]
+  [ "$(yq -r '.on.workflow_call.secrets.TINEF_GITHUB_PAT.required' "$tinef_workflow")" = "true" ]
+  [ "$(yq -r '.jobs.run.uses' "$tinef_workflow")" = "./.github/workflows/agent-run.yml" ]
+  [ "$(yq -r '.jobs.run.with.agent' "$tinef_workflow")" = "tinef" ]
+  [ "$(yq -r '.jobs.run.secrets.AGENT_GITHUB_PAT' "$tinef_workflow")" = '${{ secrets.TINEF_GITHUB_PAT }}' ]
+  [ "$(yq -r '.jobs.run.secrets.AGENT_B2_ENDPOINT' "$tinef_workflow")" = '${{ secrets.TINEF_B2_ENDPOINT }}' ]
 
-  [ "$(yq -r '.on.workflow_call.secrets.C0DA_GITHUB_PAT.required' "$c0da_workflow")" = "true" ]
-  [ "$(yq -r '.jobs.run.secrets.AGENT_GITHUB_PAT' "$c0da_workflow")" = '${{ secrets.C0DA_GITHUB_PAT }}' ]
+  [ "$(yq -r '.on.workflow_call.secrets.SCHMENDRIK_GITHUB_PAT.required' "$schmendrik_workflow")" = "true" ]
+  [ "$(yq -r '.jobs.run.secrets.AGENT_GITHUB_PAT' "$schmendrik_workflow")" = '${{ secrets.SCHMENDRIK_GITHUB_PAT }}' ]
 
-  [ "$(yq -r '.jobs.run.uses' "$scheduled_workflow")" = "./.github/workflows/quick.yml" ]
+  [ "$(yq -r '.jobs.run.uses' "$scheduled_workflow")" = "./.github/workflows/tinef.yml" ]
   [ "$(yq -r '.jobs.run.secrets' "$scheduled_workflow")" = "inherit" ]
   ! grep -q 'AGENT_GITHUB_PAT' "$scheduled_workflow"
 
   [ "$(yq -r '.on.issue_comment.types[0]' "$mention_workflow")" = "created" ]
   ! grep -q 'jdx/mise-action' "$mention_workflow"
-  [ "$(yq -r '.jobs.detect.outputs.agent_quick' "$mention_workflow")" = '${{ steps.detect.outputs.agent_quick }}' ]
-  [ "$(yq -r '.jobs.detect.outputs.agent_c0da' "$mention_workflow")" = '${{ steps.detect.outputs.agent_c0da }}' ]
-  [ "$(yq -r '.jobs."wake-quick".uses' "$mention_workflow")" = "./.github/workflows/quick.yml" ]
-  [ "$(yq -r '.jobs."wake-c0da".uses' "$mention_workflow")" = "./.github/workflows/c0da.yml" ]
-  [ "$(yq -r '.jobs."wake-quick".secrets' "$mention_workflow")" = "inherit" ]
-  [ "$(yq -r '.jobs."wake-quick".with.model' "$mention_workflow")" = "openai-codex/gpt-5.5" ]
-  [ "$(yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.AGENT_ROSTER' "$mention_workflow")" = "quick,c0da" ]
+  [ "$(yq -r '.jobs.detect.outputs.agent_tinef' "$mention_workflow")" = '${{ steps.detect.outputs.agent_tinef }}' ]
+  [ "$(yq -r '.jobs.detect.outputs.agent_schmendrik' "$mention_workflow")" = '${{ steps.detect.outputs.agent_schmendrik }}' ]
+  [ "$(yq -r '.jobs."wake-tinef".uses' "$mention_workflow")" = "./.github/workflows/tinef.yml" ]
+  [ "$(yq -r '.jobs."wake-schmendrik".uses' "$mention_workflow")" = "./.github/workflows/schmendrik.yml" ]
+  [ "$(yq -r '.jobs."wake-tinef".secrets' "$mention_workflow")" = "inherit" ]
+  [ "$(yq -r '.jobs."wake-tinef".with.model' "$mention_workflow")" = "openai-codex/gpt-5.5" ]
+  [ "$(yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.AGENT_ROSTER' "$mention_workflow")" = "tinef,schmendrik" ]
+  yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.AGENT_GITHUB_LOGINS' "$mention_workflow" \
+    | jq -e '.tinef == "dreckbot" and .schmendrik == "shmegegge"' >/dev/null
   [ "$(yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.ALLOWED_ASSOCIATIONS' "$mention_workflow")" = "OWNER,MEMBER" ]
   [ "$(yq -r '.jobs.detect.steps[] | select(.id == "detect") | .run' "$mention_workflow")" = "python3 .github/scripts/agent-mention-detect.py" ]
+}
+
+@test "workflows:generate requires JSON GitHub logins for mention wakes" {
+  make_target_repo
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+printf 'tinef\n'
+printf 'schmendrik\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mention_wakes requires agent:list --ci --json records with github_login"* ]]
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [ "$arg" = "--json" ]; then
+    printf '[{"name":"tinef","ci":true}]\n'
+    exit 0
+  fi
+done
+printf 'tinef\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mention_wakes requires github_login for every agent"* ]]
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [ "$arg" = "--json" ]; then
+    printf '[{"name":"tinef","ci":true,"github_login":["dreckbot"]}]\n'
+    exit 0
+  fi
+done
+printf 'tinef\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mention_wakes requires github_login for every agent"* ]]
+}
+
+@test "workflows:generate uses agent:list JSON GitHub logins for mention wakes" {
+  make_target_repo
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [ "$arg" = "--json" ]; then
+    cat <<'JSON'
+[
+  {"name":"nudnik","ci":true,"github_login":"kvetch-master"},
+  {"name":"tinef","ci":true,"github_login":"dreckbot"}
+]
+JSON
+    exit 0
+  fi
+done
+printf 'nudnik\n'
+printf 'tinef\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
+workflows:
+  - name: daily-probe
+    agent: nudnik
+    model: openai-codex/gpt-5.5
+    schedule:
+      - "0 15 * * *"
+    message: "Review the daily probe."
+mention_wakes:
+  enabled: true
+  model: openai-codex/gpt-5.5
+EOF
+
+  run generate_workflows
+  [ "$status" -eq 0 ] || {
+    echo "$output" >&2
+    return 1
+  }
+
+  mention_workflow="$TARGET_REPO/.github/workflows/agent-mention.yml"
+  [ "$(yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.AGENT_ROSTER' "$mention_workflow")" = "nudnik,tinef" ]
+  yq -r '.jobs.detect.steps[] | select(.id == "detect") | .env.AGENT_GITHUB_LOGINS' "$mention_workflow" \
+    | jq -e '.nudnik == "kvetch-master" and .tinef == "dreckbot"' >/dev/null
+  [ "$(yq -r '.jobs."wake-nudnik".uses' "$mention_workflow")" = "./.github/workflows/nudnik.yml" ]
 }
 
 @test "workflows:generate --check covers mention workflow and detector script" {
@@ -253,7 +373,7 @@ assert_detector_case() {
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: weird-message
-    agent: quick
+    agent: tinef
     model: huggingface/moonshotai/Kimi-K2.6:novita
     schedule:
       - "0 15 * * *"
@@ -282,7 +402,7 @@ EOF
   [ "$(yq -r '.jobs.run' "$scheduled_workflow")" != "null" ]
   [ "$(yq -r '.jobs.pwn' "$scheduled_workflow")" = "null" ]
   [ "$(yq -r '.permissions' "$scheduled_workflow")" = "null" ]
-  [ "$(yq -r '.jobs."wake-quick".with.model' "$mention_workflow")" = "huggingface/moonshotai/Kimi-K2.6:novita" ]
+  [ "$(yq -r '.jobs."wake-tinef".with.model' "$mention_workflow")" = "huggingface/moonshotai/Kimi-K2.6:novita" ]
 }
 
 @test "workflows:generate rejects unsafe or duplicate agent names" {
@@ -290,7 +410,7 @@ EOF
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
-printf 'quick\n'
+printf 'tinef\n'
 printf '../scripts/owned\n'
 EOF
   chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
@@ -311,14 +431,14 @@ EOF
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
-printf 'quick\n'
-printf 'quick\n'
+printf 'tinef\n'
+printf 'tinef\n'
 EOF
   chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
 
   run generate_workflows
   [ "$status" -ne 0 ]
-  [[ "$output" == *"generated workflow name 'quick' from agent:list entry 'quick' conflicts"* ]]
+  [[ "$output" == *"generated workflow name 'tinef' from agent:list entry 'tinef' conflicts"* ]]
 }
 
 @test "workflows:generate rejects scheduled workflow name collisions and unknown agents" {
@@ -326,22 +446,22 @@ EOF
 
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
-  - name: quick
-    agent: quick
+  - name: tinef
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
-    message: "Do not overwrite the quick wrapper."
+    message: "Do not overwrite the tinef wrapper."
 EOF
 
   run generate_workflows
   [ "$status" -ne 0 ]
-  [[ "$output" == *"generated workflow name 'quick' from workflow 'quick' conflicts"* ]]
+  [[ "$output" == *"generated workflow name 'tinef' from workflow 'tinef' conflicts"* ]]
 
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: agent-run
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
@@ -355,13 +475,13 @@ EOF
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: repeated
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
     message: "First."
   - name: repeated
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 16 * * *"
@@ -374,14 +494,14 @@ EOF
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
-printf 'quick\n'
+printf 'tinef\n'
 EOF
   chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
 
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: daily-probe
-    agent: c0da
+    agent: schmendrik
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
@@ -390,7 +510,7 @@ EOF
 
   run generate_workflows
   [ "$status" -ne 0 ]
-  [[ "$output" == *"workflow 'daily-probe' references agent 'c0da', but agent:list did not report that agent"* ]]
+  [[ "$output" == *"workflow 'daily-probe' references agent 'schmendrik', but agent:list did not report that agent"* ]]
 }
 
 @test "workflows:generate removes stale mention files when mention_wakes is disabled" {
@@ -400,7 +520,7 @@ EOF
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: daily-probe
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 15 * * *"
@@ -434,7 +554,7 @@ EOF
   generate_workflows
 
   [ -f "$TARGET_REPO/.github/workflows/daily-probe.yml" ]
-  [ -f "$TARGET_REPO/.github/workflows/c0da.yml" ]
+  [ -f "$TARGET_REPO/.github/workflows/schmendrik.yml" ]
 
   cat > "$TARGET_REPO/.github/workflows/manual.yml" <<'EOF'
 name: manual
@@ -445,7 +565,7 @@ EOF
   cat > "$TARGET_REPO/workflows.yaml" <<'EOF'
 workflows:
   - name: renamed-probe
-    agent: quick
+    agent: tinef
     model: openai-codex/gpt-5.5
     schedule:
       - "0 16 * * *"
@@ -454,14 +574,14 @@ EOF
 
   cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
 #!/usr/bin/env bash
-printf 'quick\n'
+printf 'tinef\n'
 EOF
   chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
 
   run generate_workflows --check
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unexpected: .github/workflows/daily-probe.yml (stale generated workflow"* ]]
-  [[ "$output" == *"Unexpected: .github/workflows/c0da.yml (stale generated workflow"* ]]
+  [[ "$output" == *"Unexpected: .github/workflows/schmendrik.yml (stale generated workflow"* ]]
 
   run generate_workflows
   [ "$status" -eq 0 ] || {
@@ -470,26 +590,27 @@ EOF
   }
 
   [ -f "$TARGET_REPO/.github/workflows/renamed-probe.yml" ]
-  [ -f "$TARGET_REPO/.github/workflows/quick.yml" ]
+  [ -f "$TARGET_REPO/.github/workflows/tinef.yml" ]
   [ ! -f "$TARGET_REPO/.github/workflows/daily-probe.yml" ]
-  [ ! -f "$TARGET_REPO/.github/workflows/c0da.yml" ]
+  [ ! -f "$TARGET_REPO/.github/workflows/schmendrik.yml" ]
   [ -f "$TARGET_REPO/.github/workflows/manual.yml" ]
 }
 
 @test "agent mention detector ignores non-waking text and maps handles" {
   local agent
   for agent in $ROSTER; do
-    assert_detector_case "$agent real handle" "@$agent-ricon hello" MEMBER "$agent"
+    assert_detector_case "$agent configured login" "@$(agent_login "$agent") hello" MEMBER "$agent"
   done
 
-  assert_detector_case "multiple individual handles" "@quick-ricon @c0da-ricon" MEMBER c0da quick
-  assert_detector_case "naked quick does not match" "@quick hello" MEMBER
+  assert_detector_case "configured login is exact" "@tinef-gh hello" MEMBER
+  assert_detector_case "multiple individual handles" "@dreckbot @shmegegge" MEMBER tinef schmendrik
+  assert_detector_case "naked tinef does not match" "@tinef hello" MEMBER
   assert_detector_case "naked agents does not match" "@agents hello" MEMBER
-  assert_detector_case "team alias disabled" "@ricon-family/agents hello" MEMBER
-  assert_detector_case "quoted handle ignored" "> @quick-ricon quoted" MEMBER
-  assert_detector_case "fenced handle ignored" $'```\n@quick-ricon fenced\n```' MEMBER
-  assert_detector_case "inline code handle ignored" 'Type `@quick-ricon` only when waking quick.' MEMBER
-  assert_detector_case "nested path does not partial match" "@quick-ricon/foo no" MEMBER
-  assert_detector_case "collaborator association ignored" "@quick-ricon hello" COLLABORATOR
-  assert_detector_case "untrusted association ignored" "@quick-ricon hello" NONE
+  assert_detector_case "team alias disabled" "@faketown/agents hello" MEMBER
+  assert_detector_case "quoted handle ignored" "> @dreckbot quoted" MEMBER
+  assert_detector_case "fenced handle ignored" $'```\n@dreckbot fenced\n```' MEMBER
+  assert_detector_case "inline code handle ignored" 'Type `@dreckbot` only when waking tinef.' MEMBER
+  assert_detector_case "nested path does not partial match" "@dreckbot/foo no" MEMBER
+  assert_detector_case "collaborator association ignored" "@dreckbot hello" COLLABORATOR
+  assert_detector_case "untrusted association ignored" "@dreckbot hello" NONE
 }

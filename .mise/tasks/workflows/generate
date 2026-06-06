@@ -164,6 +164,30 @@ csv_from_lines() {
   awk 'NF { printf "%s%s", sep, $0; sep="," } END { print "" }'
 }
 
+agent_metadata_is_valid() {
+  jq -e 'type == "array" and all(.[]; type == "object" and (.name | type == "string"))' >/dev/null 2>&1
+}
+
+agent_names_from_metadata() {
+  jq -r '.[].name'
+}
+
+agent_login_map_from_metadata() {
+  jq -e -c '
+    def has_valid_login:
+      (.github_login | type) == "string" and (.github_login | length) > 0;
+
+    if any(.[]; has_valid_login | not) then
+      error(
+        "agent:list JSON missing string github_login for: "
+        + ([.[] | select(has_valid_login | not) | .name] | join(", "))
+      )
+    else
+      reduce .[] as $agent ({}; .[$agent.name] = $agent.github_login)
+    end
+  '
+}
+
 replace_file_token_from_file() {
   local target_file="$1"
   local token="$2"
@@ -345,10 +369,11 @@ generate_scheduled_workflow() {
 generate_mention_workflow() {
   local agents="$1"
   local roster_csv="$2"
-  local model="$3"
-  local allowed_associations="$4"
+  local login_map_json="$3"
+  local model="$4"
+  local allowed_associations="$5"
   local output_file="$OUTPUT_DIR/agent-mention.yml"
-  local model_tmp model_yaml
+  local model_tmp model_yaml login_map_tmp login_map_yaml
 
   expect_generated_workflow_file "agent-mention.yml"
 
@@ -356,6 +381,11 @@ generate_mention_workflow() {
   printf '%s' "$model" > "$model_tmp"
   model_yaml=$(yaml_scalar_from_file "$model_tmp")
   rm "$model_tmp"
+
+  login_map_tmp=$(mktemp)
+  printf '%s' "$login_map_json" > "$login_map_tmp"
+  login_map_yaml=$(yaml_scalar_from_file "$login_map_tmp")
+  rm "$login_map_tmp"
 
   mkdir -p "$SCRIPT_DIR"
   rm -f "$SCRIPT_DIR/agent-mention-detect.nu"
@@ -406,7 +436,7 @@ WORKFLOW_EOF
         id: detect
         env:
           AGENT_ROSTER: ${roster_csv}
-          AGENT_HANDLE_SUFFIX: "-ricon"
+          AGENT_GITHUB_LOGINS: ${login_map_yaml}
           # Team fanout stays disabled until fanout limits/jitter are designed explicitly.
           TEAM_ALIASES: ""
           ALLOWED_ASSOCIATIONS: ${allowed_associations}
@@ -470,7 +500,14 @@ cp "$MISE_PROJECT_ROOT/.github/templates/agent-run.yml" "$OUTPUT_DIR/agent-run.y
 echo "Generated: agent-run.yml"
 
 # Generate per-agent workflow files from agent:list
-AGENTS=$(mise run -q agent:list -- --ci 2>/dev/null) || AGENTS=""
+AGENT_METADATA_JSON=""
+if AGENT_METADATA_CANDIDATE=$(mise run -q agent:list -- --ci --json 2>/dev/null) && printf '%s' "$AGENT_METADATA_CANDIDATE" | agent_metadata_is_valid; then
+  AGENT_METADATA_JSON="$AGENT_METADATA_CANDIDATE"
+  AGENTS=$(printf '%s' "$AGENT_METADATA_JSON" | agent_names_from_metadata)
+else
+  AGENTS=$(mise run -q agent:list -- --ci 2>/dev/null) || AGENTS=""
+fi
+
 if [[ -n "$AGENTS" ]]; then
   echo "Discovered agents: $(echo "$AGENTS" | tr '\n' ' ')"
 
@@ -520,8 +557,17 @@ if [[ "$WORKFLOW_COUNT" -gt 0 ]]; then
 fi
 
 if [[ "$MENTION_ENABLED" == "true" ]]; then
+  if [[ -z "$AGENT_METADATA_JSON" ]]; then
+    echo "Error: mention_wakes requires agent:list --ci --json records with github_login for each wakeable agent." >&2
+    echo "       The line-oriented agent:list contract is still supported for manual/scheduled workflows only." >&2
+    exit 1
+  fi
   AGENT_CSV=$(printf '%s\n' "$AGENTS" | csv_from_lines)
-  generate_mention_workflow "$AGENTS" "$AGENT_CSV" "$MENTION_MODEL" "$MENTION_ALLOWED"
+  if ! AGENT_LOGIN_MAP=$(printf '%s' "$AGENT_METADATA_JSON" | agent_login_map_from_metadata); then
+    echo "Error: mention_wakes requires github_login for every agent in agent:list --ci --json." >&2
+    exit 1
+  fi
+  generate_mention_workflow "$AGENTS" "$AGENT_CSV" "$AGENT_LOGIN_MAP" "$MENTION_MODEL" "$MENTION_ALLOWED"
   echo "Generated: agent-mention.yml"
   echo "Generated: agent-mention-detect.py"
 elif [[ "$CHECK_MODE" != "true" ]]; then

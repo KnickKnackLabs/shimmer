@@ -59,7 +59,7 @@ Mention wake fields:
 - `model` — provider-qualified model used for mention-triggered runs.
 - `allowed_associations` — GitHub comment author associations allowed to wake agents. For public-safety, prefer `[OWNER, MEMBER]`; do not include broader associations unless the repo intentionally accepts that risk.
 
-Mention wakes use the same roster as manual workflows: `mise run agent:list -- --ci`. The generated detector is a stdlib-only Python script run with the GitHub-hosted runner's `python3`, so target repos do not need to declare an extra detector runtime. The detector maps each agent name to the textual GitHub handle `@<agent>-ricon`, ignores naked aliases like `@quick`, strips blockquotes plus fenced/inline code, and leaves team fanout disabled.
+Mention wakes use the same roster as manual workflows, but they also need GitHub login metadata. Homes that enable `mention_wakes` must implement `mise run agent:list -- --ci --json` and include `github_login` for every wakeable agent. The older line-oriented `mise run agent:list -- --ci` contract remains supported for manual and scheduled workflows only. The generated detector is a stdlib-only Python script run with the GitHub-hosted runner's `python3`, so target repos do not need to declare an extra detector runtime. The detector matches configured GitHub logins, ignores naked agent-name aliases, strips blockquotes plus fenced/inline code, and leaves team fanout disabled.
 
 ## Managing Workflows
 
@@ -197,7 +197,7 @@ shimmer sessions:backup --dry-run <session-id>...
      allowed_associations: [OWNER, MEMBER]
    ```
 
-2. Ensure `agent:list --ci` exposes only agents that should be wakeable from that repo.
+2. Ensure `agent:list --ci` exposes only agents that should be wakeable from that repo, and `agent:list --ci --json` returns records with `name`, `ci`, and `github_login` for each of them.
 
 3. Generate and check workflows:
 
