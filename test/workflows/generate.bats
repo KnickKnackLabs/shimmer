@@ -278,6 +278,22 @@ EOF
   run generate_workflows
   [ "$status" -ne 0 ]
   [[ "$output" == *"mention_wakes requires github_login for every agent"* ]]
+
+  cat > "$TARGET_REPO/.mise/tasks/agent/list" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  if [ "$arg" = "--json" ]; then
+    printf '[{"name":"tinef","ci":true,"github_login":["dreckbot"]}]\n'
+    exit 0
+  fi
+done
+printf 'tinef\n'
+EOF
+  chmod +x "$TARGET_REPO/.mise/tasks/agent/list"
+
+  run generate_workflows
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"mention_wakes requires github_login for every agent"* ]]
 }
 
 @test "workflows:generate uses agent:list JSON GitHub logins for mention wakes" {

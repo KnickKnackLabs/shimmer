@@ -174,10 +174,13 @@ agent_names_from_metadata() {
 
 agent_login_map_from_metadata() {
   jq -e -c '
-    if any(.[]; ((.github_login // "") | length) == 0) then
+    def has_valid_login:
+      (.github_login | type) == "string" and (.github_login | length) > 0;
+
+    if any(.[]; has_valid_login | not) then
       error(
-        "agent:list JSON missing github_login for: "
-        + ([.[] | select(((.github_login // "") | length) == 0) | .name] | join(", "))
+        "agent:list JSON missing string github_login for: "
+        + ([.[] | select(has_valid_login | not) | .name] | join(", "))
       )
     else
       reduce .[] as $agent ({}; .[$agent.name] = $agent.github_login)
