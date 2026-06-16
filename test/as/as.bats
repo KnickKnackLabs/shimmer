@@ -309,6 +309,18 @@ SCRIPT
   [ "$first_unset" -lt "$first_export" ]
 }
 
+@test "as: eval clears stale legacy AGENT_IDENTITY" {
+  setup_test_home "alice"
+  mock_secrets_binary
+  mock_shimmer
+
+  export AGENT_IDENTITY="You are bob."
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  [ -z "${AGENT_IDENTITY-}" ]
+}
+
 @test "as: eval clears stale B2_BUCKET when new agent has none" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake"

@@ -141,7 +141,7 @@ fi
 # eval still clears the previous session's managed vars. GIT_CONFIG_* is
 # intentionally not cleared: caller-provided transient config must be preserved,
 # and shimmer appends later identity overrides below so the active agent wins.
-emit "unset B2_BUCKET"
+emit "unset AGENT_IDENTITY B2_BUCKET"
 emit "unset GH_HOST GH_TOKEN"
 emit "unset GIT_AUTHOR_EMAIL GIT_COMMITTER_EMAIL GIT_AUTHOR_NAME GIT_COMMITTER_NAME"
 emit "unset AGENT_HOME"

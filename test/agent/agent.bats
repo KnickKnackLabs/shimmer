@@ -258,6 +258,7 @@ MOCK
   grep -q '^usage_message=$' "$SESSIONS_ENV_LOG"
   grep -q '^GIT_AUTHOR_NAME=test-agent$' "$SESSIONS_ENV_LOG"
   grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$SESSIONS_ENV_LOG"
+  grep -q '^AGENT_IDENTITY=$' "$SESSIONS_ENV_LOG"
   grep -q '^PATH=.*/before' "$SESSIONS_ENV_LOG"
   ! grep -q "^PATH=.*$stale_sessions" "$SESSIONS_ENV_LOG"
   ! grep -q "^PATH=.*$current_sessions" "$SESSIONS_ENV_LOG"
@@ -321,6 +322,7 @@ MOCK
 
 @test "interactive: calls harness without prompt injection" {
   setup_agent
+  export AGENT_IDENTITY="stale prompt from older shimmer as"
   mock_harness
   mock_shimmer
 
@@ -328,6 +330,7 @@ MOCK
   [ "$status" -eq 0 ]
 
   ! grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+  grep -q '^AGENT_IDENTITY=$' "$HARNESS_ENV_LOG"
 }
 
 @test "interactive: ignores inherited usage env from parent task" {
@@ -402,6 +405,7 @@ MOCK
   grep -q '^usage_message=$' "$HARNESS_ENV_LOG"
   grep -q '^GIT_AUTHOR_NAME=test-agent$' "$HARNESS_ENV_LOG"
   grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$HARNESS_ENV_LOG"
+  grep -q '^AGENT_IDENTITY=$' "$HARNESS_ENV_LOG"
   grep -q '^PATH=.*/before' "$HARNESS_ENV_LOG"
   ! grep -q "^PATH=.*$stale_sessions" "$HARNESS_ENV_LOG"
   ! grep -q "^PATH=.*$current_sessions" "$HARNESS_ENV_LOG"

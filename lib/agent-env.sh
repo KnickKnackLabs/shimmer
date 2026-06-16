@@ -36,6 +36,13 @@ shimmer_scrub_mise_task_env() {
   done < <(compgen -e)
 }
 
+shimmer_scrub_legacy_prompt_env() {
+  # Shimmer no longer transports prompt text through ambient environment.
+  # Clear stale values left by older `shimmer as` sessions before launching
+  # pi/sessions so prompt-neutral callers stay prompt-neutral after upgrades.
+  unset AGENT_IDENTITY
+}
+
 shimmer_path_contains() {
   local needle="$1"
   local path_rest entry
@@ -109,5 +116,6 @@ shimmer_prepare_agent_runtime_path() {
 shimmer_prepare_agent_child_env() {
   shimmer_scrub_caller_pwd_env
   shimmer_scrub_mise_task_env
+  shimmer_scrub_legacy_prompt_env
   shimmer_prepare_agent_runtime_path
 }
