@@ -18,13 +18,6 @@ teardown() {
   echo "$output" | grep -qx "bob"
 }
 
-@test "discovery: agent:identity returns content, not path" {
-  setup_test_home "alice"
-  run mise -C "$TEST_HOME" run -q agent:identity alice
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"You are alice."* ]]
-}
-
 # ============ Full as flow (secrets binary mocked) ============
 
 @test "as: test helper clears ambient Git config overrides" {
@@ -63,15 +56,14 @@ teardown() {
   echo "$output" | grep -q "$(basename "$TEST_HOME")"
 }
 
-@test "as: AGENT_IDENTITY contains identity content" {
+@test "as: does not export prompt text" {
   setup_test_home "alice"
   mock_secrets_binary
   mock_shimmer
 
   run shimmer as alice
   [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export AGENT_IDENTITY="
-  echo "$output" | grep -q "You are alice."
+  [[ "$output" != *"You are alice."* ]]
 }
 
 @test "as: falls back to private home when caller repo has no agent:list" {
@@ -317,22 +309,6 @@ SCRIPT
   [ "$first_unset" -lt "$first_export" ]
 }
 
-@test "as: eval clears stale AGENT_IDENTITY from previous session" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary
-  mock_shimmer
-
-  # Simulate: previous session set AGENT_IDENTITY to bob
-  export AGENT_IDENTITY="You are bob."
-
-  # Switch to alice via eval
-  eval "$(shimmer as alice 2>/dev/null)"
-
-  # Should be alice's identity, not bob's
-  [[ "$AGENT_IDENTITY" == *"You are alice."* ]]
-  [[ "$AGENT_IDENTITY" != *"You are bob."* ]]
-}
-
 @test "as: eval clears stale B2_BUCKET when new agent has none" {
   setup_test_home "alice"
   mock_secrets_binary "alice/github-pat=ghp_fake"
@@ -366,7 +342,6 @@ eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null
 
 printf 'name=%s\n' "$GIT_AUTHOR_NAME"
 printf 'host=%s\n' "$GH_HOST"
-printf 'identity=%s\n' "$AGENT_IDENTITY"
 SCRIPT
   chmod +x "$script"
 
@@ -374,7 +349,6 @@ SCRIPT
   [ "$status" -eq 0 ]
   [[ "$output" == *"name=alice"* ]]
   [[ "$output" == *"host=github.com"* ]]
-  [[ "$output" == *"You are alice."* ]]
 }
 
 @test "as: unquoted eval works in zsh" {
@@ -396,14 +370,12 @@ eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null
 
 print -r -- "name=$GIT_AUTHOR_NAME"
 print -r -- "host=$GH_HOST"
-print -r -- "identity=$AGENT_IDENTITY"
 SCRIPT
 
   run zsh "$script" "$TEST_HOME" "$OVERLAY"
   [ "$status" -eq 0 ]
   [[ "$output" == *"name=alice"* ]]
   [[ "$output" == *"host=github.com"* ]]
-  [[ "$output" == *"You are alice."* ]]
 }
 
 # ============ Validation (no mocks — fails before secrets) ============
@@ -426,7 +398,7 @@ SCRIPT
   [[ "$output" == *"bob"* ]]
 }
 
-@test "as: fails when agent:list fails even if identity resolves" {
+@test "as: fails when agent:list fails" {
   setup_test_home "alice"
   cat > "$TEST_HOME/.mise/tasks/agent/list" <<'TASK'
 #!/usr/bin/env bash
@@ -447,24 +419,14 @@ TASK
   [[ "$output" != *"You are alice."* ]]
 }
 
-@test "as: rejects agent omitted from list even if identity file exists" {
+@test "as: rejects agent omitted from list" {
   setup_test_home "alice"
-  cat > "$TEST_HOME/notes/charlie.md" <<'EOF'
----
-title: charlie
-tags: [agent, identity]
----
-
-# charlie
-You are charlie.
-EOF
   mock_shimmer
 
   run shimmer as charlie
   [ "$status" -ne 0 ]
   [[ "$output" == *"Unknown agent: charlie"* ]]
   [[ "$output" == *"alice"* ]]
-  [[ "$output" != *"You are charlie."* ]]
 }
 
 # ============ Missing agent:list (no mocks, no overlay) ============

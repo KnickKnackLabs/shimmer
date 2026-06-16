@@ -103,7 +103,6 @@ setup() {
 
 @test "headless: fails without GIT_AUTHOR_NAME" {
   unset GIT_AUTHOR_NAME
-  export AGENT_IDENTITY="test"
   mock_shimmer
 
   run shimmer agent --headless "do something"
@@ -111,14 +110,14 @@ setup() {
   [[ "$output" == *"No agent identity"* ]]
 }
 
-@test "headless: fails without AGENT_IDENTITY" {
-  export GIT_AUTHOR_NAME="test-agent"
-  unset AGENT_IDENTITY
+@test "headless: does not require legacy identity env" {
+  setup_agent
+  mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --headless "do something"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"AGENT_IDENTITY not set"* ]]
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
+  [ "$status" -eq 0 ]
+  grep -q "^wake mock-session-id-001 --headless --message do something --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
 # --- Headless mode ---
@@ -180,7 +179,6 @@ MOCK
     MISE_CONFIG_ROOT="$SHIMMER_DIR" \
     GIT_AUTHOR_NAME="test-agent" \
     GIT_AUTHOR_EMAIL="test-agent@ricon.family" \
-    AGENT_IDENTITY="You are test-agent." \
     usage_headless="true" \
     usage_model="openai-codex/gpt-5.5" \
     usage_message="review the PR" \
@@ -260,7 +258,6 @@ MOCK
   grep -q '^usage_message=$' "$SESSIONS_ENV_LOG"
   grep -q '^GIT_AUTHOR_NAME=test-agent$' "$SESSIONS_ENV_LOG"
   grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$SESSIONS_ENV_LOG"
-  grep -q '^AGENT_IDENTITY=You are test-agent\.$' "$SESSIONS_ENV_LOG"
   grep -q '^PATH=.*/before' "$SESSIONS_ENV_LOG"
   ! grep -q "^PATH=.*$stale_sessions" "$SESSIONS_ENV_LOG"
   ! grep -q "^PATH=.*$current_sessions" "$SESSIONS_ENV_LOG"
@@ -322,7 +319,7 @@ MOCK
 
 # --- Interactive mode ---
 
-@test "interactive: calls harness with agent identity" {
+@test "interactive: calls harness without prompt injection" {
   setup_agent
   mock_harness
   mock_shimmer
@@ -330,8 +327,7 @@ MOCK
   run shimmer agent
   [ "$status" -eq 0 ]
 
-  # harness was called with --append-system-prompt
-  grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+  ! grep -q -- "--append-system-prompt" "$HARNESS_LOG"
 }
 
 @test "interactive: ignores inherited usage env from parent task" {
@@ -345,7 +341,7 @@ MOCK
   run shimmer agent
   [ "$status" -eq 0 ]
 
-  grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+  ! grep -q -- "--append-system-prompt" "$HARNESS_LOG"
   ! grep -q "stale parent message" "$HARNESS_LOG"
 }
 
@@ -406,7 +402,6 @@ MOCK
   grep -q '^usage_message=$' "$HARNESS_ENV_LOG"
   grep -q '^GIT_AUTHOR_NAME=test-agent$' "$HARNESS_ENV_LOG"
   grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$HARNESS_ENV_LOG"
-  grep -q '^AGENT_IDENTITY=You are test-agent\.$' "$HARNESS_ENV_LOG"
   grep -q '^PATH=.*/before' "$HARNESS_ENV_LOG"
   ! grep -q "^PATH=.*$stale_sessions" "$HARNESS_ENV_LOG"
   ! grep -q "^PATH=.*$current_sessions" "$HARNESS_ENV_LOG"

@@ -24,11 +24,6 @@ if [ -z "$GIT_AUTHOR_NAME" ]; then
   exit 1
 fi
 
-if [ -z "$AGENT_IDENTITY" ]; then
-  echo "AGENT_IDENTITY not set. Run: eval \$(shimmer as <agent>)" >&2
-  exit 1
-fi
-
 # Headless mode requires a message
 if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   echo "Error: --headless requires a message" >&2
@@ -54,8 +49,8 @@ if [ "$HEADLESS" = "true" ]; then
   CWD="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}"
   SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
 
-  # Prepare the long-lived agent runtime without discarding identity-bearing
-  # environment such as GIT_AUTHOR_NAME or AGENT_IDENTITY.
+  # Prepare the long-lived agent runtime without discarding selected-agent
+  # environment such as GIT_AUTHOR_NAME.
   shimmer_prepare_agent_child_env
 
   if ! command -v sessions &>/dev/null; then
@@ -87,10 +82,7 @@ else
     exit 1
   fi
 
-  ARGS=(--append-system-prompt "$AGENT_IDENTITY
-
-## Session Context
-This is a local interactive session started via \`shimmer agent\`. A human is present and directing you.")
+  ARGS=()
   [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
   [ -n "$MESSAGE" ] && ARGS+=("$MESSAGE")
   exec "$HARNESS" "${ARGS[@]}"

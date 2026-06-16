@@ -1,12 +1,12 @@
 # Helpers for shimmer `as` BATS tests
 #
-# Suite-specific: setup_test_home with agent:list, agent:identity, and identity files.
+# Suite-specific: setup_test_home with agent:list and private signing homes.
 # Shared helpers (mock_task, mock_shimmer, shimmer wrapper) loaded from test/helpers.bash.
 
 # shellcheck source=test/helpers.bash
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
 
-# Create a test home with agent:list, agent:identity, and identity files.
+# Create a test home with agent:list and private agent homes with signing config.
 # Does NOT create an overlay — tests build their own with mock_shimmer.
 # Usage: setup_test_home [agent_names...]
 setup_test_home() {
@@ -25,38 +25,12 @@ $(printf 'echo "%s"\n' "${agents[@]}")
 TASK
   chmod +x "$TEST_HOME/.mise/tasks/agent/list"
 
-  # agent:identity — returns content, not path
-  cat > "$TEST_HOME/.mise/tasks/agent/identity" <<'TASK'
-#!/usr/bin/env bash
-#MISE description="Output identity content"
-AGENT="$1"
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-IDENTITY_FILE="$DIR/notes/$AGENT.md"
-if [ -f "$IDENTITY_FILE" ]; then
-  cat "$IDENTITY_FILE"
-else
-  echo "Error: no identity for $AGENT" >&2
-  exit 1
-fi
-TASK
-  chmod +x "$TEST_HOME/.mise/tasks/agent/identity"
-
   TEST_AGENTS_ROOT="$BATS_TEST_TMPDIR/agents-root-$$"
   export TEST_AGENTS_ROOT
   export SHIMMER_AGENTS_ROOT="$TEST_AGENTS_ROOT"
 
-  # Identity files + private agent homes with signing config.
+  # Private agent homes with signing config.
   for agent in "${agents[@]}"; do
-    cat > "$TEST_HOME/notes/$agent.md" <<EOF
----
-title: $agent
-tags: [agent, identity]
----
-
-# $agent
-You are $agent.
-EOF
-
     mkdir -p "$TEST_AGENTS_ROOT/$agent/home"
     git -C "$TEST_AGENTS_ROOT/$agent/home" init -q -b main
     git -C "$TEST_AGENTS_ROOT/$agent/home" config user.name "$agent"
