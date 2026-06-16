@@ -7,13 +7,12 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/helpers.bash"
 
-# Set up minimal agent identity environment.
+# Set up minimal selected-agent environment.
 # Usage: setup_agent [name]
 setup_agent() {
   local name="${1:-test-agent}"
   export GIT_AUTHOR_NAME="$name"
   export GIT_AUTHOR_EMAIL="${name}@ricon.family"
-  export AGENT_IDENTITY="You are ${name}."
   export SHIMMER_CALLER_PWD="$BATS_TEST_TMPDIR"
 }
 
@@ -42,7 +41,6 @@ echo "$@" >> "$SESSIONS_LOG"
   printf 'usage_message=%s\n' "${usage_message-}"
   printf 'GIT_AUTHOR_NAME=%s\n' "${GIT_AUTHOR_NAME-}"
   printf 'GIT_AUTHOR_EMAIL=%s\n' "${GIT_AUTHOR_EMAIL-}"
-  printf 'AGENT_IDENTITY=%s\n' "${AGENT_IDENTITY-}"
   printf 'PATH=%s\n' "${PATH-}"
 } >> "${SESSIONS_ENV_LOG:-$SESSIONS_LOG.env}"
 case "$1" in
@@ -82,7 +80,6 @@ echo "$@" >> "$HARNESS_LOG"
   printf 'usage_message=%s\n' "${usage_message-}"
   printf 'GIT_AUTHOR_NAME=%s\n' "${GIT_AUTHOR_NAME-}"
   printf 'GIT_AUTHOR_EMAIL=%s\n' "${GIT_AUTHOR_EMAIL-}"
-  printf 'AGENT_IDENTITY=%s\n' "${AGENT_IDENTITY-}"
   printf 'PATH=%s\n' "${PATH-}"
 } >> "${HARNESS_ENV_LOG:-$HARNESS_LOG.env}"
 MOCK

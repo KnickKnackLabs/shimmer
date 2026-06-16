@@ -7,10 +7,9 @@ setup() {
   source "$SHIMMER_DIR/lib/agent-env.sh"
 }
 
-@test "agent env: preserves identity while scrubbing task-scoped env" {
+@test "agent env: preserves selected-agent auth while scrubbing task-scoped env" {
   export GIT_AUTHOR_NAME="c0da"
   export GIT_AUTHOR_EMAIL="c0da@ricon.family"
-  export AGENT_IDENTITY="You are c0da."
   export GH_TOKEN="ghp_identity_token"
   export CALLER_PWD="/stale/caller"
   export SHIMMER_CALLER_PWD="/stale/shimmer"
@@ -27,7 +26,6 @@ setup() {
 
   [ "${GIT_AUTHOR_NAME}" = "c0da" ]
   [ "${GIT_AUTHOR_EMAIL}" = "c0da@ricon.family" ]
-  [ "${AGENT_IDENTITY}" = "You are c0da." ]
   [ "${GH_TOKEN}" = "ghp_identity_token" ]
   [ -z "${CALLER_PWD-}" ]
   [ -z "${SHIMMER_CALLER_PWD-}" ]
