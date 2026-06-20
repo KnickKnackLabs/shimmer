@@ -29,6 +29,61 @@ setup() {
   ! echo "$run_block" | grep -qF 'modules init'
 }
 
+@test "workflow: runs agents from home without checking out the dispatch repo" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  agent_home=$(yq -r '.jobs.run.env.AGENT_HOME // ""' "$template")
+  dispatch_repo=$(yq -r '.jobs.run.env.DISPATCH_REPO // ""' "$template")
+  caller_repo=$(yq -r '.jobs.run.env.CALLER_REPO // ""' "$template")
+  caller_repo_path=$(yq -r '.jobs.run.env.CALLER_REPO_PATH // ""' "$template")
+  work_dir=$(yq -r '.jobs.run.env.WORK_DIR // ""' "$template")
+  default_workdir=$(yq -r '.jobs.run.defaults.run.working-directory // ""' "$template")
+  step_names=$(yq -r '.jobs.run.steps[].name' "$template")
+  mise_install=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.install' "$template")
+  resolve_login_run=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve agent GitHub login") | .run // ""' "$template")
+  clone_run=$(yq -r '.jobs.run.steps[] | select(.name == "Clone home repo") | .run // ""' "$template")
+  install_home_run=$(yq -r '.jobs.run.steps[] | select(.name == "Install home tools") | .run // ""' "$template")
+  install_home_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Install home tools") | ."working-directory" // ""' "$template")
+  prepare_run=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
+  prepare_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | ."working-directory" // ""' "$template")
+  run_agent_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | ."working-directory" // ""' "$template")
+  backup_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | ."working-directory" // ""' "$template")
+  backup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .run // ""' "$template")
+  browser_username=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.BROWSER_GITHUB_COM_USERNAME // ""' "$template")
+
+  [ "$agent_home" = '/home/runner/agents/${{ inputs.agent }}/home' ]
+  [ "$dispatch_repo" = '${{ github.repository }}' ]
+  [ -z "$caller_repo" ]
+  [ -z "$caller_repo_path" ]
+  [ -z "$work_dir" ]
+  [ -z "$default_workdir" ]
+  [ "$mise_install" = "false" ]
+  ! echo "$step_names" | grep -qFx 'Checkout current repo'
+  ! echo "$step_names" | grep -qFx 'Setup workspace'
+  ! echo "$step_names" | grep -qFx 'Unlock caller repo notes'
+  ! grep -qF '/caller/' "$template"
+  ! grep -qF 'actions/checkout' "$template"
+  echo "$resolve_login_run" | grep -qF 'gh api user --jq .login'
+  echo "$resolve_login_run" | grep -qF 'AGENT_GITHUB_LOGIN=$login'
+  echo "$resolve_login_run" | grep -qF 'BROWSER_GITHUB_COM_USERNAME=$login'
+  echo "$clone_run" | grep -qF 'HOME_DIR="$AGENT_HOME"'
+  echo "$clone_run" | grep -qF 'HOME_REPO="$AGENT_GITHUB_LOGIN/home"'
+  echo "$clone_run" | grep -qF '::error::No home repo found'
+  ! echo "$clone_run" | grep -qF 'zettelkasten'
+  ! grep -qF -- '-ricon' "$template"
+  [ "$install_home_workdir" = "$agent_home" ]
+  echo "$install_home_run" | grep -qF 'mise install'
+  echo "$prepare_run" | grep -qF 'mise run agent:prepare'
+  ! echo "$prepare_run" | grep -qF 'mise install'
+  [ "$prepare_workdir" = "$agent_home" ]
+  [ "$run_agent_workdir" = "$agent_home" ]
+  [ -z "$backup_workdir" ]
+  echo "$backup_run" | grep -qF 'Agent home not available; skipping session backup'
+  echo "$backup_run" | grep -qF 'cd "$AGENT_HOME"'
+  [ -z "$browser_username" ]
+  grep -qF 'du -sh "$AGENT_HOME"' "$template"
+}
+
 @test "workflow: mise action uses resolved current version" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
