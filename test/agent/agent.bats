@@ -29,6 +29,41 @@ setup() {
   ! echo "$run_block" | grep -qF 'modules init'
 }
 
+@test "workflow: runs agents from home and exposes caller repo context" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  agent_home=$(yq -r '.jobs.run.env.AGENT_HOME // ""' "$template")
+  caller_repo=$(yq -r '.jobs.run.env.CALLER_REPO // ""' "$template")
+  caller_repo_path=$(yq -r '.jobs.run.env.CALLER_REPO_PATH // ""' "$template")
+  work_dir=$(yq -r '.jobs.run.env.WORK_DIR // ""' "$template")
+  default_workdir=$(yq -r '.jobs.run.defaults.run.working-directory // ""' "$template")
+  setup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Setup workspace") | .run // ""' "$template")
+  resolve_login_run=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve agent GitHub login") | .run // ""' "$template")
+  clone_run=$(yq -r '.jobs.run.steps[] | select(.name == "Clone home repo") | .run // ""' "$template")
+  prepare_run=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
+  run_agent_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | ."working-directory" // ""' "$template")
+  browser_username=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.BROWSER_GITHUB_COM_USERNAME // ""' "$template")
+
+  [ "$agent_home" = '/home/runner/agents/${{ inputs.agent }}/home' ]
+  [ "$caller_repo" = '${{ github.repository }}' ]
+  [ "$caller_repo_path" = '/home/runner/agents/${{ inputs.agent }}/caller/${{ github.event.repository.name }}' ]
+  [ -z "$work_dir" ]
+  [ "$default_workdir" = "$caller_repo_path" ]
+  echo "$setup_run" | grep -qF 'mv repo "$CALLER_REPO_PATH"'
+  echo "$resolve_login_run" | grep -qF 'gh api user --jq .login'
+  echo "$resolve_login_run" | grep -qF 'AGENT_GITHUB_LOGIN=$login'
+  echo "$resolve_login_run" | grep -qF 'BROWSER_GITHUB_COM_USERNAME=$login'
+  echo "$clone_run" | grep -qF 'HOME_DIR="$AGENT_HOME"'
+  echo "$clone_run" | grep -qF 'HOME_REPO="$AGENT_GITHUB_LOGIN/home"'
+  echo "$clone_run" | grep -qF '::error::No home repo found'
+  ! echo "$clone_run" | grep -qF 'zettelkasten'
+  ! grep -qF -- '-ricon' "$template"
+  [ -z "$browser_username" ]
+  echo "$prepare_run" | grep -qF 'HOME_DIR="$AGENT_HOME"'
+  grep -qF 'du -sh "$CALLER_REPO_PATH"' "$template"
+  [ "$run_agent_workdir" = "$agent_home" ]
+}
+
 @test "workflow: mise action uses resolved current version" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
