@@ -138,6 +138,15 @@ setup() {
   ! grep -qF 'AGENT_MATRIX_PASSWORD' "$generator"
 }
 
+@test "workflow: does not eagerly build sessions CLI" {
+  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
+
+  step_names=$(yq -r '.jobs.run.steps[].name' "$template")
+
+  ! echo "$step_names" | grep -qFx 'Build sessions CLI'
+  ! grep -qF 'sessions cli:build' "$template"
+}
+
 @test "workflow: backs up sessions after agent run" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 

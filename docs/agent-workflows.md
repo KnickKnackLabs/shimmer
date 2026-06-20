@@ -120,6 +120,8 @@ Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent
 
 Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
 
+The generated workflow may restore caches for `sessions`, but it does not call `sessions cli:build` directly. CLI dependency readiness belongs to the public `shimmer agent --headless` / `sessions` execution path, not to every generated agent workflow.
+
 ### Home repo `agent:prepare` hook
 
 The `Prepare home repo` step is owned by the agent's home repo. After `mise trust && mise install` in the home, the workflow runs:
