@@ -48,6 +48,7 @@ setup() {
   prepare_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | ."working-directory" // ""' "$template")
   run_agent_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | ."working-directory" // ""' "$template")
   backup_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | ."working-directory" // ""' "$template")
+  backup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .run // ""' "$template")
   browser_username=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.BROWSER_GITHUB_COM_USERNAME // ""' "$template")
 
   [ "$agent_home" = '/home/runner/agents/${{ inputs.agent }}/home' ]
@@ -76,7 +77,9 @@ setup() {
   ! echo "$prepare_run" | grep -qF 'mise install'
   [ "$prepare_workdir" = "$agent_home" ]
   [ "$run_agent_workdir" = "$agent_home" ]
-  [ "$backup_workdir" = "$agent_home" ]
+  [ -z "$backup_workdir" ]
+  echo "$backup_run" | grep -qF 'Agent home not available; skipping session backup'
+  echo "$backup_run" | grep -qF 'cd "$AGENT_HOME"'
   [ -z "$browser_username" ]
   grep -qF 'du -sh "$AGENT_HOME"' "$template"
 }
