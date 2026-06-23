@@ -144,17 +144,23 @@ const templateCount = fileCount(TEMPLATE_DIR, ".yml") + fileCount(TEMPLATE_DIR, 
 //
 // When an agent is working live with Or and wants to refresh this bit of the
 // README, do it intentionally instead of making README generation depend on
-// machine-local session state. From a repo/home that declares shiv:sessions,
-// run:
+// machine-local session state. Tracked helper task: shimmer#794.
 //
-//   mise exec -- sessions list --all --json | jq length
+// Current manual refresh shape from a repo/home that declares shiv:sessions:
+//
+//   mise exec -- sessions query --limit 10000 \
+//     --sql 'select count(*) as recorded_sessions from sessions' \
+//     --format json
 //   mise exec -- sessions ps --json | jq length
 //
-// Then update the constants below and run `readme build`. Do not replace this
-// with build-time command execution: CI and outside contributors should be able
-// to regenerate README.md without having Or-machine session history.
+// Branch tips currently require SQL over fork notices because sessions query
+// does not yet expose structured session edges. See shimmer#794 for the planned
+// `shimmer readme sessions-pulse` helper. Do not replace this with build-time
+// command execution: CI and outside contributors should be able to regenerate
+// README.md without having Or-machine session history.
 const LOCAL_SESSION_SNAPSHOT = {
-  recorded: 20,
+  recorded: 659,
+  branchTips: 657,
   live: 0,
   captured: "2026-06-23",
   source: "Quick on Or's machine",
@@ -388,6 +394,10 @@ shimmer whoami`}</CodeBlock>
           <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.recorded}`}</Bold></Cell>
         </TableRow>
         <TableRow>
+          <Cell>{"branch tips"}</Cell>
+          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.branchTips}`}</Bold></Cell>
+        </TableRow>
+        <TableRow>
           <Cell>{"live session processes"}</Cell>
           <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.live}`}</Bold></Cell>
         </TableRow>
@@ -398,12 +408,10 @@ shimmer whoami`}</CodeBlock>
         <Bold>{LOCAL_SESSION_SNAPSHOT.captured}</Bold>
         {" by "}
         {LOCAL_SESSION_SNAPSHOT.source}
-        {". Refresh it manually when the README is being tended in a real local session:"}
+        {". "}
+        <Link href="https://github.com/KnickKnackLabs/shimmer/issues/794">{"shimmer#794"}</Link>
+        {" tracks the helper task that should make refreshing this snapshot one command."}
       </Paragraph>
-
-      <CodeBlock lang="bash">{`mise exec -- sessions list --all --json | jq length
-mise exec -- sessions ps --json | jq length
-sessions query --help                    # ad hoc SQLite projection over local sessions`}</CodeBlock>
 
       <Paragraph>
         {"The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history."}

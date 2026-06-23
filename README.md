@@ -137,18 +137,13 @@ Total public tasks discovered: **86**. Top-level workflows checked by CI: **1**.
 
 Shimmer routes agents through sessions, but it does not own your local session inventory. Last time this README was refreshed live with Or, the machine had:
 
-| Snapshot               | Count  |
-| ---------------------- | ------ |
-| recorded sessions      | **20** |
-| live session processes | **0**  |
+| Snapshot               | Count   |
+| ---------------------- | ------- |
+| recorded sessions      | **659** |
+| branch tips            | **657** |
+| live session processes | **0**   |
 
-Captured **2026-06-23** by Quick on Or's machine. Refresh it manually when the README is being tended in a real local session:
-
-```bash
-mise exec -- sessions list --all --json | jq length
-mise exec -- sessions ps --json | jq length
-sessions query --help                    # ad hoc SQLite projection over local sessions
-```
+Captured **2026-06-23** by Quick on Or's machine. [shimmer#794](https://github.com/KnickKnackLabs/shimmer/issues/794) tracks the helper task that should make refreshing this snapshot one command.
 
 The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history.
 
