@@ -255,6 +255,8 @@ const readme = (
         <Badge label="tests" value={`${testCount}`} color="brightgreen" href="test/" />
         <Badge label="lints" value={`${lints.length}`} color="blue" />
         <Badge label="workflow templates" value={`${templateCount}`} color="8b5cf6" />
+        <Badge label="sessions" value={`${LOCAL_SESSION_SNAPSHOT.recorded}`} color="64748b" href="https://github.com/KnickKnackLabs/shimmer/issues/794" />
+        <Badge label="tips" value={`${LOCAL_SESSION_SNAPSHOT.branchTips}`} color="64748b" href="https://github.com/KnickKnackLabs/shimmer/issues/794" />
         <Badge label="README" value="TSX" color="f472b6" />
         <Badge label="License" value={PROJECT.license} color="blue" href="LICENSE" />
       </Badges>
@@ -376,45 +378,6 @@ shimmer whoami`}</CodeBlock>
         {". Top-level workflows checked by CI: "}
         <Bold>{`${workflowCount}`}</Bold>
         {"."}
-      </Paragraph>
-    </Section>
-
-    <Section title="Local pulse">
-      <Paragraph>
-        {"Shimmer routes agents through sessions, but it does not own your local session inventory. Last time this README was refreshed live with Or, the machine had:"}
-      </Paragraph>
-
-      <Table>
-        <TableHead>
-          <Cell>Snapshot</Cell>
-          <Cell>Count</Cell>
-        </TableHead>
-        <TableRow>
-          <Cell>{"recorded sessions"}</Cell>
-          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.recorded}`}</Bold></Cell>
-        </TableRow>
-        <TableRow>
-          <Cell>{"branch tips"}</Cell>
-          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.branchTips}`}</Bold></Cell>
-        </TableRow>
-        <TableRow>
-          <Cell>{"live session processes"}</Cell>
-          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.live}`}</Bold></Cell>
-        </TableRow>
-      </Table>
-
-      <Paragraph>
-        {"Captured "}
-        <Bold>{LOCAL_SESSION_SNAPSHOT.captured}</Bold>
-        {" by "}
-        {LOCAL_SESSION_SNAPSHOT.source}
-        {". "}
-        <Link href="https://github.com/KnickKnackLabs/shimmer/issues/794">{"shimmer#794"}</Link>
-        {" tracks the helper task that should make refreshing this snapshot one command."}
-      </Paragraph>
-
-      <Paragraph>
-        {"The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history."}
       </Paragraph>
     </Section>
 

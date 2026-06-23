@@ -12,6 +12,8 @@ Identity, dispatch, generated CI, and session plumbing for the fold.
 [![tests: 184](https://img.shields.io/badge/tests-184-brightgreen?style=flat)](test/)
 ![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
 ![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
+[![sessions: 659](https://img.shields.io/badge/sessions-659-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
+[![tips: 657](https://img.shields.io/badge/tips-657-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
 ![README: TSX](https://img.shields.io/badge/README-TSX-f472b6?style=flat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
 
@@ -132,20 +134,6 @@ The full command reference belongs to `shimmer tasks` and individual `--help` ou
 | `workflows` | 2     | generate agent workflow files from manifests and rosters |
 
 Total public tasks discovered: **86**. Top-level workflows checked by CI: **1**.
-
-## Local pulse
-
-Shimmer routes agents through sessions, but it does not own your local session inventory. Last time this README was refreshed live with Or, the machine had:
-
-| Snapshot               | Count   |
-| ---------------------- | ------- |
-| recorded sessions      | **659** |
-| branch tips            | **657** |
-| live session processes | **0**   |
-
-Captured **2026-06-23** by Quick on Or's machine. [shimmer#794](https://github.com/KnickKnackLabs/shimmer/issues/794) tracks the helper task that should make refreshing this snapshot one command.
-
-The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history.
 
 ## Generated agent CI
 
