@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Run BATS test suite"
+#MISE dir="{{config_root}}"
 #USAGE arg "[args]" var=#true default="" help="Test suites, files, or bats flags"
 #USAGE example "mise run test" header="Run all tests"
 #USAGE example "mise run test gpg" header="Run a specific suite directory"
@@ -12,6 +13,7 @@ TEST_DIR="$MISE_CONFIG_ROOT/test"
 args=()
 if [ -n "${usage_args:-}" ]; then
   while IFS= read -r arg; do
+    [ -n "$arg" ] || continue
     args+=("$arg")
   done < <(printf '%s' "${usage_args}" | xargs printf '%s\n')
 fi
@@ -20,11 +22,6 @@ resolved=()
 has_target=false
 
 for arg in ${args[@]+"${args[@]}"}; do
-  # Some mise versions pass the empty default for variadic args as a quoted
-  # empty string (''), which xargs parses into one empty argument. Do not treat
-  # that as the test directory target, or `mise run test` becomes a 0-test run.
-  [ -n "$arg" ] || continue
-
   if [[ "$arg" != -* && "$arg" != *.bats && -d "$TEST_DIR/$arg" ]]; then
     resolved+=("$TEST_DIR/$arg")
     has_target=true
@@ -38,4 +35,4 @@ if ! $has_target; then
   resolved+=("--recursive" "$TEST_DIR/")
 fi
 
-bats "${resolved[@]}"
+exec bats --print-output-on-failure "${resolved[@]}"

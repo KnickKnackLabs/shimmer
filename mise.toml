@@ -7,7 +7,7 @@ experimental = true
 shiv = "https://github.com/KnickKnackLabs/vfox-shiv"
 
 [tools]
-"shiv:codebase" = "0.2"                   # Codebase linting + migrations
+"shiv:codebase" = "0.3"                   # Codebase linting + migrations
 node = "22"                               # LTS
 "github:pimalaya/himalaya" = "1.2.0"      # Email CLI for agents
 "1password-cli" = "2.32.0"                # Credential management
@@ -23,9 +23,10 @@ bats = "1.13.0"                           # Bash Automated Testing System
 "shiv:sessions" = "0.4"                   # Agent session transcripts (used by agent task)
 "shiv:blobs" = "0.1"                      # Blob storage for CI session backup
 "shiv:threads" = "0.2"                    # HUMAN.md thread management
+"shiv:readme" = "0.3"                     # README.tsx -> README.md generation
 
 [_.codebase]
-lint = ["mise-settings", "gum-table", "bats-test-helper", "bats-test-task", "mcr-scope", "or-true", "shellcheck"]
+lint = ["mise-settings", "gum-table", "bats-test-helper", "bats-test-task", "mcr-scope", "or-true", "shellcheck", "caller-pwd-contract", "github-actions"]
 
 [_.codebase.scope]
 gum-table = ".mise/tasks"

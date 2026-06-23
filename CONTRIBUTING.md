@@ -1,42 +1,94 @@
 # Contributing
 
-Guidelines for working on this codebase. These are tentative - feel free to improve them.
+Shimmer is infrastructure for agent workflows: identity switching, workflow dispatch, generated agent CI, session backup, and the local glue that lets fold agents work from their own homes instead of from whatever repo triggered them.
 
-## Pull Request Reviews
+Keep changes boring at the boundary. Agent tooling is allowed to be powerful, but the contracts it exposes should be explicit, testable, and easy to roll back.
 
-When reviewing a PR, check:
-1. **Does the diff make sense?** - `gh pr diff <n>`
-2. **Is the change focused?** - One concern per PR
-3. **Are there any obvious bugs or issues?**
-4. **Do tests pass?** - `gh pr checks <n>`
+## Local setup
 
-To approve and merge:
 ```bash
-gh pr review <n> --approve
-gh pr merge <n> --merge --delete-branch
+mise trust
+mise install
+mise run test
+mise run doctor
 ```
 
-To request changes:
+Optional local safety net:
+
 ```bash
-gh pr review <n> --request-changes -b "feedback here"
+codebase pre-commit
 ```
 
-## Finding Tasks
+The pre-commit hook lives under `.git/hooks/`, so it is clone-local and intentionally not tracked.
 
-Tasks are tracked as GitHub issues. Use these commands:
-- `mise run pm:list-issues` - List all open tasks
-- `gh issue list --label enhancement` - Feature work
-- `gh issue list --label exploration` - Research/exploration tasks
-- `gh issue list --label needs-human` - Tasks requiring human intervention (skip these)
+## Validation before merge
 
-## General Guidelines
+Run the same gates CI runs:
 
-- **Check for existing work first** - Before starting a task, make sure it hasn't already been done or isn't already in progress. Run `mise run pm:wip` to see open PRs and issues.
-- **Test locally first when possible** - Before pushing changes to trigger CI, test them locally to catch issues early
+```bash
+mise run test
+codebase lint "$PWD"
+readme build --check
+git diff --check
+```
 
-## Starting New Projects
+Use targeted BATS files during iteration, but finish with `mise run test` before opening or updating a PR.
+
+## README workflow
+
+`README.md` is generated from `README.tsx`.
+
+After editing README content:
+
+```bash
+readme build
+readme build --check
+```
+
+CI fails if the generated README is stale.
+
+## Generated agent workflows
+
+Shimmer owns the templates under `.github/templates/` and the `workflows:generate` task that writes generated workflows into target repos such as fold.
+
+When changing generated workflow behavior:
+
+1. Update the source template or generator, not a downstream generated file.
+1. Add or update BATS coverage in `test/workflows/` or `test/agent/`.
+1. Run:
+   ```bash
+   mise run test test/workflows/generate.bats test/agent/agent.bats
+   mise run test
+   ```
+1. If a downstream repo is already blocked by the old generated output, regenerate that repo explicitly after the shimmer fix lands.
+
+Do not add workflow steps that call a tool unless the generated runner or target repo provisions that tool on a fresh GitHub runner.
+
+## Agent dispatch changes
+
+`shimmer agent:dispatch` wakes an agent workflow in a target home repo. The dispatch target matters: if the work is about another repository, dispatch through the agent home/fold repo and include the target PR or issue in the message.
+
+For non-trivial dispatch packets, use `--message-file` instead of inline shell text. Markdown, backticks, JSON, and multi-line instructions are not safe as casual shell arguments.
+
+## Pull request reviews
+
+When reviewing a PR:
+
+1. Read the actual diff, not only the PR description.
+1. Run or inspect the relevant tests.
+1. Request changes for issues you would fix in your own code.
+1. Approve only when the current head is acceptable to merge.
+
+Merge with a merge commit:
+
+```bash
+gh pr merge <number> --merge --delete-branch
+```
+
+## Starting new projects
 
 Shimmer no longer owns codebase scaffolding. For new KnickKnackLabs tools:
 
+- Start from `KnickKnackLabs/template`.
 - Read fold's `notes/creating-a-codebase.md` first; it is the living guide.
 - Prefer `KnickKnackLabs/codebase` for generator/lint/scaffolding work.

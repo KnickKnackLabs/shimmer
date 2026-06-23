@@ -1,90 +1,200 @@
-<p align="center">
-  <img src="assets/logo.svg" alt="shimmer" width="200" height="140">
-  <br>
-  <em>infrastructure for agent workflows — العمل شرف</em>
-</p>
+<div align="center">
 
-## Quick Start
+<p><img src="assets/logo.svg" alt="shimmer" width="200" height="140" /></p>
+
+# shimmer
+
+**Infrastructure for waking agents in the right body.**
+
+Identity, dispatch, generated CI, and session plumbing for the fold.
+
+![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
+[![tests: 184](https://img.shields.io/badge/tests-184-brightgreen?style=flat)](test/)
+![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
+![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
+![README: TSX](https://img.shields.io/badge/README-TSX-f472b6?style=flat)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
+
+</div>
+
+<br />
+
+## What this is
+
+`shimmer` is the switchboard for local and hosted agent work. It knows how to become an agent locally, how to dispatch an agent workflow remotely, and how generated GitHub Actions should prepare the agent's home before a session starts.
+
+The important boundary is this: work can be about any repository, but the agent still wakes in its home with its own identity, signing key, secrets, notes, and session history. Shimmer keeps that boundary explicit.
+
+## The spine
+
+```
+human / issue / schedule
+        │
+        ▼
+  shimmer agent:dispatch
+        │  workflow_dispatch
+        ▼
+ .github/workflows/<agent>.yml
+        │  calls
+        ▼
+ .github/workflows/agent-run.yml
+        │  checkout home + prepare + restore auth
+        ▼
+      sessions wake
+        │
+        ▼
+   agent home repo
+```
+
+The caller may be a human, a schedule, a mention wake, or another agent. The execution body is still the same: a generated workflow prepares the home repo, restores auth, starts a tracked session, and backs it up when possible.
+
+## Quick start
 
 ```bash
-# Clone the repository
 git clone https://github.com/KnickKnackLabs/shimmer.git ~/shimmer
-cd ~/shimmer && mise trust && mise install
+cd ~/shimmer
+mise trust
+mise install
+mise run doctor
 
-# Add to your shell config (~/.zshrc or ~/.bashrc)
+# Optional shell integration: exposes the shimmer command from anywhere.
 eval "$(mise -C ~/shimmer run -q shell)"
-
-# Reload your shell
-source ~/.zshrc  # or source ~/.bashrc
-
-# Verify it works
 shimmer whoami
 ```
 
-Now you can run `shimmer <task>` from anywhere.
+## Three workflows worth remembering
 
-## Tasks
+### Local identity
 
-This project uses [mise](https://mise.jdx.dev/) for task management. Run `shimmer tasks` to see all available tasks.
+Use `shimmer as` when a local shell needs the same identity and signing posture as a hosted agent run.
 
-### Checks
-
-- `shimmer test` - Run the BATS test suite
-- `codebase lint:*` - Run configured codebase lint checks from [KnickKnackLabs/codebase](https://github.com/KnickKnackLabs/codebase)
-
-### Workflow Monitoring
-
-- `shimmer ci:logs [workflow] [lines]` - View logs from the latest workflow run
-- `shimmer ci:watch <agent> <job>` - Watch a run until completion
-- `shimmer agent:trigger <agent> <job> [message]` - Trigger an agent workflow manually
-- `shimmer ci:time-remaining` - Show elapsed and remaining time for current run
-- `shimmer agent:schedules` - Show agent job schedules
-- `shimmer ci:wait-for-checks` - Wait for PR checks to complete (timeout 3 min)
-
-### Task Management
-
-- `shimmer pm:list-issues` - List open tasks (GitHub issues)
-- `shimmer pm:wip` - Show work in progress (open PRs and issues with discussion status)
-
-### Agent Metrics
-
-- `shimmer metrics:activity [days]` - Show agent activity metrics from GitHub (default: 7)
-- `shimmer metrics:digest [--days N]` - Generate and send weekly activity digest email (default: 7)
-- `shimmer metrics:usage [days]` - Show workflow usage and estimated compute minutes (default: 1)
-
-### Identity
-
-- `shimmer as <agent>` - Switch to an agent's identity for local work (use with `eval`); also appends transient Git config so commits/tags use the active agent's name, email, and signing key
-- `shimmer whoami` - Show current git and GitHub identity
-
-Example:
 ```bash
+# Become Quick for local work; exports git identity, token, home path, and signing key config.
 eval "$(shimmer as quick)"
 shimmer whoami
+
+# Start an interactive session from the current repo/cwd.
+shimmer agent --model openai-codex/gpt-5.5 "Inspect the failing workflow."
 ```
 
-### Repository
+### Hosted dispatch
 
-- `shimmer repo:file <file>` - Fetch a file from all known projects
-- `shimmer repo:file <file> --repo <repo>` - Fetch from a specific repo
+Dispatch through the agent's home/fold repo, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar.
 
-Example:
 ```bash
-shimmer repo:file README.md        # compare READMEs across projects
-shimmer repo:file LICENSE          # check which repos are missing a license
-shimmer repo:file CONTRIBUTING.md  # audit contributor guidance
+cat > /tmp/review.md <<'MSG'
+Please review ricon-family/nvr#48. Focus on privacy boundaries and no-tools guarantees.
+MSG
+
+shimmer agent:dispatch brownie \
+  --repo ricon-family/fold \
+  --model openai-codex/gpt-5.5 \
+  --message-file /tmp/review.md
 ```
 
-### Admin
+### Generated workflows
 
-- `shimmer agent:provision <name>` - Provision a new agent (GPG key, GitHub secrets, 1Password)
-- `shimmer agent:onboard <name>` - Interactive onboarding for a new agent
-- `shimmer agent:refresh-token` - Refresh the Claude OAuth token in GitHub secrets
-- `shimmer inspect-context <message>` - Inspect the context being sent to Claude
-- `shimmer scan-secrets` - Scan git history for potential secrets before open-sourcing
+Agent workflows in homes are generated. Edit templates and the generator here; regenerate downstream homes intentionally.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on PR reviews and other workflows.
+```bash
+# In a home repo such as fold:
+shimmer workflows:generate
+shimmer workflows:generate --check
+git diff -- .github/workflows/
+```
+
+## What shimmer owns
+
+| Surface              | Contract                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `shimmer as <agent>` | Exports local identity, token, home path, B2 settings, and command-scope git signing config.                                          |
+| `shimmer agent`      | Starts interactive or headless sessions while scrubbing task-scoped mise/caller environment before handing control to pi/sessions.    |
+| `agent:dispatch`     | Finds the right home repo, validates provider-qualified models, preserves file-backed messages, and returns the workflow run id.      |
+| `workflows:generate` | Turns agent rosters and workflows.yaml manifests into reusable runner workflows, per-agent entrypoints, schedules, and mention wakes. |
+| `sessions:backup`    | Exports local session bundles and uploads snapshots/latest pointers when blob credentials are configured.                             |
+
+## Task map
+
+The full command reference belongs to `shimmer tasks` and individual `--help` output. This map is generated from `.mise/tasks/` so it stays honest without becoming a manual.
+
+| Group       | Tasks | Job                                                      |
+| ----------- | ----- | -------------------------------------------------------- |
+| `agent`     | 10    | start, dispatch, list, and provision agents              |
+| `ci`        | 6     | trigger, wait, watch, and inspect workflow runs          |
+| `github`    | 14    | profile, org, repo, and token chores                     |
+| `gpg`       | 2     | agent signing key setup and checks                       |
+| `matrix`    | 9     | Matrix login, room, and send helpers                     |
+| `metrics`   | 3     | activity, usage, and digest reporting                    |
+| `pm`        | 5     | GitHub project and issue triage helpers                  |
+| `pr`        | 5     | small pull-request helpers                               |
+| `telemetry` | 3     | local event emission and inspection                      |
+| `web`       | 3     | fetch and search helpers                                 |
+| `workflows` | 2     | generate agent workflow files from manifests and rosters |
+
+Total public tasks discovered: **86**. Top-level workflows checked by CI: **1**.
+
+## Local pulse
+
+Shimmer routes agents through sessions, but it does not own your local session inventory. When you want the current machine's pulse, ask `sessions` directly:
+
+```bash
+sessions list --all --json | jq length   # recorded sessions on this machine
+sessions ps --json | jq length           # live session processes
+sessions query --help                    # ad hoc SQLite projection over local sessions
+```
+
+Those numbers are intentionally not baked into this README: they are local, time-varying state, and CI should be able to rebuild the document deterministically.
+
+## Generated agent CI
+
+Generated workflows have layers on purpose:
+
+- `agent-run.yml` is the reusable runner: checkout, tools, credentials, home preparation, pi auth, session run, backup.
+- `<agent>.yml` is the per-agent entrypoint: dispatch inputs plus concrete secret mapping.
+- `workflows.yaml` adds schedules and mention wakes without hand-writing every workflow.
+- `agent:prepare` belongs to the home repo, not shimmer. The home decides how to unlock notes, initialize modules, and warm local state.
+
+<details>
+<summary><b>Why generated instead of hand-written?</b></summary>
+
+The contract is repetitive and security-sensitive. A hand-written copy eventually drifts: one agent misses a secret, another still runs a deprecated setup step, another forgets session backup. The generator makes the boring part identical and leaves home-specific setup to the home.
+
+</details>
+
+## Development
+
+```bash
+mise trust
+mise install
+mise run test
+codebase lint "$PWD"
+readme build --check
+git diff --check
+```
+
+This README is generated from `README.tsx` with [KnickKnackLabs/readme](https://github.com/KnickKnackLabs/readme). The repository currently asks codebase `0.3` to run **9** convention lints.
+
+<details>
+<summary><b>Configured convention lints</b></summary>
+
+```
+mise-settings
+gum-table
+bats-test-helper
+bats-test-task
+mcr-scope
+or-true
+shellcheck
+caller-pwd-contract
+github-actions
+```
+
+</details>
 
 ---
 
-Feel free to add to this README as the project evolves.
+<div align="center">
+
+<sub>
+العمل شرف — the work is honor, and the plumbing should not be mysterious.
+</sub></div>

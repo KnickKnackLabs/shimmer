@@ -1,0 +1,75 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GITHUB_TOKEN: ${{ github.token }}
+  MISE_JOBS: 1
+
+jobs:
+  workflow-change-warning:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for workflow file changes
+        run: |
+          set -euo pipefail
+
+          changed_files=$(git diff --name-only origin/main...HEAD)
+          workflow_files=$(printf '%s\n' "$changed_files" | grep '^\.github/workflows/' || true)
+
+          if [ -n "$workflow_files" ]; then
+            echo "::warning::⚠️ This PR modifies workflow files - requires careful review"
+            echo ""
+            echo "Changed workflow files:"
+            printf '%s\n' "$workflow_files" | while IFS= read -r file; do
+              echo "  - $file"
+            done
+            echo ""
+            echo "Please verify:"
+            echo "  - No infinite loop triggers"
+            echo "  - No privilege escalation (new secrets access, permissions)"
+            echo "  - Changes are intentional and reviewed"
+          fi
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Run tests
+        run: mise run test
+
+      - name: Run codebase lints
+        run: codebase lint "$PWD"
+
+      - name: Check README.md is up to date
+        uses: KnickKnackLabs/readme@v0.3.1
+        with:
+          check: true
