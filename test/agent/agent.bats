@@ -77,6 +77,8 @@ setup() {
   ! echo "$prepare_run" | grep -qF 'mise install'
   [ "$prepare_workdir" = "$agent_home" ]
   [ "$run_agent_workdir" = "$agent_home" ]
+  ! echo "$step_names" | grep -qFx 'Setup email'
+  ! grep -qF 'emails setup ${{ inputs.agent }}' "$template"
   [ -z "$backup_workdir" ]
   echo "$backup_run" | grep -qF 'Agent home not available; skipping session backup'
   echo "$backup_run" | grep -qF 'cd "$AGENT_HOME"'
