@@ -250,6 +250,8 @@ const readme = (
 
       <Paragraph>{PROJECT.tagline}</Paragraph>
 
+      <Raw>{`<p dir="rtl"><em>إلى ريموند — العمل شرف.</em></p>\n<p><sub>work is honor.</sub></p>\n\n`}</Raw>
+
       <Badges>
         <Badge label="tasks" value={`${tasks.length}`} color="4EAA25" logo="gnubash" logoColor="white" />
         <Badge label="tests" value={`${testCount}`} color="brightgreen" href="test/" />
@@ -429,7 +431,7 @@ git diff --check`}</CodeBlock>
 
     <Center>
       <Sub>
-        {"العمل شرف — the work is honor, and the plumbing should not be mysterious."}
+        {"The plumbing should not be mysterious."}
       </Sub>
     </Center>
   </>

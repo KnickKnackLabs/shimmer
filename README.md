@@ -8,6 +8,9 @@
 
 Identity, dispatch, generated CI, and session plumbing for the fold.
 
+<p dir="rtl"><em>إلى ريموند — العمل شرف.</em></p>
+<p><sub>work is honor.</sub></p>
+
 ![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
 [![tests: 184](https://img.shields.io/badge/tests-184-brightgreen?style=flat)](test/)
 ![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
@@ -186,5 +189,5 @@ github-actions
 <div align="center">
 
 <sub>
-العمل شرف — the work is honor, and the plumbing should not be mysterious.
+The plumbing should not be mysterious.
 </sub></div>
