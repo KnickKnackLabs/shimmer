@@ -135,15 +135,22 @@ Total public tasks discovered: **86**. Top-level workflows checked by CI: **1**.
 
 ## Local pulse
 
-Shimmer routes agents through sessions, but it does not own your local session inventory. When you want the current machine's pulse, ask `sessions` directly:
+Shimmer routes agents through sessions, but it does not own your local session inventory. Last time this README was refreshed live with Or, the machine had:
+
+| Snapshot               | Count  |
+| ---------------------- | ------ |
+| recorded sessions      | **20** |
+| live session processes | **0**  |
+
+Captured **2026-06-23** by Quick on Or's machine. Refresh it manually when the README is being tended in a real local session:
 
 ```bash
-sessions list --all --json | jq length   # recorded sessions on this machine
-sessions ps --json | jq length           # live session processes
+mise exec -- sessions list --all --json | jq length
+mise exec -- sessions ps --json | jq length
 sessions query --help                    # ad hoc SQLite projection over local sessions
 ```
 
-Those numbers are intentionally not baked into this README: they are local, time-varying state, and CI should be able to rebuild the document deterministically.
+The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history.
 
 ## Generated agent CI
 

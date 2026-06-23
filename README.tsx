@@ -140,6 +140,26 @@ const lints = configuredLints();
 const workflowCount = fileCount(WORKFLOW_DIR, ".yml") + fileCount(WORKFLOW_DIR, ".yaml");
 const templateCount = fileCount(TEMPLATE_DIR, ".yml") + fileCount(TEMPLATE_DIR, ".py");
 
+// Manual local-pulse snapshot.
+//
+// When an agent is working live with Or and wants to refresh this bit of the
+// README, do it intentionally instead of making README generation depend on
+// machine-local session state. From a repo/home that declares shiv:sessions,
+// run:
+//
+//   mise exec -- sessions list --all --json | jq length
+//   mise exec -- sessions ps --json | jq length
+//
+// Then update the constants below and run `readme build`. Do not replace this
+// with build-time command execution: CI and outside contributors should be able
+// to regenerate README.md without having Or-machine session history.
+const LOCAL_SESSION_SNAPSHOT = {
+  recorded: 20,
+  live: 0,
+  captured: "2026-06-23",
+  source: "Quick on Or's machine",
+};
+
 const groupDescriptions: Record<string, string> = {
   agent: "start, dispatch, list, and provision agents",
   ci: "trigger, wait, watch, and inspect workflow runs",
@@ -355,17 +375,38 @@ shimmer whoami`}</CodeBlock>
 
     <Section title="Local pulse">
       <Paragraph>
-        {"Shimmer routes agents through sessions, but it does not own your local session inventory. When you want the current machine's pulse, ask "}
-        <Code>sessions</Code>
-        {" directly:"}
+        {"Shimmer routes agents through sessions, but it does not own your local session inventory. Last time this README was refreshed live with Or, the machine had:"}
       </Paragraph>
 
-      <CodeBlock lang="bash">{`sessions list --all --json | jq length   # recorded sessions on this machine
-sessions ps --json | jq length           # live session processes
+      <Table>
+        <TableHead>
+          <Cell>Snapshot</Cell>
+          <Cell>Count</Cell>
+        </TableHead>
+        <TableRow>
+          <Cell>{"recorded sessions"}</Cell>
+          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.recorded}`}</Bold></Cell>
+        </TableRow>
+        <TableRow>
+          <Cell>{"live session processes"}</Cell>
+          <Cell><Bold>{`${LOCAL_SESSION_SNAPSHOT.live}`}</Bold></Cell>
+        </TableRow>
+      </Table>
+
+      <Paragraph>
+        {"Captured "}
+        <Bold>{LOCAL_SESSION_SNAPSHOT.captured}</Bold>
+        {" by "}
+        {LOCAL_SESSION_SNAPSHOT.source}
+        {". Refresh it manually when the README is being tended in a real local session:"}
+      </Paragraph>
+
+      <CodeBlock lang="bash">{`mise exec -- sessions list --all --json | jq length
+mise exec -- sessions ps --json | jq length
 sessions query --help                    # ad hoc SQLite projection over local sessions`}</CodeBlock>
 
       <Paragraph>
-        {"Those numbers are intentionally not baked into this README: they are local, time-varying state, and CI should be able to rebuild the document deterministically."}
+        {"The snapshot is committed on purpose; the commands are not run during README generation, so CI can rebuild the document without access to this machine's session history."}
       </Paragraph>
     </Section>
 
