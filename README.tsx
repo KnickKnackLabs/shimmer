@@ -30,7 +30,7 @@ import {
 const PROJECT = {
   name: "shimmer",
   oneLine: "Infrastructure for waking agents in the right body.",
-  tagline: "Identity, dispatch, generated CI, and session plumbing for the fold.",
+  tagline: "Identity, dispatch, generated CI, and session plumbing for agent homes.",
   license: "MIT",
 };
 
@@ -225,13 +225,13 @@ const dispatchFlow = [
   "MSG",
   "",
   "shimmer agent:dispatch brownie \\",
-  "  --repo ricon-family/fold \\",
+  "  --repo owner/agent-workflows \\",
   "  --model openai-codex/gpt-5.5 \\",
   "  --message-file /tmp/review.md",
 ].join("\n");
 
 const workflowFlow = [
-  "# In a home repo such as fold:",
+  "# In a repo that owns generated agent workflows:",
   "shimmer workflows:generate",
   "shimmer workflows:generate --check",
   "git diff -- .github/workflows/",
@@ -240,7 +240,7 @@ const workflowFlow = [
 const readme = (
   <>
     <Center>
-      <Raw>{`<p><img src="assets/logo.svg" alt="shimmer" width="200" height="140" /></p>\n\n`}</Raw>
+      <Raw>{`<p><img src="assets/logo.svg" alt="shimmer" width="200" height="100" /></p>\n\n`}</Raw>
 
       <Heading level={1}>{PROJECT.name}</Heading>
 
@@ -250,7 +250,7 @@ const readme = (
 
       <Paragraph>{PROJECT.tagline}</Paragraph>
 
-      <Raw>{`<p dir="rtl"><em>إلى ريموند — العمل شرف.</em></p>\n<p><sub>work is honor.</sub></p>\n\n`}</Raw>
+      <Raw>{`<p dir="rtl"><em>إلى ريموند — العمل شرف</em></p>\n\n`}</Raw>
 
       <Badges>
         <Badge label="tasks" value={`${tasks.length}`} color="4EAA25" logo="gnubash" logoColor="white" />
@@ -308,13 +308,13 @@ shimmer whoami`}</CodeBlock>
 
       <Heading level={3}>Hosted dispatch</Heading>
       <Paragraph>
-        {"Dispatch through the agent's home/fold repo, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar."}
+        {"Dispatch through the repo that owns the target agent workflow, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar."}
       </Paragraph>
       <CodeBlock lang="bash">{dispatchFlow}</CodeBlock>
 
       <Heading level={3}>Generated workflows</Heading>
       <Paragraph>
-        {"Agent workflows in homes are generated. Edit templates and the generator here; regenerate downstream homes intentionally."}
+        {"Agent workflows are generated into the repos that own them. Edit templates and the generator here; regenerate downstream workflow repos intentionally."}
       </Paragraph>
       <CodeBlock lang="bash">{workflowFlow}</CodeBlock>
     </Section>
@@ -422,9 +422,6 @@ git diff --check`}</CodeBlock>
         {" convention lints."}
       </Paragraph>
 
-      <Details summary="Configured convention lints">
-        <CodeBlock>{lints.join("\n")}</CodeBlock>
-      </Details>
     </Section>
 
     <HR />

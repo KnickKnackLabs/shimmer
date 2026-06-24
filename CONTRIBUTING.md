@@ -1,8 +1,6 @@
 # Contributing
 
-Shimmer is infrastructure for agent workflows: identity switching, workflow dispatch, generated agent CI, session backup, and the local glue that lets fold agents work from their own homes instead of from whatever repo triggered them.
-
-Keep changes boring at the boundary. Agent tooling is allowed to be powerful, but the contracts it exposes should be explicit, testable, and easy to roll back.
+Shimmer is infrastructure for agent workflows: identity switching, workflow dispatch, generated agent CI, session backup, and the local glue that lets agents work from their own home repos instead of from whatever repo triggered them.
 
 ## Local setup
 
@@ -49,7 +47,7 @@ CI fails if the generated README is stale.
 
 ## Generated agent workflows
 
-Shimmer owns the templates under `.github/templates/` and the `workflows:generate` task that writes generated workflows into target repos such as fold.
+Shimmer owns the templates under `.github/templates/` and the `workflows:generate` task that writes generated workflows into workflow-owning repos.
 
 When changing generated workflow behavior:
 
@@ -66,7 +64,7 @@ Do not add workflow steps that call a tool unless the generated runner or target
 
 ## Agent dispatch changes
 
-`shimmer agent:dispatch` wakes an agent workflow in a target home repo. The dispatch target matters: if the work is about another repository, dispatch through the agent home/fold repo and include the target PR or issue in the message.
+`shimmer agent:dispatch` wakes an agent workflow in a workflow-owning repo. The dispatch target matters: if the work is about another repository, dispatch through the repo that owns the target agent workflow and include the target PR or issue in the message.
 
 For non-trivial dispatch packets, use `--message-file` instead of inline shell text. Markdown, backticks, JSON, and multi-line instructions are not safe as casual shell arguments.
 
@@ -90,5 +88,5 @@ gh pr merge <number> --merge --delete-branch
 Shimmer no longer owns codebase scaffolding. For new KnickKnackLabs tools:
 
 - Start from `KnickKnackLabs/template`.
-- Read fold's `notes/creating-a-codebase.md` first; it is the living guide.
+- Read the current internal codebase creation guide before starting.
 - Prefer `KnickKnackLabs/codebase` for generator/lint/scaffolding work.

@@ -1,18 +1,17 @@
 <div align="center">
 
-<p><img src="assets/logo.svg" alt="shimmer" width="200" height="140" /></p>
+<p><img src="assets/logo.svg" alt="shimmer" width="200" height="100" /></p>
 
 # shimmer
 
 **Infrastructure for waking agents in the right body.**
 
-Identity, dispatch, generated CI, and session plumbing for the fold.
+Identity, dispatch, generated CI, and session plumbing for agent homes.
 
-<p dir="rtl"><em>إلى ريموند — العمل شرف.</em></p>
-<p><sub>work is honor.</sub></p>
+<p dir="rtl"><em>إلى ريموند — العمل شرف</em></p>
 
 ![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
-[![tests: 184](https://img.shields.io/badge/tests-184-brightgreen?style=flat)](test/)
+[![tests: 181](https://img.shields.io/badge/tests-181-brightgreen?style=flat)](test/)
 ![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
 ![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
 [![sessions: 659](https://img.shields.io/badge/sessions-659-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
@@ -84,7 +83,7 @@ shimmer agent --model openai-codex/gpt-5.5 "Inspect the failing workflow."
 
 ### Hosted dispatch
 
-Dispatch through the agent's home/fold repo, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar.
+Dispatch through the repo that owns the target agent workflow, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar.
 
 ```bash
 cat > /tmp/review.md <<'MSG'
@@ -92,17 +91,17 @@ Please review ricon-family/nvr#48. Focus on privacy boundaries and no-tools guar
 MSG
 
 shimmer agent:dispatch brownie \
-  --repo ricon-family/fold \
+  --repo owner/agent-workflows \
   --model openai-codex/gpt-5.5 \
   --message-file /tmp/review.md
 ```
 
 ### Generated workflows
 
-Agent workflows in homes are generated. Edit templates and the generator here; regenerate downstream homes intentionally.
+Agent workflows are generated into the repos that own them. Edit templates and the generator here; regenerate downstream workflow repos intentionally.
 
 ```bash
-# In a home repo such as fold:
+# In a repo that owns generated agent workflows:
 shimmer workflows:generate
 shimmer workflows:generate --check
 git diff -- .github/workflows/
@@ -166,23 +165,6 @@ git diff --check
 ```
 
 This README is generated from `README.tsx` with [KnickKnackLabs/readme](https://github.com/KnickKnackLabs/readme). The repository currently asks codebase `0.3` to run **9** convention lints.
-
-<details>
-<summary><b>Configured convention lints</b></summary>
-
-```
-mise-settings
-gum-table
-bats-test-helper
-bats-test-task
-mcr-scope
-or-true
-shellcheck
-caller-pwd-contract
-github-actions
-```
-
-</details>
 
 ---
 
