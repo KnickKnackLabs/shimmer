@@ -1,8 +1,9 @@
 # Shared test helpers for shimmer BATS tests
 #
-# Uses the "mock-first include overlay" pattern: an empty mise project
+# Uses the "mock-first include overlay" pattern: a tiny mise project
 # whose task_config includes mock tasks before shimmer's real tasks.
 # First include wins, so mocks override without copying anything.
+# The overlay also declares tool versions needed by unmocked tasks.
 #
 # Usage: source this from suite-specific helpers.bash files.
 
@@ -65,6 +66,9 @@ mock_shimmer() {
   includes="${includes}\"$SHIMMER_DIR/.mise/tasks\""
 
   cat > "$OVERLAY/mise.toml" <<EOF
+[tools]
+gum = "0.17.0"
+
 [task_config]
 includes = [$includes]
 EOF

@@ -19,17 +19,34 @@ print_status() {
   fi
 }
 
+# Run a command with a timeout when the platform provides one.
+# GNU systems usually have `timeout`; macOS may have `gtimeout` when
+# coreutils is installed. If neither exists, run the command directly rather
+# than failing the check because the timeout wrapper is unavailable.
+_run_maybe_timed() {
+  local seconds="$1"
+  shift
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$seconds" "$@"
+  else
+    "$@"
+  fi
+}
+
 # Call a sibling shimmer task
 # Usage: _task email:quota
 #        _task --timeout 5 email:quota
 _task() {
   local timeout_val=""
-  if [ "$1" = "--timeout" ]; then
+  if [ "${1:-}" = "--timeout" ]; then
     timeout_val="$2"
     shift 2
   fi
   if [ -n "$timeout_val" ]; then
-    timeout "$timeout_val" mise -C "$MISE_PROJECT_ROOT" run -q "$@"
+    _run_maybe_timed "$timeout_val" mise -C "$MISE_PROJECT_ROOT" run -q "$@"
   else
     mise -C "$MISE_PROJECT_ROOT" run -q "$@"
   fi
@@ -45,7 +62,7 @@ check_email() {
   fi
 
   local quota_output rc=0
-  quota_output=$(timeout 5 emails quota 2>/dev/null) || rc=$?
+  quota_output=$(_run_maybe_timed 5 emails quota 2>/dev/null) || rc=$?
   if [ "$rc" -eq 124 ]; then
     print_status "Email" "✗" "timed out after 5s" "emails welcome"
     return
@@ -58,7 +75,7 @@ check_email() {
   quota_percent=$(echo "$quota_output" | grep -oE '[0-9]+%' | tr -d '%')
   # Fallback is safe: if the server were unreachable, quota would have timed out
   # above and we'd have already returned. We only reach here when the server responded.
-  unread_count=$(timeout 5 emails list --unread --count 2>/dev/null || echo "0")
+  unread_count=$(_run_maybe_timed 5 emails list --unread --count 2>/dev/null || echo "0")
 
   if [ -n "$unread_count" ] && [ "$unread_count" -gt 0 ]; then
     status_text="${unread_count} unread"

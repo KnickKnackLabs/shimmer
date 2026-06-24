@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#MISE description="Check local development setup"
+set -euo pipefail
+
+REPO_DIR="$MISE_CONFIG_ROOT"
+SEP='|'
+failures=0
+rows=()
+details=()
+
+add_row() {
+  rows+=("$1${SEP}$2${SEP}$3")
+}
+
+add_detail() {
+  details+=("$1")
+}
+
+fail_check() {
+  local name="$1"
+  local message="$2"
+  local output="${3:-}"
+  add_row "$name" "✗" "$message"
+  if [ -n "$output" ]; then
+    add_detail "$name failed output:${output//$'\n'/$'\n  '}"
+  fi
+  failures=$((failures + 1))
+}
+
+if command -v readme >/dev/null 2>&1; then
+  if readme_output=$(cd "$REPO_DIR" && readme build --check 2>&1); then
+    add_row "README" "✓" "README.md is generated from README.tsx"
+  else
+    fail_check "README" "README.md is stale; run readme build" "$readme_output"
+  fi
+else
+  fail_check "README" "readme command not found; run mise install"
+fi
+
+if command -v codebase >/dev/null 2>&1; then
+  if lint_output=$(cd "$REPO_DIR" && codebase lint "$REPO_DIR" 2>&1); then
+    add_row "codebase" "✓" "configured convention lints pass"
+  else
+    fail_check "codebase" "configured convention lints failed" "$lint_output"
+  fi
+
+  if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    if (cd "$REPO_DIR" && codebase pre-commit --check >/dev/null 2>&1); then
+      add_row "pre-commit" "✓" "codebase pre-commit hook is installed"
+    else
+      add_row "pre-commit" "!" "optional local hook missing; run codebase pre-commit"
+    fi
+  else
+    add_row "pre-commit" "!" "not a git checkout; hook check skipped"
+  fi
+else
+  fail_check "codebase" "codebase command not found; run mise install"
+  add_row "pre-commit" "!" "codebase unavailable; hook check skipped"
+fi
+
+if command -v gum >/dev/null 2>&1; then
+  printf '%s\n' "${rows[@]}" | gum table -s "$SEP" -c "CHECK,STATUS,DETAIL" -p --border normal
+else
+  for row in "${rows[@]}"; do
+    IFS="$SEP" read -r name status message <<< "$row"
+    echo "$status $name - $message"
+  done
+fi
+
+if [ ${#details[@]} -gt 0 ]; then
+  echo ""
+  for detail in "${details[@]}"; do
+    printf '%s\n' "$detail"
+  done
+fi
+
+exit "$failures"
