@@ -112,7 +112,7 @@ setup() {
   [ "$hf_token_declared" = "true" ]
   [ "$hf_token_required" = "false" ]
   [ "$run_env" = '${{ secrets.HF_TOKEN }}' ]
-  echo "$pi_install" | grep -qF 'github:badlogic/pi-mono@0.73.0'
+  echo "$pi_install" | grep -qF 'github:KnickKnackLabs/pi@v0.80.3-kkl.1'
 }
 
 @test "workflow: generated per-agent wrappers forward Hugging Face and B2 tokens" {
