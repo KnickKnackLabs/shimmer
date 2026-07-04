@@ -145,28 +145,19 @@ Keys are flat (`<agent>/<key>`) and accessed through the configured `secrets` pr
 
 ## Workflow Integration
 
+Generated agent workflows map per-agent secrets into the reusable `agent-run.yml` workflow. The reusable workflow then checks out the workflow-host repo and calls its repo-owned CI entrypoint:
+
 ```yaml
-- name: Setup GPG
-  env:
-    GPG_PRIVATE_KEY: ${{ secrets.<AGENT>_GPG_PRIVATE_KEY }}
-  run: mise run gpg:setup <agent>
-
-- name: Setup email
-  env:
-    EMAIL_PASSWORD: ${{ secrets.<AGENT>_EMAIL_PASSWORD }}
-  run: emails setup <agent>
-
-- name: Setup blob storage
-  env:
-    B2_ALIAS: <agent>
-    B2_ENDPOINT: ${{ secrets.<AGENT>_B2_ENDPOINT }}
-    B2_KEY_ID: ${{ secrets.<AGENT>_B2_KEY_ID }}
-    B2_APPLICATION_KEY: ${{ secrets.<AGENT>_B2_APPLICATION_KEY }}
-    B2_BUCKET: ${{ secrets.<AGENT>_B2_BUCKET }}
-  run: blobs setup
+- name: Run repo CI entrypoint
+  run: |
+    mise trust
+    mise install
+    mise ci
 ```
 
-For local setup, see `docs/agent-local.md`.
+The workflow-host repo's `mise ci` task owns hosted-run setup such as GPG import/configuration, email account configuration, pi auth restoration, home preparation, agent launch, and optional session backup. This lets simple agent hosts do less and fold-style hosts do the full local identity/tooling setup.
+
+For local setup, see `docs/agent-local.md`. For generated workflow shape, see `docs/agent-workflows.md`.
 
 ## Current Agents
 

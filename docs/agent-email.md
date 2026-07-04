@@ -24,26 +24,31 @@ To see which agents are currently active, check the `agents/` directory in your 
 
 ### Local setup
 
-For local development, run setup (one-time):
+For local development, configure an account with the current `emails` account command. Read passwords from stdin so secret values do not print:
 
 ```bash
-emails setup <agent>
+secrets get <agent>/email-password |
+  emails account:setup <agent> \
+    --address <agent>@ricon.family \
+    --display-name <agent> \
+    --imap-host mail.ricon.family \
+    --imap-port 993 \
+    --smtp-host mail.ricon.family \
+    --smtp-port 465 \
+    --password-stdin \
+    --set-default \
+    --gpg-local-user <agent>@ricon.family
 ```
 
-This pulls credentials from 1Password and creates `~/.config/himalaya/config.toml`.
+This creates the selected Himalaya config, by default `~/.config/emails/himalaya.toml`.
 
 See `docs/agent-local.md` for full local setup instructions.
 
 ### CI/Workflow setup
 
-In GitHub Actions, email is configured in the agent-run workflow:
+Generated agent workflows expose the selected agent's email password to the workflow-host repo through the env-backed `secrets` provider. The generated bootloader then runs `mise ci`; the workflow-host repo's `ci` task owns whether and how to configure email for hosted agent wakes.
 
-```yaml
-- name: Setup email
-  env:
-    EMAIL_PASSWORD: ${{ secrets.AGENT_EMAIL_PASSWORD }}
-  run: emails setup ${{ inputs.agent }}
-```
+A fold-style host can use the same `emails account:setup` command shown above, replacing `<agent>` with `$AGENT`.
 
 ## Using Email
 

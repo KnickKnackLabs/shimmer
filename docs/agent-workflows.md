@@ -8,12 +8,13 @@ Agent workflows are **generated** from a repo-local `agent:list --ci` task plus 
 
 Generated workflow layers:
 
-- **Reusable runner** (`.github/workflows/agent-run.yml`) — the low-level `workflow_call` that sets up credentials and runs `shimmer agent --headless`.
+- **Reusable runner bootloader** (`.github/workflows/agent-run.yml`) — the low-level `workflow_call` that checks out the workflow-host repo, installs mise-managed tools, exposes secrets/env, and calls `mise ci`.
+- **Repo-owned CI entrypoint** (`mise ci`) — implemented by the workflow-host repo; owns the hosted-agent run ritual for that repo.
 - **Per-agent entrypoints** (`.github/workflows/<agent>.yml`) — expose both manual `workflow_dispatch` and reusable `workflow_call` inputs for `message` and provider-qualified `model`; each entrypoint owns that agent's secret mapping into `agent-run.yml`.
 - **Scheduled job workflows** (`.github/workflows/<name>.yml`) — generated from `workflows.yaml` schedules; call the target per-agent entrypoint.
 - **Mention wake workflow** (`.github/workflows/agent-mention.yml`) — optional; generated from `workflows.yaml` `mention_wakes`; detects trusted GitHub issue/PR comment mentions and calls the matched per-agent entrypoints.
 
-The clean mental model: `agent-run.yml` is the execution engine. All other generated workflows are trigger/caller workflows.
+The clean mental model: generated workflows are trigger/bootloader scaffolding. The workflow-host repo owns the execution policy behind `mise ci`.
 
 ## Structure
 
@@ -90,10 +91,24 @@ Generated per-agent workflows expose manual dispatch inputs:
 - `message` — required instruction for the agent.
 - `model` — required provider-qualified model string.
 
-Use shimmer's dispatch task to wake an agent:
+When the workflow-host repo exposes a local dispatch wrapper, prefer waking agents from inside that repo:
+
+```bash
+mise run ci:dispatch --model openai-codex/gpt-5.5 junior "Review this PR"
+```
+
+A minimal wrapper can resolve the current repo and delegate to shimmer:
+
+```bash
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+exec shimmer agent:dispatch --repo "$repo" "$@"
+```
+
+The underlying `shimmer agent:dispatch` task remains available directly:
 
 ```bash
 shimmer agent:dispatch junior \
+  --repo ricon-family/fold \
   --model openai-codex/gpt-5.5 \
   "Review this PR"
 ```
@@ -102,51 +117,65 @@ shimmer agent:dispatch junior \
 
 ## How Generated Workflows Run Agents
 
-Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml`:
+Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml` is intentionally a small bootloader. It:
 
-1. Checks out the repo.
-2. Installs mise-managed tools.
-3. Sets up agent credentials (GPG, email, GitHub).
-4. Clones the agent home repo.
-5. Prepares the home repo via the `agent:prepare` hook (see below).
-6. Exposes provider API keys from workflow secrets (`ANTHROPIC_API_KEY`, `HF_TOKEN`) and restores pi auth when `PI_AUTH_JSON` is configured.
-7. Runs:
+1. resolves and installs mise;
+2. checks out the workflow-host repo;
+3. re-exports agent secrets through the env-backed `secrets` provider;
+4. exposes provider API keys (`ANTHROPIC_API_KEY`, `HF_TOKEN`), `PI_AUTH_JSON`, `AGENT`, `AGENT_HOME`, `INPUT_MESSAGE`, and `INPUT_MODEL` to the runner environment;
+5. runs:
 
    ```bash
-   shimmer agent --headless --timeout "$RUN_TIMEOUT" --model "$INPUT_MODEL" "$INPUT_MESSAGE"
+   mise trust
+   mise install
+   mise ci
    ```
 
-8. On completion or failure, backs up local session artifacts to blob storage when B2 credentials are configured.
+The workflow-host repo's `mise ci` task owns the actual hosted-agent execution policy. A fold-style agent host typically uses `mise ci` to set up GPG and email, clone the agent home repo, prepare that home with `agent:prepare`, restore pi auth, run `shimmer agent --headless`, and back up sessions. A simpler agent host may do less.
 
-Headless execution requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
+Headless execution still requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. When the repo-owned CI task invokes `shimmer agent --headless`, shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
 
-The generated workflow may restore caches for `sessions`, but it does not call `sessions cli:build` directly. CLI dependency readiness belongs to the public `shimmer agent --headless` / `sessions` execution path, not to every generated agent workflow.
+### Repo-owned `mise ci` contract
+
+Generated agent workflows assume the workflow-host repo declares a root/default `ci` task, usually as `.mise/tasks/ci/_default`, so both forms work:
+
+```bash
+mise run ci
+mise ci
+```
+
+For hosted-agent workflow repos, `ci` receives at least:
+
+- `AGENT` — the agent identity requested by the per-agent workflow;
+- `AGENT_HOME` — where the target home repo should be cloned/prepared;
+- `INPUT_MESSAGE` — the prompt/instruction to pass to the agent;
+- `INPUT_MODEL` — the provider-qualified model;
+- `GH_TOKEN` — the selected agent GitHub token;
+- `SECRETS_PROVIDER=env` plus agent-prefixed secret env vars;
+- optional `ANTHROPIC_API_KEY`, `HF_TOKEN`, `PI_AUTH_JSON`, and browser credentials.
+
+The task should be idempotent for a fresh GitHub runner and should not print secret values.
 
 ### Home repo `agent:prepare` hook
 
-The `Prepare home repo` step is owned by the agent's home repo. After `mise trust && mise install` in the home, the workflow runs:
+`agent:prepare` remains the agent home repo's own mechanical preparation hook. The generated workflow no longer calls it directly; a workflow-host repo that clones an agent home should call it from its `ci` task after running `mise trust && mise install` in that home.
 
-```bash
-if mise tasks info agent:prepare >/dev/null 2>&1; then
-  mise run agent:prepare
-else
-  echo "::warning::No agent:prepare task found in home repo; skipping home-specific preparation. ..."
-fi
-```
+If the home declares an `agent:prepare` mise task, it should do anything home-specific that needs to happen before every headless session — typically `notes unlock`, `notes install-hooks`, `modules install-hooks`, `modules init`, `rudi install`, plus anything else that home owns. It must be idempotent and safe to run on every dispatch.
 
-If the home declares an `agent:prepare` mise task, it runs. Otherwise the step emits a GitHub Actions `::warning::` annotation and continues — a missing hook does not fail the run.
+The distinction is:
 
-**What `agent:prepare` should do:** anything home-specific that needs to happen before every headless session — typically `notes unlock`, `notes install-hooks`, `modules install-hooks`, `modules init`, `rudi install`, plus anything else that home owns. It must be idempotent and safe to run on every dispatch (CI re-runs it from scratch each time; locally agents may also invoke it during interactive sessions).
-
-**Why it's a delegation hook, not a hardcoded block:** the workflow template used to assume every home spoke den/fold's tooling stack (notes/rudi/modules). Agent homes vary — some may use only a subset, some may need additional setup (cache warming, secret pre-fetch). The hook hands ownership of that decision to each home repo's `mise.toml`.
+- `mise ci` — workflow-host repo prepares the CI runner and orchestrates the hosted wake.
+- `agent:prepare` — cloned agent home prepares itself.
 
 ### Session backup
 
-The `Back up sessions` workflow step runs with `if: always()` after the agent step:
+Session backup is now part of the repo-owned `mise ci` policy rather than a hardcoded generated workflow step. Fold-style agent hosts usually run:
 
 ```bash
 shimmer sessions:backup --all
 ```
+
+from the prepared agent home after the agent run, including failure paths when possible.
 
 `sessions:backup` lists local sessions with `sessions list --all --json`, exports each bundle through `sessions export --format bundle`, packages it as `.tar.gz`, and uploads both snapshot and latest keys through the standalone `blobs` tool:
 
@@ -155,7 +184,7 @@ sessions/<session-id>/snapshots/<timestamp>.tar.gz
 sessions/<session-id>/latest.tar.gz
 ```
 
-The task resolves the active agent from `$AGENT` (set by the workflow), then reads B2 credentials through the `secrets` provider (`<agent>/b2-endpoint`, `<agent>/b2-key-id`, `<agent>/b2-application-key`, `<agent>/b2-bucket`). If credentials are absent, it skips cleanly so repos can use the shared runner before every agent has blob storage configured.
+The task resolves the active agent from `$AGENT`, then reads B2 credentials through the `secrets` provider (`<agent>/b2-endpoint`, `<agent>/b2-key-id`, `<agent>/b2-application-key`, `<agent>/b2-bucket`). If credentials are absent, it skips cleanly so repos can use the shared runner before every agent has blob storage configured.
 
 For local validation:
 

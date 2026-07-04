@@ -8,81 +8,38 @@ setup() {
 
 # --- Workflow template ---
 
-@test "workflow: home preparation delegates to home agent:prepare task" {
+@test "workflow: delegates hosted agent execution to repo mise ci" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
-  # Parse the YAML structurally so we assert on the step's run: body, not on
-  # incidental matches in comments or neighbouring steps.
-  # `// ""` collapses a missing or null .run (e.g. a step that uses `uses:`
-  # instead of `run:`) to the empty string so the guard below catches it
-  # explicitly rather than asserting against the literal string "null".
-  run_block=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
-
-  [ -n "$run_block" ] || {
-    echo "could not locate 'Prepare home repo' step's run: block in $template" >&2
-    return 1
-  }
-
-  echo "$run_block" | grep -qF 'mise run agent:prepare'
-  ! echo "$run_block" | grep -qF 'rudi install'
-  ! echo "$run_block" | grep -qF 'notes unlock'
-  ! echo "$run_block" | grep -qF 'modules init'
-}
-
-@test "workflow: runs agents from home without checking out the dispatch repo" {
-  template="$SHIMMER_DIR/.github/templates/agent-run.yml"
-
+  agent=$(yq -r '.jobs.run.env.AGENT // ""' "$template")
   agent_home=$(yq -r '.jobs.run.env.AGENT_HOME // ""' "$template")
   dispatch_repo=$(yq -r '.jobs.run.env.DISPATCH_REPO // ""' "$template")
-  caller_repo=$(yq -r '.jobs.run.env.CALLER_REPO // ""' "$template")
-  caller_repo_path=$(yq -r '.jobs.run.env.CALLER_REPO_PATH // ""' "$template")
-  work_dir=$(yq -r '.jobs.run.env.WORK_DIR // ""' "$template")
-  default_workdir=$(yq -r '.jobs.run.defaults.run.working-directory // ""' "$template")
-  step_names=$(yq -r '.jobs.run.steps[].name' "$template")
+  input_message=$(yq -r '.jobs.run.env.INPUT_MESSAGE // ""' "$template")
+  input_model=$(yq -r '.jobs.run.env.INPUT_MODEL // ""' "$template")
+  run_timeout=$(yq -r '.jobs.run.env.RUN_TIMEOUT // ""' "$template")
+  checkout_uses=$(yq -r '.jobs.run.steps[] | select(.name == "Checkout workflow repo") | .uses // ""' "$template")
   mise_install=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.install' "$template")
-  resolve_login_run=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve agent GitHub login") | .run // ""' "$template")
-  clone_run=$(yq -r '.jobs.run.steps[] | select(.name == "Clone home repo") | .run // ""' "$template")
-  install_home_run=$(yq -r '.jobs.run.steps[] | select(.name == "Install home tools") | .run // ""' "$template")
-  install_home_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Install home tools") | ."working-directory" // ""' "$template")
-  prepare_run=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | .run // ""' "$template")
-  prepare_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare home repo") | ."working-directory" // ""' "$template")
-  run_agent_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | ."working-directory" // ""' "$template")
-  backup_workdir=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | ."working-directory" // ""' "$template")
-  backup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .run // ""' "$template")
-  browser_username=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.BROWSER_GITHUB_COM_USERNAME // ""' "$template")
+  ci_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .run // ""' "$template")
+  ci_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.HF_TOKEN // ""' "$template")
+  ci_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.PI_AUTH_JSON // ""' "$template")
 
+  [ "$agent" = '${{ inputs.agent }}' ]
   [ "$agent_home" = '/home/runner/agents/${{ inputs.agent }}/home' ]
   [ "$dispatch_repo" = '${{ github.repository }}' ]
-  [ -z "$caller_repo" ]
-  [ -z "$caller_repo_path" ]
-  [ -z "$work_dir" ]
-  [ -z "$default_workdir" ]
+  [ "$input_message" = '${{ inputs.message }}' ]
+  [ "$input_model" = '${{ inputs.model }}' ]
+  [ "$run_timeout" = "900" ]
   [ "$mise_install" = "false" ]
-  ! echo "$step_names" | grep -qFx 'Checkout current repo'
-  ! echo "$step_names" | grep -qFx 'Setup workspace'
-  ! echo "$step_names" | grep -qFx 'Unlock caller repo notes'
-  ! grep -qF '/caller/' "$template"
-  ! grep -qF 'actions/checkout' "$template"
-  echo "$resolve_login_run" | grep -qF 'gh api user --jq .login'
-  echo "$resolve_login_run" | grep -qF 'AGENT_GITHUB_LOGIN=$login'
-  echo "$resolve_login_run" | grep -qF 'BROWSER_GITHUB_COM_USERNAME=$login'
-  echo "$clone_run" | grep -qF 'HOME_DIR="$AGENT_HOME"'
-  echo "$clone_run" | grep -qF 'HOME_REPO="$AGENT_GITHUB_LOGIN/home"'
-  echo "$clone_run" | grep -qF '::error::No home repo found'
-  ! echo "$clone_run" | grep -qF 'zettelkasten'
-  ! grep -qF -- '-ricon' "$template"
-  [ "$install_home_workdir" = "$agent_home" ]
-  echo "$install_home_run" | grep -qF 'mise install'
-  echo "$prepare_run" | grep -qF 'mise run agent:prepare'
-  ! echo "$prepare_run" | grep -qF 'mise install'
-  [ "$prepare_workdir" = "$agent_home" ]
-  [ "$run_agent_workdir" = "$agent_home" ]
-  ! echo "$step_names" | grep -qFx 'Setup email'
-  ! grep -qF 'emails setup ${{ inputs.agent }}' "$template"
-  [ -z "$backup_workdir" ]
-  echo "$backup_run" | grep -qF 'Agent home not available; skipping session backup'
-  echo "$backup_run" | grep -qF 'cd "$AGENT_HOME"'
-  [ -z "$browser_username" ]
+  [ "$checkout_uses" = "actions/checkout@v6" ]
+  echo "$ci_run" | grep -qF 'mise trust'
+  echo "$ci_run" | grep -qF 'mise install'
+  echo "$ci_run" | grep -qF 'mise ci'
+  [ "$ci_hf_token" = '${{ secrets.HF_TOKEN }}' ]
+  [ "$ci_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
+
+  ! grep -qF 'mise run agent:prepare' "$template"
+  ! grep -qF 'shimmer gpg:setup' "$template"
+  ! grep -qF 'shimmer agent --headless' "$template"
   grep -qF 'du -sh "$AGENT_HOME"' "$template"
 }
 
@@ -101,18 +58,24 @@ setup() {
   [ "$mise_version" = '${{ steps.mise-version.outputs.version }}' ]
 }
 
-@test "workflow: exposes Hugging Face auth to pi" {
+@test "workflow: exposes provider and pi auth to repo ci" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
   hf_token_declared=$(yq -r '.on.workflow_call.secrets.HF_TOKEN | has("required")' "$template")
   hf_token_required=$(yq -r '.on.workflow_call.secrets.HF_TOKEN.required' "$template")
-  run_env=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
-  pi_install=$(yq -r '.jobs.run.steps[] | select(.name == "Install pi") | .run // ""' "$template")
+  pi_auth_declared=$(yq -r '.on.workflow_call.secrets.PI_AUTH_JSON | has("required")' "$template")
+  pi_auth_required=$(yq -r '.on.workflow_call.secrets.PI_AUTH_JSON.required' "$template")
+  ci_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.HF_TOKEN // ""' "$template")
+  ci_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.PI_AUTH_JSON // ""' "$template")
+  ci_anthropic=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.ANTHROPIC_API_KEY // ""' "$template")
 
   [ "$hf_token_declared" = "true" ]
   [ "$hf_token_required" = "false" ]
-  [ "$run_env" = '${{ secrets.HF_TOKEN }}' ]
-  echo "$pi_install" | grep -qF 'github:KnickKnackLabs/pi@v0.80.3-kkl.1'
+  [ "$pi_auth_declared" = "true" ]
+  [ "$pi_auth_required" = "false" ]
+  [ "$ci_hf_token" = '${{ secrets.HF_TOKEN }}' ]
+  [ "$ci_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
+  [ "$ci_anthropic" = '${{ secrets.ANTHROPIC_API_KEY }}' ]
 }
 
 @test "workflow: generated per-agent wrappers forward Hugging Face and B2 tokens" {
@@ -149,19 +112,14 @@ setup() {
   ! grep -qF 'sessions cli:build' "$template"
 }
 
-@test "workflow: backs up sessions after agent run" {
+@test "workflow: leaves sessions backup to repo ci" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
-  backup_if=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .if // ""' "$template")
-  backup_agent=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .env.AGENT // ""' "$template")
-  backup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .run // ""' "$template")
+  step_names=$(yq -r '.jobs.run.steps[].name' "$template")
+  ci_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .run // ""' "$template")
 
-  [ "$backup_if" = "always()" ]
-  [ "$backup_agent" = '${{ inputs.agent }}' ]
-  echo "$backup_run" | grep -qF 'command -v shimmer'
-  echo "$backup_run" | grep -qF 'shimmer not available; skipping session backup'
-  echo "$backup_run" | grep -qF 'shimmer sessions:backup --all'
-  ! echo "$backup_run" | grep -qF 'shimmer blob:setup'
+  ! echo "$step_names" | grep -qFx 'Back up sessions'
+  echo "$ci_run" | grep -qF 'mise ci'
 }
 
 

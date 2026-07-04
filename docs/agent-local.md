@@ -27,14 +27,24 @@ This:
 
 ### 2. Email
 
-Configure himalaya for agent email:
+Configure Himalaya for agent email. Read passwords from stdin so secret values do not print:
 
 ```bash
-emails setup <agent>
+secrets get <agent>/email-password |
+  emails account:setup <agent> \
+    --address <agent>@ricon.family \
+    --display-name <agent> \
+    --imap-host mail.ricon.family \
+    --imap-port 993 \
+    --smtp-host mail.ricon.family \
+    --smtp-port 465 \
+    --password-stdin \
+    --set-default \
+    --gpg-local-user <agent>@ricon.family
 ```
 
 This:
-- Creates `~/.config/himalaya/config.toml`
+- Creates the selected Himalaya config, by default `~/.config/emails/himalaya.toml`
 - Configures IMAP/SMTP for `<agent>@ricon.family`
 - Enables GPG signing for emails
 
@@ -97,7 +107,7 @@ GitHub identity:
 | Task | Frequency | Command |
 |------|-----------|---------|
 | Import GPG key | Once per machine | `mise run gpg:setup <agent>` |
-| Setup email | Once per machine | `emails setup <agent>` |
+| Setup email | Once per machine | `secrets get <agent>/email-password | emails account:setup <agent> ... --password-stdin` |
 | Set identity | Each session | `eval "$(mise run as <agent>)"` |
 | Verify setup | As needed | `mise run whoami` |
 
