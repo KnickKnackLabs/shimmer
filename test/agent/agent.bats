@@ -8,7 +8,7 @@ setup() {
 
 # --- Workflow template ---
 
-@test "workflow: delegates hosted agent execution to repo mise ci" {
+@test "workflow: prepares repo env then runs repo agent with log markers" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
   agent=$(yq -r '.jobs.run.env.AGENT // ""' "$template")
@@ -19,9 +19,10 @@ setup() {
   run_timeout=$(yq -r '.jobs.run.env.RUN_TIMEOUT // ""' "$template")
   checkout_uses=$(yq -r '.jobs.run.steps[] | select(.name == "Checkout workflow repo") | .uses // ""' "$template")
   mise_install=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.install' "$template")
-  ci_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .run // ""' "$template")
-  ci_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.HF_TOKEN // ""' "$template")
-  ci_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.PI_AUTH_JSON // ""' "$template")
+  env_run=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .run // ""' "$template")
+  agent_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .run // ""' "$template")
+  env_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .env.PI_AUTH_JSON // ""' "$template")
+  agent_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
 
   [ "$agent" = '${{ inputs.agent }}' ]
   [ "$agent_home" = '/home/runner/agents/${{ inputs.agent }}/home' ]
@@ -31,11 +32,16 @@ setup() {
   [ "$run_timeout" = "900" ]
   [ "$mise_install" = "false" ]
   [ "$checkout_uses" = "actions/checkout@v6" ]
-  echo "$ci_run" | grep -qF 'mise trust'
-  echo "$ci_run" | grep -qF 'mise install'
-  echo "$ci_run" | grep -qF 'mise ci'
-  [ "$ci_hf_token" = '${{ secrets.HF_TOKEN }}' ]
-  [ "$ci_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
+  echo "$env_run" | grep -qF 'mise trust'
+  echo "$env_run" | grep -qF 'mise install'
+  echo "$env_run" | grep -qF 'mise run ci:env'
+  [ "$env_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
+  echo "$agent_run" | grep -qF '### AGENT SESSION START ###'
+  echo "$agent_run" | grep -qF 'status=0'
+  echo "$agent_run" | grep -qF 'mise agent || status=$?'
+  echo "$agent_run" | grep -qF '### AGENT SESSION END ###'
+  echo "$agent_run" | grep -qF 'exit "$status"'
+  [ "$agent_hf_token" = '${{ secrets.HF_TOKEN }}' ]
 
   ! grep -qF 'mise run agent:prepare' "$template"
   ! grep -qF 'shimmer gpg:setup' "$template"
@@ -58,24 +64,24 @@ setup() {
   [ "$mise_version" = '${{ steps.mise-version.outputs.version }}' ]
 }
 
-@test "workflow: exposes provider and pi auth to repo ci" {
+@test "workflow: exposes provider and pi auth to repo tasks" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
   hf_token_declared=$(yq -r '.on.workflow_call.secrets.HF_TOKEN | has("required")' "$template")
   hf_token_required=$(yq -r '.on.workflow_call.secrets.HF_TOKEN.required' "$template")
   pi_auth_declared=$(yq -r '.on.workflow_call.secrets.PI_AUTH_JSON | has("required")' "$template")
   pi_auth_required=$(yq -r '.on.workflow_call.secrets.PI_AUTH_JSON.required' "$template")
-  ci_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.HF_TOKEN // ""' "$template")
-  ci_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.PI_AUTH_JSON // ""' "$template")
-  ci_anthropic=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .env.ANTHROPIC_API_KEY // ""' "$template")
+  env_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .env.PI_AUTH_JSON // ""' "$template")
+  agent_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
+  agent_anthropic=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.ANTHROPIC_API_KEY // ""' "$template")
 
   [ "$hf_token_declared" = "true" ]
   [ "$hf_token_required" = "false" ]
   [ "$pi_auth_declared" = "true" ]
   [ "$pi_auth_required" = "false" ]
-  [ "$ci_hf_token" = '${{ secrets.HF_TOKEN }}' ]
-  [ "$ci_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
-  [ "$ci_anthropic" = '${{ secrets.ANTHROPIC_API_KEY }}' ]
+  [ "$env_pi_auth" = '${{ secrets.PI_AUTH_JSON }}' ]
+  [ "$agent_hf_token" = '${{ secrets.HF_TOKEN }}' ]
+  [ "$agent_anthropic" = '${{ secrets.ANTHROPIC_API_KEY }}' ]
 }
 
 @test "workflow: generated per-agent wrappers forward Hugging Face and B2 tokens" {
@@ -112,14 +118,16 @@ setup() {
   ! grep -qF 'sessions cli:build' "$template"
 }
 
-@test "workflow: leaves sessions backup to repo ci" {
+@test "workflow: backs up sessions after repo agent run" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
-  step_names=$(yq -r '.jobs.run.steps[].name' "$template")
-  ci_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run repo CI entrypoint") | .run // ""' "$template")
+  backup_if=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .if // ""' "$template")
+  backup_run=$(yq -r '.jobs.run.steps[] | select(.name == "Back up sessions") | .run // ""' "$template")
 
-  ! echo "$step_names" | grep -qFx 'Back up sessions'
-  echo "$ci_run" | grep -qF 'mise ci'
+  [ "$backup_if" = "always()" ]
+  echo "$backup_run" | grep -qF 'Agent home not available; skipping session backup'
+  echo "$backup_run" | grep -qF 'cd "$AGENT_HOME"'
+  echo "$backup_run" | grep -qF 'shimmer sessions:backup --all'
 }
 
 

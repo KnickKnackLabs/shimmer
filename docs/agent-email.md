@@ -46,7 +46,7 @@ See `docs/agent-local.md` for full local setup instructions.
 
 ### CI/Workflow setup
 
-Generated agent workflows expose the selected agent's email password to the workflow-host repo through the env-backed `secrets` provider. The generated bootloader then runs `mise ci`; the workflow-host repo's `ci` task owns whether and how to configure email for hosted agent wakes.
+Generated agent workflows expose the selected agent's email password to the workflow-host repo through the env-backed `secrets` provider. The generated bootloader then runs `mise run ci:env`; the workflow-host repo's `ci:env` task owns whether and how to configure email for hosted agent wakes.
 
 A fold-style host can use the same `emails account:setup` command shown above, replacing `<agent>` with `$AGENT`.
 

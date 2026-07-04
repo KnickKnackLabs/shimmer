@@ -145,17 +145,23 @@ Keys are flat (`<agent>/<key>`) and accessed through the configured `secrets` pr
 
 ## Workflow Integration
 
-Generated agent workflows map per-agent secrets into the reusable `agent-run.yml` workflow. The reusable workflow then checks out the workflow-host repo and calls its repo-owned CI entrypoint:
+Generated agent workflows map per-agent secrets into the reusable `agent-run.yml` workflow. The reusable workflow then checks out the workflow-host repo, prepares its environment, and runs its agent command:
 
 ```yaml
-- name: Run repo CI entrypoint
+- name: Prepare repo CI environment
   run: |
     mise trust
     mise install
-    mise ci
+    mise run ci:env
+
+- name: Run agent
+  run: |
+    echo "### AGENT SESSION START ###"
+    mise agent
+    echo "### AGENT SESSION END ###"
 ```
 
-The workflow-host repo's `mise ci` task owns hosted-run setup such as GPG import/configuration, email account configuration, pi auth restoration, home preparation, agent launch, and optional session backup. This lets simple agent hosts do less and fold-style hosts do the full local identity/tooling setup.
+The workflow-host repo's `ci:env` task owns hosted-run setup such as GPG import/configuration, email account configuration, pi auth restoration, and home preparation. Its `agent` task owns launching the prepared agent. This lets simple agent hosts do less and fold-style hosts do the full local identity/tooling setup.
 
 For local setup, see `docs/agent-local.md`. For generated workflow shape, see `docs/agent-workflows.md`.
 

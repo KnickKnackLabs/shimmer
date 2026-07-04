@@ -8,13 +8,14 @@ Agent workflows are **generated** from a repo-local `agent:list --ci` task plus 
 
 Generated workflow layers:
 
-- **Reusable runner bootloader** (`.github/workflows/agent-run.yml`) — the low-level `workflow_call` that checks out the workflow-host repo, installs mise-managed tools, exposes secrets/env, and calls `mise ci`.
-- **Repo-owned CI entrypoint** (`mise ci`) — implemented by the workflow-host repo; owns the hosted-agent run ritual for that repo.
+- **Reusable runner bootloader** (`.github/workflows/agent-run.yml`) — the low-level `workflow_call` that checks out the workflow-host repo, installs mise-managed tools, exposes secrets/env, calls `mise run ci:env`, prints agent log markers, calls `mise agent`, and backs up sessions.
+- **Repo-owned CI environment hook** (`mise run ci:env`) — implemented by the workflow-host repo; prepares the CI runner and agent home for this repo's hosted-agent wake.
+- **Repo-owned agent command** (`mise agent`) — implemented by the workflow-host repo; runs the prepared agent without owning the workflow log marker protocol.
 - **Per-agent entrypoints** (`.github/workflows/<agent>.yml`) — expose both manual `workflow_dispatch` and reusable `workflow_call` inputs for `message` and provider-qualified `model`; each entrypoint owns that agent's secret mapping into `agent-run.yml`.
 - **Scheduled job workflows** (`.github/workflows/<name>.yml`) — generated from `workflows.yaml` schedules; call the target per-agent entrypoint.
 - **Mention wake workflow** (`.github/workflows/agent-mention.yml`) — optional; generated from `workflows.yaml` `mention_wakes`; detects trusted GitHub issue/PR comment mentions and calls the matched per-agent entrypoints.
 
-The clean mental model: generated workflows are trigger/bootloader scaffolding. The workflow-host repo owns the execution policy behind `mise ci`.
+The clean mental model: generated workflows are trigger/bootloader scaffolding. The workflow-host repo owns environment preparation and agent invocation details, while the generated workflow owns the stable log-marker protocol around `mise agent`.
 
 ## Structure
 
@@ -117,34 +118,44 @@ shimmer agent:dispatch junior \
 
 ## How Generated Workflows Run Agents
 
-Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml` is intentionally a small bootloader. It:
+Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml` is intentionally a small bootloader plus a stable log wrapper. It:
 
 1. resolves and installs mise;
 2. checks out the workflow-host repo;
 3. re-exports agent secrets through the env-backed `secrets` provider;
-4. exposes provider API keys (`ANTHROPIC_API_KEY`, `HF_TOKEN`), `PI_AUTH_JSON`, `AGENT`, `AGENT_HOME`, `INPUT_MESSAGE`, and `INPUT_MODEL` to the runner environment;
-5. runs:
+4. exposes `AGENT`, `AGENT_HOME`, `INPUT_MESSAGE`, and `INPUT_MODEL` to the runner environment;
+5. prepares the repo-owned CI environment:
 
    ```bash
    mise trust
    mise install
-   mise ci
+   mise run ci:env
    ```
 
-The workflow-host repo's `mise ci` task owns the actual hosted-agent execution policy. A fold-style agent host typically uses `mise ci` to set up GPG and email, clone the agent home repo, prepare that home with `agent:prepare`, restore pi auth, run `shimmer agent --headless`, and back up sessions. A simpler agent host may do less.
+6. wraps the repo-owned agent command in stable log markers:
 
-Headless execution still requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. When the repo-owned CI task invokes `shimmer agent --headless`, shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
+   ```bash
+   echo "### AGENT SESSION START ###"
+   mise agent
+   echo "### AGENT SESSION END ###"
+   ```
 
-### Repo-owned `mise ci` contract
+7. backs up sessions after the agent step when possible.
 
-Generated agent workflows assume the workflow-host repo declares a root/default `ci` task, usually as `.mise/tasks/ci/_default`, so both forms work:
+A fold-style agent host typically uses `ci:env` to set up GPG and email, clone the agent home repo, prepare that home with `agent:prepare`, and restore pi auth. Its `agent` task then runs the prepared agent. A simpler agent host may do less.
+
+Headless execution still requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. When the repo-owned `agent` task invokes `shimmer agent --headless`, shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
+
+### Repo-owned `ci:env` and `agent` contracts
+
+Generated agent workflows assume the workflow-host repo declares:
 
 ```bash
-mise run ci
-mise ci
+mise run ci:env
+mise agent
 ```
 
-For hosted-agent workflow repos, `ci` receives at least:
+For hosted-agent workflow repos, both tasks receive at least:
 
 - `AGENT` — the agent identity requested by the per-agent workflow;
 - `AGENT_HOME` — where the target home repo should be cloned/prepared;
@@ -154,7 +165,9 @@ For hosted-agent workflow repos, `ci` receives at least:
 - `SECRETS_PROVIDER=env` plus agent-prefixed secret env vars;
 - optional `ANTHROPIC_API_KEY`, `HF_TOKEN`, `PI_AUTH_JSON`, and browser credentials.
 
-The task should be idempotent for a fresh GitHub runner and should not print secret values.
+`ci:env` should be idempotent for a fresh GitHub runner and should not print secret values. If it needs environment variables to survive into the later `mise agent` workflow step, it should write them to `$GITHUB_ENV`.
+
+`mise agent` should run the prepared agent. It should not print `### AGENT SESSION ... ###` markers itself; the generated workflow owns that stable log protocol.
 
 ### Home repo `agent:prepare` hook
 
@@ -164,18 +177,20 @@ If the home declares an `agent:prepare` mise task, it should do anything home-sp
 
 The distinction is:
 
-- `mise ci` — workflow-host repo prepares the CI runner and orchestrates the hosted wake.
+- `ci:env` — workflow-host repo prepares the CI runner and target home.
+- `mise agent` — workflow-host repo runs the prepared hosted agent.
 - `agent:prepare` — cloned agent home prepares itself.
 
 ### Session backup
 
-Session backup is now part of the repo-owned `mise ci` policy rather than a hardcoded generated workflow step. Fold-style agent hosts usually run:
+The generated workflow runs session backup after the `mise agent` step:
 
 ```bash
+cd "$AGENT_HOME"
 shimmer sessions:backup --all
 ```
 
-from the prepared agent home after the agent run, including failure paths when possible.
+It skips cleanly when the agent home is unavailable or shimmer is not installed.
 
 `sessions:backup` lists local sessions with `sessions list --all --json`, exports each bundle through `sessions export --format bundle`, packages it as `.tar.gz`, and uploads both snapshot and latest keys through the standalone `blobs` tool:
 
