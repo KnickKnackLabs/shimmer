@@ -305,6 +305,11 @@ shimmer whoami`}</CodeBlock>
         {" when a local shell needs the same identity and signing posture as a hosted agent run."}
       </Paragraph>
       <CodeBlock lang="bash">{localIdentityFlow}</CodeBlock>
+      <Paragraph>
+        {"Interactive and headless wakes require a provider-qualified model. Interactive messages are optional; pass "}
+        <Code>--session</Code>
+        {" with a session ID or name to resume an existing conversation."}
+      </Paragraph>
 
       <Heading level={3}>Hosted dispatch</Heading>
       <Paragraph>
@@ -331,7 +336,7 @@ shimmer whoami`}</CodeBlock>
         </TableRow>
         <TableRow>
           <Cell><Code>shimmer agent</Code></Cell>
-          <Cell>{"Starts interactive or headless sessions while scrubbing task-scoped mise/caller environment before handing control to pi/sessions."}</Cell>
+          <Cell>{"Creates or resumes interactive and headless sessions, scrubs task-scoped mise/caller environment, and wakes through the sessions-owned Pi runtime."}</Cell>
         </TableRow>
         <TableRow>
           <Cell><Code>agent:dispatch</Code></Cell>

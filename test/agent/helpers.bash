@@ -1,8 +1,8 @@
 # Helpers for shimmer agent BATS tests
 #
 # Uses the mock-first include overlay pattern from test/helpers.bash.
-# Mocks `sessions` and `pi` binaries to test agent task branching
-# without real session infrastructure.
+# Mocks the `sessions` binary to test agent task branching without
+# launching real session infrastructure.
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/helpers.bash"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/helpers.bash"
@@ -51,39 +51,4 @@ esac
 MOCK
   chmod +x "$MOCK_BIN/sessions"
   export PATH="$MOCK_BIN:$PATH"
-}
-
-
-# Create a mock harness binary and set AGENT_HARNESS to point at it.
-# This avoids PATH ordering issues with mise-managed tools.
-# Usage: mock_harness
-mock_harness() {
-  MOCK_BIN="$BATS_TEST_TMPDIR/mock-bin-$$"
-  mkdir -p "$MOCK_BIN"
-  HARNESS_LOG="$BATS_TEST_TMPDIR/harness-log-$$"
-  HARNESS_ENV_LOG="$BATS_TEST_TMPDIR/harness-env-log-$$"
-  export HARNESS_LOG HARNESS_ENV_LOG
-
-  cat > "$MOCK_BIN/mock-harness" <<'MOCK'
-#!/usr/bin/env bash
-echo "$@" >> "$HARNESS_LOG"
-{
-  printf 'PWD=%s\n' "$PWD"
-  printf 'CALLER_PWD=%s\n' "${CALLER_PWD-}"
-  printf 'SHIMMER_CALLER_PWD=%s\n' "${SHIMMER_CALLER_PWD-}"
-  printf 'OTHER_CALLER_PWD=%s\n' "${OTHER_CALLER_PWD-}"
-  printf 'MISE_CONFIG_ROOT=%s\n' "${MISE_CONFIG_ROOT-}" # codebase:ignore mcr-scope — test records scrubbed env
-  printf 'MISE_PROJECT_ROOT=%s\n' "${MISE_PROJECT_ROOT-}"
-  printf 'MISE_TASK_NAME=%s\n' "${MISE_TASK_NAME-}"
-  printf 'usage_headless=%s\n' "${usage_headless-}"
-  printf 'usage_model=%s\n' "${usage_model-}"
-  printf 'usage_message=%s\n' "${usage_message-}"
-  printf 'GIT_AUTHOR_NAME=%s\n' "${GIT_AUTHOR_NAME-}"
-  printf 'GIT_AUTHOR_EMAIL=%s\n' "${GIT_AUTHOR_EMAIL-}"
-  printf 'PATH=%s\n' "${PATH-}"
-} >> "${HARNESS_ENV_LOG:-$HARNESS_LOG.env}"
-MOCK
-  chmod +x "$MOCK_BIN/mock-harness"
-  export PATH="$MOCK_BIN:$PATH"
-  export AGENT_HARNESS="mock-harness"
 }
