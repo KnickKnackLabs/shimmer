@@ -11,7 +11,7 @@ Identity, dispatch, generated CI, and session plumbing for agent homes.
 <p dir="rtl"><em>إلى ريموند — العمل شرف</em></p>
 
 ![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
-[![tests: 180](https://img.shields.io/badge/tests-180-brightgreen?style=flat)](test/)
+[![tests: 181](https://img.shields.io/badge/tests-181-brightgreen?style=flat)](test/)
 ![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
 ![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
 [![sessions: 659](https://img.shields.io/badge/sessions-659-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
@@ -81,6 +81,8 @@ shimmer whoami
 shimmer agent --model openai-codex/gpt-5.5 "Inspect the failing workflow."
 ```
 
+Interactive and headless wakes require a provider-qualified model. Interactive messages are optional; pass `--session` with a session ID or name to resume an existing conversation.
+
 ### Hosted dispatch
 
 Dispatch through the repo that owns the target agent workflow, and put the actual target PR or issue in the packet. Use a message file for anything longer than a scalar.
@@ -109,13 +111,13 @@ git diff -- .github/workflows/
 
 ## What shimmer owns
 
-| Surface              | Contract                                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `shimmer as <agent>` | Exports local identity, token, home path, B2 settings, and command-scope git signing config.                                          |
-| `shimmer agent`      | Starts interactive or headless sessions while scrubbing task-scoped mise/caller environment before handing control to pi/sessions.    |
-| `agent:dispatch`     | Finds the right home repo, validates provider-qualified models, preserves file-backed messages, and returns the workflow run id.      |
-| `workflows:generate` | Turns agent rosters and workflows.yaml manifests into reusable runner workflows, per-agent entrypoints, schedules, and mention wakes. |
-| `sessions:backup`    | Exports local session bundles and uploads snapshots/latest pointers when blob credentials are configured.                             |
+| Surface              | Contract                                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shimmer as <agent>` | Exports local identity, token, home path, B2 settings, and command-scope git signing config.                                                       |
+| `shimmer agent`      | Creates or resumes interactive and headless sessions, scrubs task-scoped mise/caller environment, and wakes through the sessions-owned Pi runtime. |
+| `agent:dispatch`     | Finds the right home repo, validates provider-qualified models, preserves file-backed messages, and returns the workflow run id.                   |
+| `workflows:generate` | Turns agent rosters and workflows.yaml manifests into reusable runner workflows, per-agent entrypoints, schedules, and mention wakes.              |
+| `sessions:backup`    | Exports local session bundles and uploads snapshots/latest pointers when blob credentials are configured.                                          |
 
 ## Task map
 

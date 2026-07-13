@@ -2,9 +2,9 @@
 #MISE description="Start an agent session (interactive or headless)"
 #MISE quiet=true
 #USAGE flag "--headless" default=#false help="Non-interactive mode: process message and exit"
-#USAGE flag "--session <session>" default="" help="Session file path to resume"
+#USAGE flag "--session <session>" default="" help="Session ID or name to resume"
 #USAGE flag "--timeout <seconds>" default="" help="Timeout in seconds (headless only, stored as session metadata — not yet enforced by sessions wake)"
-#USAGE flag "--model <model>" default="" help="Model to use (required for --headless; provider-qualified, e.g. openai-codex/gpt-5.5)"
+#USAGE flag "--model <model>" default="" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE arg "[message]" default="" help="Initial message (required for --headless, optional for interactive)"
 
 set -e
@@ -31,59 +31,55 @@ if [ "$HEADLESS" = "true" ] && [ -z "$MESSAGE" ]; then
   exit 1
 fi
 
-if [ "$HEADLESS" = "true" ] && [ -z "$MODEL" ]; then
-  echo "Error: --headless requires --model <provider/model>" >&2
-  echo "Usage: shimmer agent --headless --model <provider/model> \"do something\"" >&2
+if [ -z "$MODEL" ]; then
+  if [ "$HEADLESS" = "true" ]; then
+    echo "Error: --headless requires --model <provider/model>" >&2
+    echo "Usage: shimmer agent --headless --model <provider/model> \"do something\"" >&2
+  else
+    echo "Error: --model <provider/model> is required" >&2
+    echo "Usage: shimmer agent --model <provider/model> [\"message\"]" >&2
+  fi
   exit 1
 fi
 
-if [ "$HEADLESS" = "true" ] && [[ "$MODEL" != */* ]]; then
+if [[ "$MODEL" != */* ]]; then
   echo "Error: --model must be provider-qualified (for example: openai-codex/gpt-5.5)" >&2
   exit 1
 fi
 
+CWD="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}"
 if [ "$HEADLESS" = "true" ]; then
-  # Headless mode creates a tracked session and launches it in the background
-  # via sessions new + sessions wake. The agent runs inside zmx (backgrounded),
-  # and can be monitored with `sessions read`.
-  CWD="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}"
   SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
-
-  # Prepare the long-lived agent runtime without discarding selected-agent
-  # environment such as GIT_AUTHOR_NAME.
-  shimmer_prepare_agent_child_env
-
-  if ! command -v sessions &>/dev/null; then
-    echo "sessions not found on PATH. Install it: shiv install sessions" >&2
-    exit 1
-  fi
-
-  # Create a tracked session (or resume an existing one)
-  if [ -n "$SESSION" ]; then
-    # Resuming an existing session file
-    SESSION_ID="$SESSION"
-  else
-    NEW_ARGS=("$SESSION_NAME" --cwd "$CWD" --meta "agent.name=$GIT_AUTHOR_NAME")
-    SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
-  fi
-
-  # Wake the session — foreground + headless (blocks until done)
-  WAKE_ARGS=("$SESSION_ID" --headless --message "$MESSAGE" --model "$MODEL")
-  [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
-  sessions wake "${WAKE_ARGS[@]}"
 else
-  # Interactive mode calls the agent harness directly.
-  CWD="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}"
-  cd "$CWD"
-  shimmer_prepare_agent_child_env
-  HARNESS="${AGENT_HARNESS:-pi}"
-  if ! command -v "$HARNESS" &>/dev/null; then
-    echo "$HARNESS not found on PATH." >&2
-    exit 1
-  fi
-
-  ARGS=()
-  [ -n "$SESSION" ] && ARGS+=(--session "$SESSION")
-  [ -n "$MESSAGE" ] && ARGS+=("$MESSAGE")
-  exec "$HARNESS" "${ARGS[@]}"
+  SESSION_NAME="${GIT_AUTHOR_NAME}-interactive-$(date +%s)"
 fi
+
+# Prepare the long-lived agent runtime without discarding selected-agent
+# environment such as GIT_AUTHOR_NAME.
+shimmer_prepare_agent_child_env
+
+if ! command -v sessions &>/dev/null; then
+  echo "sessions not found on PATH. Install it: shiv install sessions" >&2
+  exit 1
+fi
+
+# Create a tracked session (or resume an existing one).
+if [ -n "$SESSION" ]; then
+  SESSION_ID="$SESSION"
+else
+  NEW_ARGS=("$SESSION_NAME" --cwd "$CWD" --meta "agent.name=$GIT_AUTHOR_NAME")
+  SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
+fi
+
+# Keep foreground interactive wakes attached to the caller's TTY. Headless
+# wakes also remain foreground so the command blocks until the agent exits.
+WAKE_ARGS=("$SESSION_ID")
+if [ "$HEADLESS" = "true" ]; then
+  WAKE_ARGS+=(--headless --message "$MESSAGE" --model "$MODEL")
+  [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")
+else
+  WAKE_ARGS+=(--model "$MODEL")
+  [ -n "$MESSAGE" ] && WAKE_ARGS+=(--message "$MESSAGE")
+fi
+
+exec sessions wake "${WAKE_ARGS[@]}"

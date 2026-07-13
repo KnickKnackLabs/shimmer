@@ -351,114 +351,128 @@ MOCK
 
 # --- Interactive mode ---
 
-@test "interactive: calls harness without prompt injection" {
+@test "interactive: requires model" {
   setup_agent
-  mock_harness
   mock_shimmer
 
   run shimmer agent
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"--model"* ]]
+}
+
+@test "interactive: requires provider-qualified model" {
+  setup_agent
+  mock_shimmer
+
+  run shimmer agent --model "gpt-5.5"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"provider-qualified"* ]]
+}
+
+@test "interactive: creates and wakes a sessions-owned runtime without a message" {
+  setup_agent
+  export AGENT_HARNESS="/usr/bin/false"
+  mock_sessions_binary
+  mock_shimmer
+
+  run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  ! grep -q -- "--append-system-prompt" "$HARNESS_LOG"
+  grep -q "^new test-agent-interactive-" "$SESSIONS_LOG"
+  grep "^new " "$SESSIONS_LOG" | grep -q "agent.name=test-agent"
+  grep -q "^wake mock-session-id-001 --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
+}
+
+@test "interactive: fails clearly when sessions is unavailable after runtime PATH cleanup" {
+  local home="$BATS_TEST_TMPDIR/path-boundary-home"
+  local direct_sessions="$home/.local/share/mise/installs/shiv-sessions/0.4.1/bin"
+  mkdir -p "$direct_sessions"
+  cat > "$direct_sessions/sessions" <<'MOCK'
+#!/usr/bin/env bash
+echo "stale direct sessions should not run" >&2
+exit 99
+MOCK
+  chmod +x "$direct_sessions/sessions"
+
+  run env -i \
+    HOME="$home" \
+    PATH="$direct_sessions:/usr/bin:/bin" \
+    MISE_CONFIG_ROOT="$SHIMMER_DIR" \
+    GIT_AUTHOR_NAME="test-agent" \
+    GIT_AUTHOR_EMAIL="test-agent@ricon.family" \
+    usage_headless="false" \
+    usage_model="openai-codex/gpt-5.5" \
+    usage_message="" \
+    bash "$SHIMMER_DIR/.mise/tasks/agent/_default" # codebase:ignore bats-test-helper — isolates post-cleanup PATH without mise-added shims
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"sessions not found on PATH"* ]]
+  [[ "$output" != *"stale direct sessions should not run"* ]]
 }
 
 @test "interactive: ignores inherited usage env from parent task" {
   setup_agent
   export usage_headless="true"
-  export usage_model="openai-codex/gpt-5.5"
+  export usage_model="stale-provider/stale-model"
   export usage_message="stale parent message"
-  mock_harness
+  mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  ! grep -q -- "--append-system-prompt" "$HARNESS_LOG"
-  ! grep -q "stale parent message" "$HARNESS_LOG"
+  grep -q "^wake mock-session-id-001 --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
+  ! grep -q "stale parent message" "$SESSIONS_LOG"
 }
 
-@test "interactive: uses SHIMMER_CALLER_PWD as harness cwd before scrubbing" {
+@test "interactive: uses SHIMMER_CALLER_PWD as session cwd before scrubbing" {
   setup_agent
   local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
   unset CALLER_PWD
   export SHIMMER_CALLER_PWD="$caller_dir"
-  mock_harness
+  mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  grep -q "^PWD=$caller_dir$" "$HARNESS_ENV_LOG"
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $caller_dir"
 }
 
-@test "interactive: scrubs caller context before invoking harness" {
+@test "interactive: preserves identity while scrubbing caller and mise task context" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/scrub-caller"
-  mkdir -p "$caller_dir"
-  export SHIMMER_CALLER_PWD="$caller_dir"
   export OTHER_CALLER_PWD="/stale/other/caller"
-  mock_harness
-  mock_shimmer
-
-  run shimmer agent
-  [ "$status" -eq 0 ]
-
-  grep -q '^CALLER_PWD=$' "$HARNESS_ENV_LOG"
-  grep -q '^SHIMMER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
-  grep -q '^OTHER_CALLER_PWD=$' "$HARNESS_ENV_LOG"
-}
-
-@test "interactive: removes mise task env and direct install PATH before invoking harness" {
-  setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/scrub-caller"
-  mkdir -p "$caller_dir"
-  export SHIMMER_CALLER_PWD="$caller_dir"
-  local installs="$HOME/.local/share/mise/installs"
-  local stale_sessions="$installs/shiv-sessions/0.4.1/bin"
-  local current_sessions="$installs/shiv-sessions/0.4.4/bin"
-  export PATH="$stale_sessions:/before:$current_sessions:$PATH"
   export MISE_PROJECT_ROOT="/stale/project"
   export MISE_ORIGINAL_CWD="/stale/original"
-  mock_harness
+  mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent
+  run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  grep -q '^MISE_CONFIG_ROOT=$' "$HARNESS_ENV_LOG"
-  grep -q '^MISE_PROJECT_ROOT=$' "$HARNESS_ENV_LOG"
-  grep -q '^MISE_TASK_NAME=$' "$HARNESS_ENV_LOG"
-  grep -q '^usage_headless=$' "$HARNESS_ENV_LOG"
-  grep -q '^usage_model=$' "$HARNESS_ENV_LOG"
-  grep -q '^usage_message=$' "$HARNESS_ENV_LOG"
-  grep -q '^GIT_AUTHOR_NAME=test-agent$' "$HARNESS_ENV_LOG"
-  grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$HARNESS_ENV_LOG"
-  grep -q '^PATH=.*/before' "$HARNESS_ENV_LOG"
-  ! grep -q "^PATH=.*$stale_sessions" "$HARNESS_ENV_LOG"
-  ! grep -q "^PATH=.*$current_sessions" "$HARNESS_ENV_LOG"
+  grep -q '^CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^SHIMMER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^OTHER_CALLER_PWD=$' "$SESSIONS_ENV_LOG"
+  grep -q '^MISE_CONFIG_ROOT=$' "$SESSIONS_ENV_LOG"
+  grep -q '^MISE_PROJECT_ROOT=$' "$SESSIONS_ENV_LOG"
+  grep -q '^MISE_TASK_NAME=$' "$SESSIONS_ENV_LOG"
+  grep -q '^usage_headless=$' "$SESSIONS_ENV_LOG"
+  grep -q '^usage_model=$' "$SESSIONS_ENV_LOG"
+  grep -q '^usage_message=$' "$SESSIONS_ENV_LOG"
+  grep -q '^GIT_AUTHOR_NAME=test-agent$' "$SESSIONS_ENV_LOG"
+  grep -q '^GIT_AUTHOR_EMAIL=test-agent@ricon.family$' "$SESSIONS_ENV_LOG"
 }
 
-@test "interactive: forwards session flag to harness" {
+@test "interactive: resumes an existing session and forwards the initial message" {
   setup_agent
-  mock_harness
+  mock_sessions_binary
   mock_shimmer
 
-  run shimmer agent --session "/tmp/my-session"
+  run shimmer agent --session "existing-session-42" --model "openai-codex/gpt-5.5" "continue work"
   [ "$status" -eq 0 ]
 
-  grep -q -- "--session /tmp/my-session" "$HARNESS_LOG"
-}
-
-@test "interactive: forwards message to harness" {
-  setup_agent
-  mock_harness
-  mock_shimmer
-
-  run shimmer agent "hello there"
-  [ "$status" -eq 0 ]
-
-  grep -q "hello there" "$HARNESS_LOG"
+  ! grep -q "^new " "$SESSIONS_LOG"
+  grep -q "^wake existing-session-42 --model openai-codex/gpt-5.5 --message continue work$" "$SESSIONS_LOG"
 }
 
 @test "agent:dispatch requires model" {
