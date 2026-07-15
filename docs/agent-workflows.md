@@ -120,15 +120,13 @@ shimmer agent:dispatch junior \
 
 Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent entrypoint calls the reusable `agent-run.yml` workflow with that agent's concrete secret mapping. `agent-run.yml` is intentionally a small bootloader plus a stable log wrapper. It:
 
-1. resolves and installs mise;
-2. checks out the workflow-host repo;
+1. checks out the workflow-host repo;
+2. resolves the current mise version, restores a platform-and-config-keyed tool cache, and installs the repo's declared tools through `mise-action`;
 3. re-exports agent secrets through the env-backed `secrets` provider;
 4. exposes `AGENT`, `AGENT_HOME`, `INPUT_MESSAGE`, and `INPUT_MODEL` to the runner environment;
 5. prepares the repo-owned CI environment:
 
    ```bash
-   mise trust
-   mise install
    mise run ci:env
    ```
 
@@ -141,6 +139,10 @@ Trigger workflows call a per-agent entrypoint (`<agent>.yml`), and the per-agent
    ```
 
 7. backs up sessions after the agent step when possible.
+
+The initial `mise-action` install caches only the workflow host's mise data directory. Checkout happens first so the cache key includes the actual mise configuration. The key intentionally omits the mise release version so heavy tool installs survive mise updates, while the separately resolved version still updates the mise binary on restore. uv is required to use managed Python and stores those interpreters inside the same boundary so pipx environments do not restore with interpreter links into an uncached location.
+
+The cache is saved before email, GPG, B2, Pi-auth, or agent-home preparation. Do not move credential or home-preparation steps ahead of the cached install without re-auditing the archive boundary. The GitHub token used for package installation must remain an environment-only credential and must never appear in installed repository remotes or cached files.
 
 A fold-style agent host typically uses `ci:env` to set up GPG and email, clone the agent home repo, prepare that home with `agent:prepare`, and restore pi auth. Its `agent` task then runs the prepared agent. A simpler agent host may do less.
 
