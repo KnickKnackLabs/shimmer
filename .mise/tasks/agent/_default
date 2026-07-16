@@ -7,19 +7,19 @@
 #USAGE flag "--model <model>" default="" help="Model to use (required; provider-qualified, e.g. openai-codex/gpt-5.5)"
 #USAGE arg "[message]" default="" help="Initial message (required for --headless, optional for interactive)"
 
-set -e
+set -euo pipefail
 
-HEADLESS="$usage_headless"
-SESSION="$usage_session"
-TIMEOUT="$usage_timeout"
-MODEL="$usage_model"
-MESSAGE="$usage_message"
+HEADLESS="${usage_headless:-false}"
+SESSION="${usage_session:-}"
+TIMEOUT="${usage_timeout:-}"
+MODEL="${usage_model:-}"
+MESSAGE="${usage_message:-}"
 
 # shellcheck source=../../../lib/agent-env.sh
 source "$MISE_CONFIG_ROOT/lib/agent-env.sh"
 
 # Derive agent name from environment (set by `shimmer as`)
-if [ -z "$GIT_AUTHOR_NAME" ]; then
+if [ -z "${GIT_AUTHOR_NAME:-}" ]; then
   echo "No agent identity detected. Run: eval \$(shimmer as <agent>)" >&2
   exit 1
 fi
@@ -47,7 +47,11 @@ if [[ "$MODEL" != */* ]]; then
   exit 1
 fi
 
-CWD="${SHIMMER_CALLER_PWD:-${CALLER_PWD:-.}}"
+LAUNCH_DIR="${SHIMMER_CALLER_PWD:-.}"
+if ! CWD=$(shimmer_require_agent_home_path "$LAUNCH_DIR" "launch directory"); then
+  exit 1
+fi
+
 if [ "$HEADLESS" = "true" ]; then
   SESSION_NAME="${GIT_AUTHOR_NAME}-headless-$(date +%s)"
 else
@@ -63,9 +67,20 @@ if ! command -v sessions &>/dev/null; then
   exit 1
 fi
 
-# Create a tracked session (or resume an existing one).
+# Create a tracked session or verify that a resumed session already belongs to
+# the authenticated home. This check happens before wake can record or launch.
 if [ -n "$SESSION" ]; then
-  SESSION_ID="$SESSION"
+  if ! SESSION_ID=$(sessions meta "$SESSION" --field .id); then
+    echo "Error: could not resolve session: $SESSION" >&2
+    exit 1
+  fi
+  if ! SESSION_CWD=$(sessions meta "$SESSION_ID" --field .cwd); then
+    echo "Error: could not resolve working directory for session: $SESSION_ID" >&2
+    exit 1
+  fi
+  if ! shimmer_require_agent_home_path "$SESSION_CWD" "session working directory" >/dev/null; then
+    exit 1
+  fi
 else
   NEW_ARGS=("$SESSION_NAME" --cwd "$CWD" --meta "agent.name=$GIT_AUTHOR_NAME")
   SESSION_ID=$(sessions new "${NEW_ARGS[@]}")
@@ -73,7 +88,7 @@ fi
 
 # Keep foreground interactive wakes attached to the caller's TTY. Headless
 # wakes also remain foreground so the command blocks until the agent exits.
-WAKE_ARGS=("$SESSION_ID")
+WAKE_ARGS=("$SESSION_ID" --project-trust approve)
 if [ "$HEADLESS" = "true" ]; then
   WAKE_ARGS+=(--headless --message "$MESSAGE" --model "$MODEL")
   [ -n "$TIMEOUT" ] && WAKE_ARGS+=(--meta "timeout=$TIMEOUT")

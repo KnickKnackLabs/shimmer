@@ -162,6 +162,28 @@ setup() {
   [[ "$output" == *"No agent identity"* ]]
 }
 
+@test "headless: fails without authenticated AGENT_HOME" {
+  setup_agent
+  unset AGENT_HOME
+  mock_shimmer
+
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"AGENT_HOME is not set"* ]]
+}
+
+@test "headless: requires AGENT_HOME to identify its Git root" {
+  setup_agent
+  mkdir -p "$TEST_AGENT_HOME/nested"
+  export AGENT_HOME="$TEST_AGENT_HOME/nested"
+  export SHIMMER_CALLER_PWD="$AGENT_HOME"
+  mock_shimmer
+
+  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"AGENT_HOME must identify the agent home repository root"* ]]
+}
+
 @test "headless: does not require legacy identity env" {
   setup_agent
   mock_sessions_binary
@@ -169,7 +191,7 @@ setup() {
 
   run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
   [ "$status" -eq 0 ]
-  grep -q "^wake mock-session-id-001 --headless --message do something --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
+  grep -q "^wake mock-session-id-001 --project-trust approve --headless --message do something --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
 # --- Headless mode ---
@@ -216,8 +238,10 @@ setup() {
 @test "headless: checks sessions availability after runtime PATH cleanup" {
   setup_agent
   local home="$BATS_TEST_TMPDIR/path-boundary-home"
+  local agent_home="$BATS_TEST_TMPDIR/path-boundary-agent-home"
   local direct_sessions="$home/.local/share/mise/installs/shiv-sessions/0.4.1/bin"
-  mkdir -p "$direct_sessions"
+  mkdir -p "$direct_sessions" "$agent_home"
+  git -C "$agent_home" init -q -b main
   cat > "$direct_sessions/sessions" <<'MOCK'
 #!/usr/bin/env bash
 echo "stale direct sessions should not run" >&2
@@ -229,6 +253,8 @@ MOCK
     HOME="$home" \
     PATH="$direct_sessions:/usr/bin:/bin" \
     MISE_CONFIG_ROOT="$SHIMMER_DIR" \
+    AGENT_HOME="$agent_home" \
+    SHIMMER_CALLER_PWD="$agent_home" \
     GIT_AUTHOR_NAME="test-agent" \
     GIT_AUTHOR_EMAIL="test-agent@ricon.family" \
     usage_headless="true" \
@@ -250,32 +276,31 @@ MOCK
 
   # sessions new was called with agent name in session name
   grep -q "^new test-agent-headless-" "$SESSIONS_LOG"
-  # sessions new includes agent.name metadata
+  # sessions new includes agent.name metadata and the verified home cwd
   grep "^new " "$SESSIONS_LOG" | grep -q "agent.name=test-agent"
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $AGENT_HOME"
   # sessions new does not receive execution-time model selection
   ! grep "^new " "$SESSIONS_LOG" | grep -q -- "--model"
-  # sessions wake was called with the session ID from new and explicit model
-  grep -q "^wake mock-session-id-001 --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
+  # sessions wake receives explicit model selection and one-run project approval
+  grep -q "^wake mock-session-id-001 --project-trust approve --headless --message review the PR --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
 }
 
-@test "headless: uses SHIMMER_CALLER_PWD as session cwd before scrubbing" {
+@test "headless: rejects a launch directory outside authenticated AGENT_HOME" {
   setup_agent
   local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
   mkdir -p "$caller_dir"
-  unset CALLER_PWD
   export SHIMMER_CALLER_PWD="$caller_dir"
   mock_sessions_binary
   mock_shimmer
 
   run shimmer agent --headless --model "openai-codex/gpt-5.5" "review the PR"
-  [ "$status" -eq 0 ]
-
-  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $caller_dir"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"launch directory does not match the authenticated agent home"* ]]
+  [ ! -s "$SESSIONS_LOG" ]
 }
 
-@test "headless: scrubs caller context before invoking sessions" {
+@test "headless: scrubs caller context after verifying the agent home" {
   setup_agent
-  export SHIMMER_CALLER_PWD="/stale/shimmer/caller"
   export OTHER_CALLER_PWD="/stale/other/caller"
   mock_sessions_binary
   mock_shimmer
@@ -341,8 +366,36 @@ MOCK
 
   # sessions new should NOT be called
   ! grep -q "^new " "$SESSIONS_LOG"
-  # sessions wake called with existing session ID
-  grep -q "^wake existing-session-42 --headless --message continue work --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
+  # the handle resolves to one exact session whose cwd is checked before wake
+  grep -q "^meta existing-session-42 --field .id" "$SESSIONS_LOG"
+  grep -q "^meta mock-resolved-session-id --field .cwd" "$SESSIONS_LOG"
+  grep -q "^wake mock-resolved-session-id --project-trust approve --headless --message continue work --model openai-codex/gpt-5.5" "$SESSIONS_LOG"
+}
+
+@test "headless: rejects a resumed session outside authenticated AGENT_HOME" {
+  setup_agent
+  local other_cwd="$BATS_TEST_TMPDIR/other-session-cwd"
+  mkdir -p "$other_cwd"
+  export MOCK_SESSION_CWD="$other_cwd"
+  mock_sessions_binary
+  mock_shimmer
+
+  run shimmer agent --headless --session "existing-session-42" --model "openai-codex/gpt-5.5" "continue work"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"session working directory does not match the authenticated agent home"* ]]
+  ! grep -q "^wake " "$SESSIONS_LOG"
+}
+
+@test "headless: fails closed when resumed session metadata is unavailable" {
+  setup_agent
+  export MOCK_SESSION_META_FAIL="true"
+  mock_sessions_binary
+  mock_shimmer
+
+  run shimmer agent --headless --session "existing-session-42" --model "openai-codex/gpt-5.5" "continue work"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"could not resolve session: existing-session-42"* ]]
+  ! grep -q "^wake " "$SESSIONS_LOG"
 }
 
 @test "headless: forwards model only to sessions wake" {
@@ -400,13 +453,16 @@ MOCK
 
   grep -q "^new test-agent-interactive-" "$SESSIONS_LOG"
   grep "^new " "$SESSIONS_LOG" | grep -q "agent.name=test-agent"
-  grep -q "^wake mock-session-id-001 --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $AGENT_HOME"
+  grep -q "^wake mock-session-id-001 --project-trust approve --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
 }
 
 @test "interactive: fails clearly when sessions is unavailable after runtime PATH cleanup" {
   local home="$BATS_TEST_TMPDIR/path-boundary-home"
+  local agent_home="$BATS_TEST_TMPDIR/path-boundary-agent-home"
   local direct_sessions="$home/.local/share/mise/installs/shiv-sessions/0.4.1/bin"
-  mkdir -p "$direct_sessions"
+  mkdir -p "$direct_sessions" "$agent_home"
+  git -C "$agent_home" init -q -b main
   cat > "$direct_sessions/sessions" <<'MOCK'
 #!/usr/bin/env bash
 echo "stale direct sessions should not run" >&2
@@ -418,6 +474,8 @@ MOCK
     HOME="$home" \
     PATH="$direct_sessions:/usr/bin:/bin" \
     MISE_CONFIG_ROOT="$SHIMMER_DIR" \
+    AGENT_HOME="$agent_home" \
+    SHIMMER_CALLER_PWD="$agent_home" \
     GIT_AUTHOR_NAME="test-agent" \
     GIT_AUTHOR_EMAIL="test-agent@ricon.family" \
     usage_headless="false" \
@@ -440,23 +498,22 @@ MOCK
   run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  grep -q "^wake mock-session-id-001 --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
+  grep -q "^wake mock-session-id-001 --project-trust approve --model openai-codex/gpt-5.5$" "$SESSIONS_LOG"
   ! grep -q "stale parent message" "$SESSIONS_LOG"
 }
 
-@test "interactive: uses SHIMMER_CALLER_PWD as session cwd before scrubbing" {
+@test "interactive: accepts a launch symlink that resolves to AGENT_HOME" {
   setup_agent
-  local caller_dir="$BATS_TEST_TMPDIR/shimmer-caller"
-  mkdir -p "$caller_dir"
-  unset CALLER_PWD
-  export SHIMMER_CALLER_PWD="$caller_dir"
+  local caller_link="$BATS_TEST_TMPDIR/shimmer-caller-link"
+  ln -s "$AGENT_HOME" "$caller_link"
+  export SHIMMER_CALLER_PWD="$caller_link"
   mock_sessions_binary
   mock_shimmer
 
   run shimmer agent --model "openai-codex/gpt-5.5"
   [ "$status" -eq 0 ]
 
-  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $caller_dir"
+  grep "^new " "$SESSIONS_LOG" | grep -q -- "--cwd $AGENT_HOME"
 }
 
 @test "interactive: preserves identity while scrubbing caller and mise task context" {
@@ -492,7 +549,9 @@ MOCK
   [ "$status" -eq 0 ]
 
   ! grep -q "^new " "$SESSIONS_LOG"
-  grep -q "^wake existing-session-42 --model openai-codex/gpt-5.5 --message continue work$" "$SESSIONS_LOG"
+  grep -q "^meta existing-session-42 --field .id" "$SESSIONS_LOG"
+  grep -q "^meta mock-resolved-session-id --field .cwd" "$SESSIONS_LOG"
+  grep -q "^wake mock-resolved-session-id --project-trust approve --model openai-codex/gpt-5.5 --message continue work$" "$SESSIONS_LOG"
 }
 
 @test "agent:dispatch requires model" {

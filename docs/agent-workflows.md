@@ -146,7 +146,7 @@ The cache is saved before email, GPG, B2, Pi-auth, or agent-home preparation. Do
 
 A fold-style agent host typically uses `ci:env` to set up GPG and email, clone the agent home repo, prepare that home with `agent:prepare`, and restore pi auth. Its `agent` task then runs the prepared agent. A simpler agent host may do less.
 
-Headless execution still requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. When the repo-owned `agent` task invokes `shimmer agent --headless`, shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the `sessions` v0.4 contract.
+Headless execution still requires an explicit provider-qualified model. For Hugging Face routed models, use the `huggingface/...` prefix (for example `huggingface/moonshotai/Kimi-K2.6:novita`) so pi selects the Hugging Face provider and reads `HF_TOKEN`, even if other provider secrets are also present. When the repo-owned `agent` task invokes `shimmer agent --headless`, it must do so from the prepared `AGENT_HOME`. Shimmer canonicalizes that path, verifies it is the selected home Git root, and rejects resumed sessions whose stored working directory differs. Only after those checks does it pass Sessions `--project-trust approve`, allowing the home-owned Pi declaration for that one run. Shimmer creates a tracked session with `sessions new` and passes the model only to `sessions wake`, matching the Sessions v0.4.13 contract.
 
 ### Repo-owned `ci:env` and `agent` contracts
 

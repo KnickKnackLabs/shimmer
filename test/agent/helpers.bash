@@ -11,9 +11,16 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)/helpers.bash"
 # Usage: setup_agent [name]
 setup_agent() {
   local name="${1:-test-agent}"
+  TEST_AGENT_HOME="$BATS_TEST_TMPDIR/${name}-home"
+  mkdir -p "$TEST_AGENT_HOME"
+  TEST_AGENT_HOME=$(cd "$TEST_AGENT_HOME" && pwd -P)
+  git -C "$TEST_AGENT_HOME" init -q -b main
+
+  export TEST_AGENT_HOME
+  export AGENT_HOME="$TEST_AGENT_HOME"
   export GIT_AUTHOR_NAME="$name"
   export GIT_AUTHOR_EMAIL="${name}@ricon.family"
-  export SHIMMER_CALLER_PWD="$BATS_TEST_TMPDIR"
+  export SHIMMER_CALLER_PWD="$TEST_AGENT_HOME"
 }
 
 # Create a mock `sessions` binary on PATH.
@@ -25,6 +32,8 @@ mock_sessions_binary() {
   SESSIONS_LOG="$BATS_TEST_TMPDIR/sessions-log-$$"
   SESSIONS_ENV_LOG="$BATS_TEST_TMPDIR/sessions-env-log-$$"
   export SESSIONS_LOG SESSIONS_ENV_LOG
+  export MOCK_SESSION_ID="${MOCK_SESSION_ID:-mock-resolved-session-id}"
+  export MOCK_SESSION_CWD="${MOCK_SESSION_CWD:-${AGENT_HOME:-}}"
 
   cat > "$MOCK_BIN/sessions" <<'MOCK'
 #!/usr/bin/env bash
@@ -45,6 +54,17 @@ echo "$@" >> "$SESSIONS_LOG"
 } >> "${SESSIONS_ENV_LOG:-$SESSIONS_LOG.env}"
 case "$1" in
   new) echo "mock-session-id-001" ;;
+  meta)
+    if [ "${MOCK_SESSION_META_FAIL:-false}" = "true" ]; then
+      echo "mock sessions: metadata unavailable" >&2
+      exit 1
+    fi
+    case "${4:-}" in
+      .id) printf '%s\n' "$MOCK_SESSION_ID" ;;
+      .cwd) printf '%s\n' "$MOCK_SESSION_CWD" ;;
+      *) echo "mock sessions: unsupported meta field ${4:-}" >&2; exit 1 ;;
+    esac
+    ;;
   wake) ;;
   *) echo "mock sessions: unknown command $1" >&2; exit 1 ;;
 esac

@@ -10,6 +10,7 @@ setup() {
 @test "agent env: preserves selected-agent auth while scrubbing task-scoped env" {
   export GIT_AUTHOR_NAME="c0da"
   export GIT_AUTHOR_EMAIL="c0da@ricon.family"
+  export AGENT_HOME="/tmp/c0da/home"
   export GH_TOKEN="ghp_identity_token"
   export CALLER_PWD="/stale/caller"
   export SHIMMER_CALLER_PWD="/stale/shimmer"
@@ -26,6 +27,7 @@ setup() {
 
   [ "${GIT_AUTHOR_NAME}" = "c0da" ]
   [ "${GIT_AUTHOR_EMAIL}" = "c0da@ricon.family" ]
+  [ "${AGENT_HOME}" = "/tmp/c0da/home" ]
   [ "${GH_TOKEN}" = "ghp_identity_token" ]
   [ -z "${CALLER_PWD-}" ]
   [ -z "${SHIMMER_CALLER_PWD-}" ]
@@ -37,6 +39,32 @@ setup() {
   [ -z "${MISE_TASK_FILE-}" ]
   [ -z "${usage_headless-}" ]
   [ -z "${usage_model-}" ]
+}
+
+@test "agent env: accepts paths resolving to authenticated home Git root" {
+  export AGENT_HOME="$BATS_TEST_TMPDIR/agent-home"
+  local home_link="$BATS_TEST_TMPDIR/agent-home-link"
+  mkdir -p "$AGENT_HOME"
+  AGENT_HOME=$(cd "$AGENT_HOME" && pwd -P)
+  git -C "$AGENT_HOME" init -q -b main
+  ln -s "$AGENT_HOME" "$home_link"
+
+  run shimmer_require_agent_home_path "$home_link" "launch directory"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$AGENT_HOME" ]
+}
+
+@test "agent env: rejects a path outside authenticated home" {
+  export AGENT_HOME="$BATS_TEST_TMPDIR/agent-home"
+  local other="$BATS_TEST_TMPDIR/other"
+  mkdir -p "$AGENT_HOME" "$other"
+  git -C "$AGENT_HOME" init -q -b main
+
+  run shimmer_require_agent_home_path "$other" "launch directory"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"launch directory does not match the authenticated agent home"* ]]
 }
 
 @test "agent env: removes direct mise install dirs at runtime boundary" {
