@@ -77,7 +77,13 @@ Each terminal session needs the agent's identity configured:
 
 ```bash
 eval "$(mise run as <agent>)"
+cd "$AGENT_HOME"
 ```
+
+`shimmer agent` must be launched from this exact home Git root. It verifies
+that the physical launch directory and `AGENT_HOME` agree before asking
+Sessions for one-run project trust. Existing sessions are accepted only when
+their stored working directory resolves to the same home.
 
 This sets:
 - `GH_TOKEN` - GitHub personal access token

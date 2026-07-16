@@ -215,7 +215,8 @@ const localIdentityFlow = [
   "eval \"$(shimmer as quick)\"",
   "shimmer whoami",
   "",
-  "# Start an interactive session from the current repo/cwd.",
+  "# Start the agent from its authenticated home.",
+  "cd \"$AGENT_HOME\"",
   "shimmer agent --model openai-codex/gpt-5.5 \"Inspect the failing workflow.\"",
 ].join("\n");
 
@@ -306,9 +307,11 @@ shimmer whoami`}</CodeBlock>
       </Paragraph>
       <CodeBlock lang="bash">{localIdentityFlow}</CodeBlock>
       <Paragraph>
-        {"Interactive and headless wakes require a provider-qualified model. Interactive messages are optional; pass "}
+        {"Interactive and headless wakes require a provider-qualified model and must start from the selected "}
+        <Code>AGENT_HOME</Code>
+        {". Shimmer verifies the physical home Git root before granting one-run project trust. Interactive messages are optional; pass "}
         <Code>--session</Code>
-        {" with a session ID or name to resume an existing conversation."}
+        {" with a session ID or name to resume an existing home-scoped conversation."}
       </Paragraph>
 
       <Heading level={3}>Hosted dispatch</Heading>
@@ -336,7 +339,7 @@ shimmer whoami`}</CodeBlock>
         </TableRow>
         <TableRow>
           <Cell><Code>shimmer agent</Code></Cell>
-          <Cell>{"Creates or resumes interactive and headless sessions, scrubs task-scoped mise/caller environment, and wakes through the sessions-owned Pi runtime."}</Cell>
+          <Cell>{"Verifies the authenticated home boundary, creates or resumes home-scoped sessions, grants one-run project trust, scrubs task-scoped environment, and wakes through the sessions-owned Pi runtime."}</Cell>
         </TableRow>
         <TableRow>
           <Cell><Code>agent:dispatch</Code></Cell>
