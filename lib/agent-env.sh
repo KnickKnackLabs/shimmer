@@ -24,6 +24,61 @@ shimmer_scrub_caller_pwd_env() {
   done < <(compgen -e)
 }
 
+shimmer_canonical_directory() {
+  local path="$1"
+  local label="$2"
+
+  if [ -z "$path" ]; then
+    echo "Error: $label is empty" >&2
+    return 1
+  fi
+  if [ ! -d "$path" ]; then
+    echo "Error: $label is not a directory: $path" >&2
+    return 1
+  fi
+
+  (cd "$path" && pwd -P)
+}
+
+# Resolve AGENT_HOME as the selected identity's repository root, then require
+# another path to identify that same physical directory. Callers use this
+# before approving project-scoped executable resources for an agent runtime.
+shimmer_require_agent_home_path() {
+  local path="$1"
+  local label="$2"
+  local agent_home candidate repo_root
+
+  if [ -z "${AGENT_HOME:-}" ]; then
+    echo "Error: AGENT_HOME is not set. Run: eval \$(shimmer as <agent>)" >&2
+    return 1
+  fi
+
+  agent_home=$(shimmer_canonical_directory "$AGENT_HOME" "AGENT_HOME") || return 1
+  candidate=$(shimmer_canonical_directory "$path" "$label") || return 1
+
+  if ! repo_root=$(git -C "$agent_home" rev-parse --show-toplevel 2>/dev/null); then
+    echo "Error: AGENT_HOME is not a Git worktree: $agent_home" >&2
+    return 1
+  fi
+  repo_root=$(shimmer_canonical_directory "$repo_root" "AGENT_HOME Git root") || return 1
+
+  if [ "$repo_root" != "$agent_home" ]; then
+    echo "Error: AGENT_HOME must identify the agent home repository root" >&2
+    echo "  AGENT_HOME: $agent_home" >&2
+    echo "  Git root:   $repo_root" >&2
+    return 1
+  fi
+
+  if [ "$candidate" != "$agent_home" ]; then
+    echo "Error: $label does not match the authenticated agent home" >&2
+    echo "  $label: $candidate" >&2
+    echo "  agent home: $agent_home" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$agent_home"
+}
+
 shimmer_scrub_mise_task_env() {
   local name
   while IFS= read -r name; do
