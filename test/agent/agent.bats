@@ -19,18 +19,23 @@ setup() {
   run_timeout=$(yq -r '.jobs.run.env.RUN_TIMEOUT // ""' "$template")
   checkout_uses=$(yq -r '.jobs.run.steps[] | select(.name == "Checkout workflow repo") | .uses // ""' "$template")
   checkout_index=$(yq -r '.jobs.run.steps | to_entries[] | select(.value.name == "Checkout workflow repo") | .key' "$template")
+  epoch_index=$(yq -r '.jobs.run.steps | to_entries[] | select(.value.name == "Resolve mise cache epoch") | .key' "$template")
   mise_index=$(yq -r '.jobs.run.steps | to_entries[] | select(.value.name == "Set up mise") | .key' "$template")
   secrets_index=$(yq -r '.jobs.run.steps | to_entries[] | select(.value.name == "Setup secrets for env provider") | .key' "$template")
   mise_install=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.install' "$template")
   mise_cache=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.cache' "$template")
   mise_cache_key=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.cache_key // ""' "$template")
   mise_data_dir=$(yq -r '.jobs.run.env.MISE_DATA_DIR // ""' "$template")
-  uv_python_dir=$(yq -r '.jobs.run.env.UV_PYTHON_INSTALL_DIR // ""' "$template")
-  uv_managed_python=$(yq -r '.jobs.run.env.UV_MANAGED_PYTHON // ""' "$template")
-  mise_jobs=$(yq -r '.jobs.run.env.MISE_JOBS // ""' "$template")
+  job_uv_python_dir=$(yq -r '.jobs.run.env.UV_PYTHON_INSTALL_DIR // ""' "$template")
+  job_uv_managed_python=$(yq -r '.jobs.run.env.UV_MANAGED_PYTHON // ""' "$template")
+  job_mise_jobs=$(yq -r '.jobs.run.env.MISE_JOBS // ""' "$template")
+  setup_uv_python_dir=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .env.UV_PYTHON_INSTALL_DIR // ""' "$template")
+  setup_uv_managed_python=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .env.UV_MANAGED_PYTHON // ""' "$template")
+  setup_mise_jobs=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .env.MISE_JOBS // ""' "$template")
   env_run=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .run // ""' "$template")
   agent_run=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .run // ""' "$template")
   env_pi_auth=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .env.PI_AUTH_JSON // ""' "$template")
+  env_mise_jobs=$(yq -r '.jobs.run.steps[] | select(.name == "Prepare repo CI environment") | .env.MISE_JOBS // ""' "$template")
   agent_hf_token=$(yq -r '.jobs.run.steps[] | select(.name == "Run agent") | .env.HF_TOKEN // ""' "$template")
 
   [ "$agent" = '${{ inputs.agent }}' ]
@@ -41,14 +46,19 @@ setup() {
   [ "$run_timeout" = "900" ]
   [ "$mise_install" = "true" ]
   [ "$mise_cache" = "true" ]
-  [ "$mise_cache_key" = 'agent-mise-v1-{{platform}}-{{file_hash}}' ]
+  [ "$mise_cache_key" = 'agent-mise-v2-${{ steps.mise-cache-epoch.outputs.value }}-{{platform}}-{{file_hash}}' ]
   [ "$checkout_uses" = "actions/checkout@v6" ]
-  [ "$checkout_index" -lt "$mise_index" ]
+  [ "$checkout_index" -lt "$epoch_index" ]
+  [ "$epoch_index" -lt "$mise_index" ]
   [ "$mise_index" -lt "$secrets_index" ]
   [ "$mise_data_dir" = "/home/runner/.local/share/mise" ]
-  [ "$uv_python_dir" = "/home/runner/.local/share/mise/uv-python" ]
-  [ "$uv_managed_python" = "1" ]
-  [ "$mise_jobs" = "1" ]
+  [ -z "$job_uv_python_dir" ]
+  [ -z "$job_uv_managed_python" ]
+  [ -z "$job_mise_jobs" ]
+  [ "$setup_uv_python_dir" = "/home/runner/.local/share/mise/uv-python" ]
+  [ "$setup_uv_managed_python" = "1" ]
+  [ "$setup_mise_jobs" = "1" ]
+  [ "$env_mise_jobs" = "1" ]
   ! echo "$env_run" | grep -qF 'mise trust'
   ! echo "$env_run" | grep -qF 'mise install'
   [ "$env_run" = "mise run ci:env" ]
@@ -66,21 +76,26 @@ setup() {
   grep -qF 'du -sh "$AGENT_HOME"' "$template"
 }
 
-@test "workflow: mise cache keeps current-version resolution separate from the tool key" {
+@test "workflow: mise cache keeps current-version resolution and daily freshness separate from the tool key" {
   template="$SHIMMER_DIR/.github/templates/agent-run.yml"
 
+  epoch_step=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise cache epoch") | .run // ""' "$template")
+  epoch_id=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise cache epoch") | .id // ""' "$template")
   resolve_step=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise version") | .run // ""' "$template")
   resolve_id=$(yq -r '.jobs.run.steps[] | select(.name == "Resolve mise version") | .id // ""' "$template")
   mise_version=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.version // ""' "$template")
   mise_cache_key=$(yq -r '.jobs.run.steps[] | select(.name == "Set up mise") | .with.cache_key // ""' "$template")
 
+  [ "$epoch_id" = "mise-cache-epoch" ]
+  echo "$epoch_step" | grep -qF 'date -u +%Y-%m-%d'
+  echo "$epoch_step" | grep -qF 'GITHUB_OUTPUT'
   [ "$resolve_id" = "mise-version" ]
   echo "$resolve_step" | grep -qF 'curl -fsSL --connect-timeout 10 --max-time 60 --retry 3 --retry-delay 2 --retry-all-errors https://mise.jdx.dev/VERSION'
   echo "$resolve_step" | grep -qF 'version=${version%$'"'"'\r'"'"'}'
   echo "$resolve_step" | grep -qF 'Unexpected mise version'
   echo "$resolve_step" | grep -qF 'GITHUB_OUTPUT'
   [ "$mise_version" = '${{ steps.mise-version.outputs.version }}' ]
-  [ "$mise_cache_key" = 'agent-mise-v1-{{platform}}-{{file_hash}}' ]
+  [ "$mise_cache_key" = 'agent-mise-v2-${{ steps.mise-cache-epoch.outputs.value }}-{{platform}}-{{file_hash}}' ]
   [[ "$mise_cache_key" != *'{{version}}'* ]]
 }
 
