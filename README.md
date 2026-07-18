@@ -11,8 +11,8 @@ Identity, dispatch, generated CI, and session plumbing for agent homes.
 <p dir="rtl"><em>إلى ريموند — العمل شرف</em></p>
 
 ![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
-[![tests: 187](https://img.shields.io/badge/tests-187-brightgreen?style=flat)](test/)
-![lints: 9](https://img.shields.io/badge/lints-9-blue?style=flat)
+[![tests: 201](https://img.shields.io/badge/tests-201-brightgreen?style=flat)](test/)
+![lints: 8](https://img.shields.io/badge/lints-8-blue?style=flat)
 ![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
 [![sessions: 659](https://img.shields.io/badge/sessions-659-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
 [![tips: 657](https://img.shields.io/badge/tips-657-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
@@ -167,7 +167,7 @@ readme build --check
 git diff --check
 ```
 
-This README is generated from `README.tsx` with [KnickKnackLabs/readme](https://github.com/KnickKnackLabs/readme). The repository currently asks codebase `0.3` to run **9** convention lints.
+This README is generated from `README.tsx` with [KnickKnackLabs/readme](https://github.com/KnickKnackLabs/readme). The repository currently asks codebase `0.3` to run **8** convention lints.
 
 ---
 

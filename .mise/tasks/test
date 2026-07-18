@@ -1,38 +1,19 @@
 #!/usr/bin/env bash
-#MISE description="Run BATS test suite"
+#MISE description="Run the BATS test suite"
 #MISE dir="{{config_root}}"
-#USAGE arg "[args]" var=#true default="" help="Test suites, files, or bats flags"
-#USAGE example "mise run test" header="Run all tests"
+#USAGE arg "[args]" default="" var=#true help="Test suites, files, or bats arguments"
+#USAGE example "mise run test" header="Run all tests in parallel across files"
 #USAGE example "mise run test gpg" header="Run a specific suite directory"
-#USAGE example "mise run test test/gpg/gpg.bats" header="Run a specific file"
+#USAGE example "mise run test test/gpg/gpg.bats" header="Run a specific test file"
 #USAGE example "mise run test gpg --filter strip_wrapping" header="Filter within a suite"
+#USAGE example "mise run test --jobs 1" header="Run serially for debugging"
 set -euo pipefail
 
-TEST_DIR="$MISE_CONFIG_ROOT/test"
-
-args=()
+arguments=()
 if [ -n "${usage_args:-}" ]; then
-  while IFS= read -r arg; do
-    [ -n "$arg" ] || continue
-    args+=("$arg")
-  done < <(printf '%s' "${usage_args}" | xargs printf '%s\n')
+  while IFS= read -r argument; do
+    [ -z "$argument" ] || arguments+=("$argument")
+  done < <(printf '%s' "$usage_args" | xargs printf '%s\n')
 fi
 
-resolved=()
-has_target=false
-
-for arg in ${args[@]+"${args[@]}"}; do
-  if [[ "$arg" != -* && "$arg" != *.bats && -d "$TEST_DIR/$arg" ]]; then
-    resolved+=("$TEST_DIR/$arg")
-    has_target=true
-  else
-    [[ "$arg" == *.bats || -d "$arg" ]] && has_target=true
-    resolved+=("$arg")
-  fi
-done
-
-if ! $has_target; then
-  resolved+=("--recursive" "$TEST_DIR/")
-fi
-
-exec bats --print-output-on-failure "${resolved[@]}"
+exec "$MISE_CONFIG_ROOT/libexec/test" ${arguments[@]+"${arguments[@]}"}
