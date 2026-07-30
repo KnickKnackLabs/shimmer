@@ -11,7 +11,7 @@ Identity, dispatch, generated CI, and session plumbing for agent homes.
 <p dir="rtl"><em>إلى ريموند — العمل شرف</em></p>
 
 ![tasks: 86](https://img.shields.io/badge/tasks-86-4EAA25?style=flat&logo=gnubash&logoColor=white)
-[![tests: 201](https://img.shields.io/badge/tests-201-brightgreen?style=flat)](test/)
+[![tests: 203](https://img.shields.io/badge/tests-203-brightgreen?style=flat)](test/)
 ![lints: 8](https://img.shields.io/badge/lints-8-blue?style=flat)
 ![workflow templates: 3](https://img.shields.io/badge/workflow%20templates-3-8b5cf6?style=flat)
 [![sessions: 659](https://img.shields.io/badge/sessions-659-64748b?style=flat)](https://github.com/KnickKnackLabs/shimmer/issues/794)
@@ -73,7 +73,7 @@ shimmer whoami
 Use `shimmer as` when a local shell needs the same identity and signing posture as a hosted agent run.
 
 ```bash
-# Become Quick for local work; exports git identity, token, home path, and signing key config.
+# Become Quick for local work; exports git identity, token, home paths, and signing config.
 eval "$(shimmer as quick)"
 shimmer whoami
 
@@ -81,6 +81,8 @@ shimmer whoami
 cd "$AGENT_HOME"
 shimmer agent --model openai-codex/gpt-5.5 "Inspect the failing workflow."
 ```
+
+`shimmer as` also clears inherited mail selectors and binds `EMAILS_CONFIG` to the authenticated home's expected `.emails/himalaya.toml` path. It selects that path without invoking email tooling or inspecting mailbox configuration, so a missing local config fails closed instead of falling through to another persona.
 
 Interactive and headless wakes require a provider-qualified model and must start from the selected `AGENT_HOME`. Shimmer verifies the physical home Git root before granting one-run project trust. Interactive messages are optional; pass `--session` with a session ID or name to resume an existing home-scoped conversation.
 
@@ -114,7 +116,7 @@ git diff -- .github/workflows/
 
 | Surface              | Contract                                                                                                                                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shimmer as <agent>` | Exports local identity, token, home path, B2 settings, and command-scope git signing config.                                                                                                      |
+| `shimmer as <agent>` | Exports local identity, token, home and email-config paths, B2 settings, and command-scope git signing config.                                                                                    |
 | `shimmer agent`      | Verifies the authenticated home boundary, creates or resumes home-scoped sessions, grants one-run project trust, scrubs task-scoped environment, and wakes through the sessions-owned Pi runtime. |
 | `agent:dispatch`     | Finds the right home repo, validates provider-qualified models, preserves file-backed messages, and returns the workflow run id.                                                                  |
 | `workflows:generate` | Turns agent rosters and workflows.yaml manifests into reusable runner workflows, per-agent entrypoints, schedules, and mention wakes.                                                             |

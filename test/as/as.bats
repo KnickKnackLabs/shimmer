@@ -56,6 +56,22 @@ teardown() {
   echo "$output" | grep -q "$(basename "$TEST_HOME")"
 }
 
+@test "as: binds email to the authenticated home and clears competing selectors" {
+  setup_test_home "alice"
+  mock_secrets_binary
+  mock_shimmer
+
+  export EMAILS_CONFIG="/stale/other-agent.toml"
+  export HIMALAYA_CONFIG="/stale/global.toml"
+
+  eval "$(shimmer as alice 2>/dev/null)"
+
+  local authenticated_home
+  authenticated_home=$(git -C "$TEST_HOME" rev-parse --show-toplevel)
+  [ "$EMAILS_CONFIG" = "$authenticated_home/.emails/himalaya.toml" ]
+  [ -z "${HIMALAYA_CONFIG:-}" ]
+}
+
 @test "as: does not export prompt text" {
   setup_test_home "alice"
   mock_secrets_binary
@@ -321,6 +337,27 @@ SCRIPT
 
   # B2_BUCKET should be cleared since alice has no bucket configured
   [ -z "${B2_BUCKET:-}" ]
+}
+
+@test "as: switching agents replaces the email selector with each private home" {
+  setup_test_home "alice" "bob"
+  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
+  mock_shimmer
+
+  local caller="$BATS_TEST_TMPDIR/plain-repo"
+  mkdir -p "$caller"
+  git -C "$caller" init -q -b main
+  export SHIMMER_CALLER_PWD="$caller"
+  export EMAILS_CONFIG="/stale/parent.toml"
+  export HIMALAYA_CONFIG="/stale/other-agent.toml"
+
+  eval "$(shimmer as alice 2>/dev/null)"
+  [ "$EMAILS_CONFIG" = "$TEST_AGENTS_ROOT/alice/home/.emails/himalaya.toml" ]
+  [ -z "${HIMALAYA_CONFIG:-}" ]
+
+  eval "$(shimmer as bob 2>/dev/null)"
+  [ "$EMAILS_CONFIG" = "$TEST_AGENTS_ROOT/bob/home/.emails/himalaya.toml" ]
+  [ -z "${HIMALAYA_CONFIG:-}" ]
 }
 
 @test "as: unquoted eval works in bash" {

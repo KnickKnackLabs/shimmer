@@ -211,7 +211,7 @@ const spine = [
 ].join("\n");
 
 const localIdentityFlow = [
-  "# Become Quick for local work; exports git identity, token, home path, and signing key config.",
+  "# Become Quick for local work; exports git identity, token, home paths, and signing config.",
   "eval \"$(shimmer as quick)\"",
   "shimmer whoami",
   "",
@@ -307,6 +307,14 @@ shimmer whoami`}</CodeBlock>
       </Paragraph>
       <CodeBlock lang="bash">{localIdentityFlow}</CodeBlock>
       <Paragraph>
+        <Code>shimmer as</Code>
+        {" also clears inherited mail selectors and binds "}
+        <Code>EMAILS_CONFIG</Code>
+        {" to the authenticated home's expected "}
+        <Code>.emails/himalaya.toml</Code>
+        {" path. It selects that path without invoking email tooling or inspecting mailbox configuration, so a missing local config fails closed instead of falling through to another persona."}
+      </Paragraph>
+      <Paragraph>
         {"Interactive and headless wakes require a provider-qualified model and must start from the selected "}
         <Code>AGENT_HOME</Code>
         {". Shimmer verifies the physical home Git root before granting one-run project trust. Interactive messages are optional; pass "}
@@ -335,7 +343,7 @@ shimmer whoami`}</CodeBlock>
         </TableHead>
         <TableRow>
           <Cell><Code>shimmer as &lt;agent&gt;</Code></Cell>
-          <Cell>{"Exports local identity, token, home path, B2 settings, and command-scope git signing config."}</Cell>
+          <Cell>{"Exports local identity, token, home and email-config paths, B2 settings, and command-scope git signing config."}</Cell>
         </TableRow>
         <TableRow>
           <Cell><Code>shimmer agent</Code></Cell>
