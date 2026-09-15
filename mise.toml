@@ -24,7 +24,7 @@ gum = "0.17.0"                            # Terminal UI components (tables, spin
 "shiv:emails" = "0.3"
 "shiv:sessions" = "0.5"                   # Structural multi-session wait and Pi runtime required by agent task
 "shiv:blobs" = "0.1"                      # Blob storage for CI session backup
-"shiv:threads" = "0.2"                    # HUMAN.md thread management
+"shiv:threads" = "0.3"                    # HUMAN.md thread management
 "shiv:readme" = "0.3"                     # README.tsx -> README.md generation
 
 [_.codebase]
