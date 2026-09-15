@@ -5,8 +5,11 @@ This guide covers setting up an agent identity for local development work.
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev/) installed
-- [1Password CLI](https://developer.1password.com/docs/cli/) installed and signed in (`op signin`)
-- Agent credentials stored in 1Password (done during agent provisioning)
+- Agent credentials already provisioned in the selected Secrets backend (`env`, `keychain`, `1password`, or `sops`)
+- For 1Password, its CLI must be installed and signed in; for SOPS, configure the encrypted vault and age key through Secrets 0.3 or newer
+
+Identity activation reads the selected backend. It does not provision credentials,
+set up a mailbox, or fall back from SOPS to another provider.
 
 ## One-Time Setup
 
@@ -135,6 +138,15 @@ mise run gpg:setup <agent>
 ```
 
 ### Wrong signing key used
+
+`shimmer as` first checks the selected agent's private home `.git/config`, then
+its workspace `.gitconfig` under `SHIMMER_AGENTS_ROOT` (default `~/agents`).
+On a dedicated OS account, it can instead use global Git configuration when
+`id -un`, the configured `user.name`, and `user.email` all identify the selected
+agent. This fallback reads only the global scope, without includes or inherited
+command-scope overrides. It does not borrow the operator's signer when switching
+agents on a shared OS account. If no agent-owned key is found, signing is disabled
+explicitly rather than retaining an earlier persona's key.
 
 `eval "$(shimmer as <agent>)"` appends transient Git config overrides for the active agent's `user.name`, `user.email`, `user.signingkey`, `commit.gpgsign`, and `tag.gpgsign`. Verify the active shell first:
 

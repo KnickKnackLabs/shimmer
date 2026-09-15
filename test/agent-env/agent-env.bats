@@ -69,6 +69,7 @@ setup() {
 
 @test "agent env: removes direct mise install dirs at runtime boundary" {
   export HOME="$BATS_TEST_TMPDIR/home"
+  export MISE_DATA_DIR="$HOME/.local/share/mise"
   local data_dir="$HOME/.local/share/mise"
   local installs="$data_dir/installs"
   local old_sessions="$installs/shiv-sessions/0.4.1/bin"
@@ -93,6 +94,7 @@ setup() {
 
 @test "agent env: removes single stale mise install dir without requiring duplicate" {
   export HOME="$BATS_TEST_TMPDIR/home"
+  export MISE_DATA_DIR="$HOME/.local/share/mise"
   local installs="$HOME/.local/share/mise/installs"
   local stale_sessions="$installs/shiv-sessions/0.4.1/bin"
 
@@ -108,6 +110,7 @@ setup() {
 
 @test "agent env: preserves non-mise path order and does not duplicate stable entries" {
   export HOME="$BATS_TEST_TMPDIR/home"
+  export MISE_DATA_DIR="$HOME/.local/share/mise"
   local data_dir="$HOME/.local/share/mise"
   local shims="$data_dir/shims"
   local local_bin="$HOME/.local/bin"

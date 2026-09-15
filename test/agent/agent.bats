@@ -330,7 +330,7 @@ MOCK
 
 @test "headless: removes mise task env and direct install PATH before invoking sessions" {
   setup_agent
-  local installs="$HOME/.local/share/mise/installs"
+  local installs="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/installs"
   local stale_sessions="$installs/shiv-sessions/0.4.1/bin"
   local current_sessions="$installs/shiv-sessions/0.4.4/bin"
   export PATH="$stale_sessions:/before:$current_sessions:$PATH"

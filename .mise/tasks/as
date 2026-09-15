@@ -116,7 +116,16 @@ resolve_signing_key() {
     git config --file "$agent_gitconfig" --get user.signingkey 2>/dev/null && return 0
   fi
 
-  return 1
+  # A dedicated OS user may keep its own signer in global Git config instead
+  # of a shared agents-root layout. Never use this fallback while switching
+  # personas on an operator's account, or trust command-scope identity exports.
+  [ "$(id -un)" = "$agent" ] || return 1
+  local global_name global_email
+  global_name=$(git config --global --no-includes --get user.name) || return 1
+  global_email=$(git config --global --no-includes --get user.email) || return 1
+  [ "$global_name" = "$agent" ] || return 1
+  [ "$global_email" = "$agent@ricon.family" ] || return 1
+  git config --global --no-includes --get user.signingkey
 }
 
 emit_git_config_entry() {
@@ -153,7 +162,7 @@ emit "unset AGENT_HOME"
 # Fetch GitHub PAT via secrets tool
 PAT=$(secrets get "$AGENT/github-pat") || {
   echo "" >&2
-  echo "Tip: set SECRETS_PROVIDER=keychain or SECRETS_PROVIDER=1password" >&2
+  echo "Tip: select your configured backend with SECRETS_PROVIDER (env, keychain, 1password, or sops)" >&2
   exit 1
 }
 
@@ -187,7 +196,7 @@ else
   emit_git_config_entry "user.signingkey" ""
   emit_git_config_entry "commit.gpgsign" "false"
   emit_git_config_entry "tag.gpgsign" "false"
-  echo "# Warning: no signing key found for $AGENT under $AGENTS_ROOT/$AGENT; Git signing disabled to avoid stale signing key overrides" >&2
+  echo "# Warning: no signing key found for $AGENT in agent-owned configuration; Git signing disabled to avoid stale signing key overrides" >&2
 fi
 emit "export GIT_CONFIG_COUNT=$(shell_quote "$NEXT_GIT_CONFIG_INDEX")"
 
