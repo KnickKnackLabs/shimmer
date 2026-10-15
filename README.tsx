@@ -229,11 +229,12 @@ const spine = [
 ].join("\n");
 
 const localIdentityFlow = [
-  "# Become Quick for local work; exports git identity, token, home paths, and signing config.",
+  "# Load Quick's SOPS persona: Git, optional GitHub, email, and blob credentials.",
   "eval \"$(shimmer as quick)\"",
   "shimmer whoami",
   "",
-  "# Start the agent from its authenticated home.",
+  "# The caller selects the prepared home independently.",
+  "export AGENT_HOME=\"$HOME/desks/quick/home\"",
   "cd \"$AGENT_HOME\"",
   "shimmer agent --model openai-codex/gpt-5.5 \"Inspect the failing workflow.\"",
 ].join("\n");
@@ -326,11 +327,9 @@ shimmer whoami`}</CodeBlock>
       <CodeBlock lang="bash">{localIdentityFlow}</CodeBlock>
       <Paragraph>
         <Code>shimmer as</Code>
-        {" also clears inherited mail selectors and binds "}
-        <Code>EMAILS_CONFIG</Code>
-        {" to the authenticated home's expected "}
-        <Code>.emails/himalaya.toml</Code>
-        {" path. It selects that path without invoking email tooling or inspecting mailbox configuration, so a missing local config fails closed instead of falling through to another persona."}
+        {" validates the complete persona and exact secret signing keys before emitting commands. Switching tracks owned values by hash; conflicting edits require terminal confirmation or an exact state-bound approval digest. Home selection and email configuration remain separate. See the "}
+        <Link href="docs/persona.md">portable persona contract</Link>
+        {" for fields, prerequisites and switching rules."}
       </Paragraph>
       <Paragraph>
         {"Interactive and headless wakes require a provider-qualified model and must start from the selected "}
