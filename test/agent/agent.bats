@@ -238,18 +238,6 @@ setup() {
   [[ "$output" == *"provider-qualified"* ]]
 }
 
-@test "headless: fails when sessions not on PATH" {
-  # Skip if sessions is installed — can't reliably hide it from mise subshell
-  command -v sessions &>/dev/null && skip "sessions is installed"
-
-  setup_agent
-  mock_shimmer
-
-  run shimmer agent --headless --model "openai-codex/gpt-5.5" "do something"
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"sessions not found"* ]]
-}
-
 @test "headless: checks sessions availability after runtime PATH cleanup" {
   setup_agent
   local home="$BATS_TEST_TMPDIR/path-boundary-home"
