@@ -1,483 +1,339 @@
 #!/usr/bin/env bats
+load helpers
 
-setup() {
-  load helpers
+@test "activation emits the chosen identity and exactly six signed Git settings, without selecting a home" {
+  activate
+  [ "$(< "$STDERR")" = '' ]
+  source "$STDOUT"
+  [ "$GIT_AUTHOR_NAME" = Alice ]
+  [ "$GIT_COMMITTER_EMAIL" = alice@example.test ]
+  [ "$GH_TOKEN" = synthetic-token ]
+  [ "$GH_HOST" = github.com ]
+  [ "$GIT_CONFIG_COUNT" = 6 ]
+  [ "$GIT_CONFIG_KEY_2" = user.signingkey ]
+  [ "$GIT_CONFIG_VALUE_3" = openpgp ]
+  [ "$GIT_CONFIG_VALUE_4" = true ]
+  [ "$GIT_CONFIG_VALUE_5" = true ]
+  [ "$AGENT_HOME" = /caller/selected/home ]
+  [[ "$(< "$STDOUT")" != *AGENT_HOME* ]]
+  [[ "$SHIMMER_PERSONA_STATE" != *synthetic-token* ]]
+  printf '%s' "$SHIMMER_PERSONA_STATE" | jq -e '.variables.GH_TOKEN | test("^[a-f0-9]{64}$")'
 }
 
-teardown() {
-  rm -rf "$TEST_HOME" "$OVERLAY" "$TEST_AGENTS_ROOT" "$BATS_TEST_TMPDIR/mocks-$$" "$BATS_TEST_TMPDIR/mock-bin-$$"
+@test "complete switching removes omitted optional credentials and does not grow the Git list" {
+  apply_activation
+  bundle Bob
+  apply_activation
+  [ "$GIT_AUTHOR_NAME" = Bob ]
+  [ "${GH_TOKEN+x}" != x ]
+  [ "$GIT_CONFIG_COUNT" = 6 ]
+  [ "$GIT_CONFIG_VALUE_0" = Bob ]
 }
 
-# ============ Agent discovery (no mocks needed) ============
+@test "invalid configuration emits nothing and leaves the existing persona unchanged" {
+  apply_activation
+  printf '{}' > "$MOCK_BUNDLE_FILE"
 
-@test "discovery: lists agents from home's agent:list task" {
-  setup_test_home "alice" "bob"
-  run mise -C "$TEST_HOME" run -q agent:list
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -qx "alice"
-  echo "$output" | grep -qx "bob"
+  ! activate
+
+  [ ! -s "$STDOUT" ]
+  [ "$GH_TOKEN" = synthetic-token ]
 }
 
-# ============ Full as flow (secrets binary mocked) ============
-
-@test "as: test helper clears ambient Git config overrides" {
-  [ -z "${GIT_CONFIG_COUNT:-}" ]
-  [ -z "${GIT_CONFIG_KEY_0:-}" ]
-  [ -z "${GIT_CONFIG_VALUE_0:-}" ]
+@test "missing signer emits nothing and leaves the existing persona unchanged" {
+  apply_activation
+  bundle Bob replacement-secret
+  key BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+  ! activate
+  [ ! -s "$STDOUT" ]
+  [ "$GIT_AUTHOR_NAME" = Alice ]
+  [[ "$(< "$STDERR")" != *replacement-secret* ]]
 }
 
-@test "as: outputs export statements for valid agent" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary "alice/github-pat=ghp_fake_test_token"
-  mock_shimmer
+@test "edited and unmanaged variables require value-free state-bound consent" {
+  apply_activation
+  export GH_TOKEN=operator-secret
+  bundle Bob replacement-secret
+  # No controlling terminal in the BATS subprocess.
+  ! activate </dev/null
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'GH_TOKEN: replace'* ]]
+  [[ "$(< "$STDERR")" != *operator-secret* ]]
+  [[ "$(< "$STDERR")" != *replacement-secret* ]]
 
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
-  echo "$output" | grep -q "export GIT_AUTHOR_EMAIL='alice@ricon.family'"
-  echo "$output" | grep -q "export GH_TOKEN='ghp_fake_test_token'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_0='user.name'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_0='alice'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_2='user.signingkey'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2='TESTKEY-alice'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_3='commit.gpgsign'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_4='tag.gpgsign'"
-  echo "$output" | grep -q "export GIT_CONFIG_COUNT='5'"
+  local digest
+  digest=$(approval)
+  [ "${#digest}" -eq 64 ]
+
+  activate "$digest"
+  source "$STDOUT"
+
+  [ "$GH_TOKEN" = replacement-secret ]
+  [ "$GIT_AUTHOR_NAME" = Bob ]
 }
 
-@test "as: sets AGENT_HOME to the home directory" {
-  setup_test_home "alice"
-  mock_secrets_binary
-  mock_shimmer
-
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export AGENT_HOME="
-  echo "$output" | grep -q "$(basename "$TEST_HOME")"
+@test "approval becomes invalid when the inspected caller state changes" {
+  export GH_TOKEN=operator-secret
+  ! activate
+  local digest
+  digest=$(approval)
+  export GH_TOKEN=changed-secret
+  ! activate "$digest"
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'does not match'* ]]
 }
 
-@test "as: binds email to the authenticated home and clears competing selectors" {
-  setup_test_home "alice"
-  mock_secrets_binary
-  mock_shimmer
-
-  export EMAILS_CONFIG="/stale/other-agent.toml"
-  export HIMALAYA_CONFIG="/stale/global.toml"
-
-  eval "$(shimmer as alice 2>/dev/null)"
-
-  local authenticated_home
-  authenticated_home=$(git -C "$TEST_HOME" rev-parse --show-toplevel)
-  [ "$EMAILS_CONFIG" = "$authenticated_home/.emails/himalaya.toml" ]
-  [ -z "${HIMALAYA_CONFIG:-}" ]
+@test "approval also becomes invalid when the requested persona changes" {
+  export GH_TOKEN=operator-secret
+  ! activate
+  local digest
+  digest=$(approval)
+  bundle Bob replacement-secret
+  ! activate "$digest"
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'does not match'* ]]
 }
 
-@test "as: does not export prompt text" {
-  setup_test_home "alice"
-  mock_secrets_binary
-  mock_shimmer
+@test "same-value unmanaged assignments need no consent and unrelated selectors remain untouched" {
+  export GH_TOKEN=synthetic-token
+  export EMAILS_CONFIG=/caller/mail HIMALAYA_CONFIG=/caller/himalaya
 
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  [[ "$output" != *"You are alice."* ]]
+  apply_activation
+
+  [ "$EMAILS_CONFIG" = /caller/mail ]
+  [ "$HIMALAYA_CONFIG" = /caller/himalaya ]
 }
 
-@test "as: falls back to private home when caller repo has no agent:list" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
+@test "previously owned renamed variables are removed but edited removals require consent" {
+  apply_activation
+  export EMAILS_CONFIG=/old/config
+  local hash
+  hash=$(printf '%s' "$EMAILS_CONFIG" | persona_digest)
+  SHIMMER_PERSONA_STATE=$(
+    printf '%s' "$SHIMMER_PERSONA_STATE" |
+      jq -c --arg hash "$hash" '.variables.EMAILS_CONFIG = $hash'
+  )
+  export SHIMMER_PERSONA_STATE
+  apply_activation
+  [ "${EMAILS_CONFIG+x}" != x ]
 
-  local caller="$BATS_TEST_TMPDIR/plain-repo"
-  mkdir -p "$caller"
-  git -C "$caller" init -q -b main
+  export EMAILS_CONFIG=/changed/config
+  SHIMMER_PERSONA_STATE=$(
+    printf '%s' "$SHIMMER_PERSONA_STATE" |
+      jq -c --arg hash "$hash" '.variables.EMAILS_CONFIG = $hash'
+  )
 
-  run env SHIMMER_CALLER_PWD="$caller" mise -C "$OVERLAY" run -q as alice 2>&1
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"does not provide agent:list; using"* ]]
-  echo "$output" | grep -q "export AGENT_HOME='$TEST_AGENTS_ROOT/alice/home'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2='TESTKEY-alice'"
+  ! activate
+
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'EMAILS_CONFIG: remove'* ]]
 }
 
-@test "as: works for each agent independently" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary
-  mock_shimmer
-
-  run shimmer as bob
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export GIT_AUTHOR_NAME='bob'"
-}
-
-@test "as: uses agent-specific PAT from secrets" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary "alice/github-pat=ghp_alice_token" "bob/github-pat=ghp_bob_token"
-  mock_shimmer
-
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export GH_TOKEN='ghp_alice_token'"
-
-  run shimmer as bob
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export GH_TOKEN='ghp_bob_token'"
-}
-
-@test "as: eval preserves apostrophes in exported values" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
-  mock_shimmer
-
-  eval "$(shimmer as alice 2>/dev/null)"
-
-  [ "$GH_TOKEN" = "ghp_fake'quoted" ]
-  [ "$B2_BUCKET" = "bucket'quoted" ]
-}
-
-@test "as: unquoted eval preserves apostrophes in exported values" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake'quoted" "alice/b2-bucket=bucket'quoted"
-  mock_shimmer
-
-  local script="$BATS_TEST_TMPDIR/unquoted-eval-apostrophe.sh"
-  cat > "$script" <<'SCRIPT'
-#!/usr/bin/env bash
-set -euo pipefail
-
-home="$1"
-overlay="$2"
-
-eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
-
-printf 'token=%s\n' "$GH_TOKEN"
-printf 'bucket=%s\n' "$B2_BUCKET"
-SCRIPT
-  chmod +x "$script"
-
-  run "$script" "$TEST_HOME" "$OVERLAY"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"token=ghp_fake'quoted"* ]]
-  [[ "$output" == *"bucket=bucket'quoted"* ]]
-}
-
-@test "as: eval makes Git config use active agent signing identity in other repos" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
-
-  local repo="$BATS_TEST_TMPDIR/work-repo"
-  mkdir -p "$repo"
-  git -C "$repo" init -q -b main
-  git -C "$repo" config user.name "Wrong Name"
-  git -C "$repo" config user.email "wrong@example.invalid"
-  git -C "$repo" config user.signingkey "WRONGKEY"
-  git -C "$repo" config commit.gpgsign false
-
-  eval "$(shimmer as alice 2>/dev/null)"
-
-  [ "$(git -C "$repo" config user.name)" = "alice" ]
-  [ "$(git -C "$repo" config user.email)" = "alice@ricon.family" ]
-  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-alice" ]
-  [ "$(git -C "$repo" config commit.gpgsign)" = "true" ]
-  [ "$(git -C "$repo" config tag.gpgsign)" = "true" ]
-}
-
-@test "as: appends Git config overrides without dropping existing entries" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
-
-  local repo="$BATS_TEST_TMPDIR/work-repo"
-  mkdir -p "$repo"
-  git -C "$repo" init -q -b main
-
-  export GIT_CONFIG_COUNT=1
-  export GIT_CONFIG_KEY_0="core.editor"
-  export GIT_CONFIG_VALUE_0="vim"
-
-  eval "$(shimmer as alice 2>/dev/null)"
-
-  [ "$GIT_CONFIG_COUNT" = "6" ]
-  [ "$GIT_CONFIG_KEY_0" = "core.editor" ]
-  [ "$GIT_CONFIG_VALUE_0" = "vim" ]
-  [ "$(git -C "$repo" config core.editor)" = "vim" ]
-  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-alice" ]
-
-  unset GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
-}
-
-@test "as: switching agents makes later Git config overrides win" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
-  mock_shimmer
-
-  local repo="$BATS_TEST_TMPDIR/work-repo"
-  mkdir -p "$repo"
-  git -C "$repo" init -q -b main
-
-  eval "$(shimmer as alice 2>/dev/null)"
-  eval "$(shimmer as bob 2>/dev/null)"
-
-  [ "$(git -C "$repo" config user.name)" = "bob" ]
-  [ "$(git -C "$repo" config user.email)" = "bob@ricon.family" ]
-  [ "$(git -C "$repo" config user.signingkey)" = "TESTKEY-bob" ]
-}
-
-@test "as: disables signing overrides when agent signing key is missing" {
-  setup_test_home "alice"
-  rm -rf "$TEST_AGENTS_ROOT/alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
-
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"Warning: no signing key found for alice"* ]]
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_0='user.name'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_2='user.signingkey'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_2=''"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_3='commit.gpgsign'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_3='false'"
-  echo "$output" | grep -q "export GIT_CONFIG_KEY_4='tag.gpgsign'"
-  echo "$output" | grep -q "export GIT_CONFIG_VALUE_4='false'"
-  echo "$output" | grep -q "export GIT_CONFIG_COUNT='5'"
-}
-
-@test "as: missing signing key does not reuse previous agent signing overrides" {
-  setup_test_home "alice" "bob"
-  rm -rf "$TEST_AGENTS_ROOT/bob"
-  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
-  mock_shimmer
-
-  local repo="$BATS_TEST_TMPDIR/work-repo"
-  mkdir -p "$repo"
-  git -C "$repo" init -q -b main
-
-  eval "$(shimmer as alice 2>/dev/null)"
-  eval "$(shimmer as bob 2>/dev/null)"
-
-  [ "$(git -C "$repo" config user.name)" = "bob" ]
-  [ "$(git -C "$repo" config user.signingkey)" = "" ]
-  [ "$(git -C "$repo" config commit.gpgsign)" = "false" ]
-  [ "$(git -C "$repo" config tag.gpgsign)" = "false" ]
-}
-
-@test "as: exports B2_BUCKET when available" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake" "alice/b2-bucket=my-bucket"
-  mock_shimmer
-
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export B2_BUCKET='my-bucket'"
-}
-
-@test "as: succeeds without B2_BUCKET" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
-
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-  # Should NOT contain B2_BUCKET export
-  if echo "$output" | grep -q "export B2_BUCKET="; then
-    echo "unexpected B2_BUCKET export" >&2
-    return 1
-  fi
-}
-
-@test "as: bridges SHIMMER_SECRETS_PROVIDER to SECRETS_PROVIDER" {
-  setup_test_home "alice"
-  mock_secrets_binary
-  mock_shimmer
-
-  # Set old env var, verify task still works (bridge picks it up)
-  run env SHIMMER_SECRETS_PROVIDER=keychain SHIMMER_CALLER_PWD="$TEST_HOME" mise -C "$OVERLAY" run -q as alice 2>&1
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "export GIT_AUTHOR_NAME='alice'"
-}
-
-# ============ Stale environment clearing ============
-
-@test "as: clears previous identity vars before setting new ones" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary
-  mock_shimmer
-
-  # Capture the output and check that unset comes before export
-  run shimmer as alice
-  [ "$status" -eq 0 ]
-
-  # Every exported var should be unset first
-  local var
-  for var in $(echo "$output" | grep -oE "export [A-Z_]+" | awk '{print $2}' | sort -u); do
-    case "$var" in
-      GIT_CONFIG_*) continue ;;
-    esac
-    echo "$output" | grep -q "unset.*$var" || {
-      echo "exported var $var is not unset" >&2
-      return 1
-    }
+@test "shared Git settings survive compaction and owned entries can move without losing ownership" {
+  export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.editor GIT_CONFIG_VALUE_0=zed
+  apply_activation
+  [ "$GIT_CONFIG_COUNT" = 7 ]
+  # Move the unrelated entry from the beginning to the end.
+  local i next
+  for i in 0 1 2 3 4 5; do
+    next=$((i + 1))
+    eval "export GIT_CONFIG_KEY_$i=\"\$GIT_CONFIG_KEY_$next\""
+    eval "export GIT_CONFIG_VALUE_$i=\"\$GIT_CONFIG_VALUE_$next\""
   done
-
-  # unset should come before the first export
-  local first_unset first_export
-  first_unset=$(echo "$output" | grep -n "unset" | head -1 | cut -d: -f1)
-  first_export=$(echo "$output" | grep -n "export" | head -1 | cut -d: -f1)
-  [ "$first_unset" -lt "$first_export" ]
+  export GIT_CONFIG_KEY_6=core.editor GIT_CONFIG_VALUE_6=zed
+  bundle Bob
+  apply_activation
+  [ "$GIT_CONFIG_COUNT" = 7 ]
+  [ "$GIT_CONFIG_KEY_0" = core.editor ]
+  [ "$GIT_CONFIG_VALUE_0" = zed ]
+  [ "$GIT_CONFIG_VALUE_1" = Bob ]
 }
 
-@test "as: eval clears stale B2_BUCKET when new agent has none" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
+@test "edited owned Git entry requires consent before replacement" {
+  apply_activation
+  export GIT_CONFIG_VALUE_0=operator-name
 
-  # Simulate: previous session set B2_BUCKET
-  export B2_BUCKET="old-bucket"
+  ! activate
 
-  eval "$(shimmer as alice 2>/dev/null)"
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'replace edited owned entry'* ]]
 
-  # B2_BUCKET should be cleared since alice has no bucket configured
-  [ -z "${B2_BUCKET:-}" ]
+  activate "$(approval)"
+  source "$STDOUT"
+  [ "$GIT_CONFIG_VALUE_0" = Alice ]
 }
 
-@test "as: switching agents replaces the email selector with each private home" {
-  setup_test_home "alice" "bob"
-  mock_secrets_binary "alice/github-pat=ghp_alice" "bob/github-pat=ghp_bob"
-  mock_shimmer
+@test "competing identity setting requires consent even when persona settings would shadow it" {
+  export GIT_CONFIG_COUNT=1
+  export GIT_CONFIG_KEY_0=user.email GIT_CONFIG_VALUE_0=operator@example.test
 
-  local caller="$BATS_TEST_TMPDIR/plain-repo"
-  mkdir -p "$caller"
-  git -C "$caller" init -q -b main
-  export SHIMMER_CALLER_PWD="$caller"
-  export EMAILS_CONFIG="/stale/parent.toml"
-  export HIMALAYA_CONFIG="/stale/other-agent.toml"
+  ! activate
 
-  eval "$(shimmer as alice 2>/dev/null)"
-  [ "$EMAILS_CONFIG" = "$TEST_AGENTS_ROOT/alice/home/.emails/himalaya.toml" ]
-  [ -z "${HIMALAYA_CONFIG:-}" ]
-
-  eval "$(shimmer as bob 2>/dev/null)"
-  [ "$EMAILS_CONFIG" = "$TEST_AGENTS_ROOT/bob/home/.emails/himalaya.toml" ]
-  [ -z "${HIMALAYA_CONFIG:-}" ]
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'retain competing Git setting'* ]]
 }
 
-@test "as: unquoted eval works in bash" {
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
-
-  local script="$BATS_TEST_TMPDIR/unquoted-eval-bash.sh"
-  cat > "$script" <<'SCRIPT'
-#!/usr/bin/env bash
-set -euo pipefail
-
-home="$1"
-overlay="$2"
-
-# Intentionally unquoted: this preserves compatibility with the historical
-# documented form, `eval $(shimmer as <agent>)`.
-eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
-
-printf 'name=%s\n' "$GIT_AUTHOR_NAME"
-printf 'host=%s\n' "$GH_HOST"
-SCRIPT
-  chmod +x "$script"
-
-  run "$script" "$TEST_HOME" "$OVERLAY"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"name=alice"* ]]
-  [[ "$output" == *"host=github.com"* ]]
+@test "a disappeared owned Git entry cannot claim a previously unrelated competing entry" {
+  export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.name GIT_CONFIG_VALUE_0=operator-name
+  ! activate
+  activate "$(approval)"
+  source "$STDOUT"
+  # Remove owned slot 1, leaving the previously unrelated user.name intact.
+  local i next
+  for i in 1 2 3 4 5; do
+    next=$((i + 1))
+    eval "export GIT_CONFIG_KEY_$i=\"\$GIT_CONFIG_KEY_$next\""
+    eval "export GIT_CONFIG_VALUE_$i=\"\$GIT_CONFIG_VALUE_$next\""
+  done
+  unset GIT_CONFIG_KEY_6 GIT_CONFIG_VALUE_6
+  export GIT_CONFIG_COUNT=6
+  ! activate
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'ownership is ambiguous'* ]]
 }
 
-@test "as: unquoted eval works in zsh" {
-  command -v zsh >/dev/null 2>&1 || skip "zsh not installed"
-  setup_test_home "alice"
-  mock_secrets_binary "alice/github-pat=ghp_fake"
-  mock_shimmer
+@test "duplicate matching Git entries make ownership ambiguous" {
+  apply_activation
+  export GIT_CONFIG_KEY_6=user.name GIT_CONFIG_VALUE_6=Alice GIT_CONFIG_COUNT=7
 
-  local script="$BATS_TEST_TMPDIR/unquoted-eval-zsh.zsh"
-  cat > "$script" <<'SCRIPT'
-set -euo pipefail
+  ! activate
 
-home="$1"
-overlay="$2"
-
-# Intentionally unquoted: this preserves compatibility with the historical
-# documented form, `eval $(shimmer as <agent>)`.
-eval $(SHIMMER_CALLER_PWD="$home" mise -C "$overlay" run -q as alice 2>/dev/null)
-
-print -r -- "name=$GIT_AUTHOR_NAME"
-print -r -- "host=$GH_HOST"
-SCRIPT
-
-  run zsh "$script" "$TEST_HOME" "$OVERLAY"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"name=alice"* ]]
-  [[ "$output" == *"host=github.com"* ]]
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'ownership is ambiguous'* ]]
 }
 
-# ============ Validation (no mocks — fails before secrets) ============
+@test "alternate Git parameters must be resolved before activation" {
+  export GIT_CONFIG_PARAMETERS="'user.name=other'"
 
-@test "as: rejects unknown agent" {
-  setup_test_home "alice" "bob"
-  mock_shimmer
+  ! activate
 
-  run shimmer as charlie
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Unknown agent: charlie"* ]]
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'GIT_CONFIG_PARAMETERS must be resolved'* ]]
 }
 
-@test "as: shows available agents on rejection" {
-  setup_test_home "alice" "bob"
-  mock_shimmer
+@test "Git slots outside the declared list fail closed" {
+  export GIT_CONFIG_VALUE_9=orphan
 
-  run shimmer as charlie
-  [[ "$output" == *"alice"* ]]
-  [[ "$output" == *"bob"* ]]
+  ! activate
+
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'orphaned Git config variables'* ]]
 }
 
-@test "as: fails when agent:list fails" {
-  setup_test_home "alice"
-  cat > "$TEST_HOME/.mise/tasks/agent/list" <<'TASK'
-#!/usr/bin/env bash
-#MISE description="List agents"
-echo "agent:list unavailable" >&2
-exit 1
-TASK
-  chmod +x "$TEST_HOME/.mise/tasks/agent/list"
-  mock_secrets_binary "alice/github-pat=ghp_fake_test_token"
-  mock_shimmer
+@test "ownership metadata cannot claim the caller's home selector" {
+  export SHIMMER_PERSONA_STATE='{
+    "version": 1,
+    "variables": {
+      "AGENT_HOME": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "git": []
+  }'
 
-  run shimmer as alice
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"could not list agents"* ]]
-  [[ "$output" == *"agent:list stderr:"* ]]
-  [[ "$output" == *"agent:list unavailable"* ]]
-  [[ "$output" != *"export GIT_AUTHOR_NAME='alice'"* ]]
-  [[ "$output" != *"You are alice."* ]]
+  ! activate
+
+  [ ! -s "$STDOUT" ]
+  [[ "$(< "$STDERR")" == *'invalid ownership manifest'* ]]
 }
 
-@test "as: rejects agent omitted from list" {
-  setup_test_home "alice"
-  mock_shimmer
-
-  run shimmer as charlie
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"Unknown agent: charlie"* ]]
-  [[ "$output" == *"alice"* ]]
+@test "all email and blob accounts map independently and shell quoting preserves credential bytes" {
+  configure_accounts
+  apply_activation
+  [ "$EMAIL_DEFAULT_ACCOUNT" = shared ]
+  [ "$EMAIL_PERSONAL_IMAP_PASSWORD" = $'quoted \' $(false)\n\n' ]
+  [ "$EMAIL_SHARED_SMTP_USERNAME" = shared ]
+  [ "$BLOBS_PERSONAL_BUCKET" = personal ]
+  [ "$BLOBS_SHARED_APPLICATION_KEY" = synthetic-key ]
+  [ "${B2_BUCKET+x}" != x ]
 }
 
-# ============ Missing agent:list (no mocks, no overlay) ============
+@test "switching away from configured integrations removes all owned account credentials only" {
+  configure_accounts
+  export EMAIL_UNMANAGED=caller-value
+  apply_activation
+  bundle Bob
+  apply_activation
+  [ "${EMAIL_PERSONAL_IMAP_PASSWORD+x}" != x ]
+  [ "${EMAIL_SHARED_SMTP_PASSWORD+x}" != x ]
+  [ "${BLOBS_SHARED_APPLICATION_KEY+x}" != x ]
+  [ "${EMAIL_ACCOUNTS+x}" != x ]
+  [ "${BLOBS_DEFAULT_ACCOUNT+x}" != x ]
+  [ "$EMAIL_UNMANAGED" = caller-value ]
+}
 
-@test "as: fails gracefully when home has no agent:list" {
-  # Bare home — no tasks at all
-  TEST_HOME="$BATS_TEST_TMPDIR/bare-$$"
-  mkdir -p "$TEST_HOME"
-  git -C "$TEST_HOME" init -q -b main
-  git -C "$TEST_HOME" config user.email "test@test.com"
-  git -C "$TEST_HOME" config user.name "Test"
-  mock_shimmer
+@test "working credentials stay private even when caller exports collide with helper local names" {
+  export bundle=ambient data=ambient object=ambient value=ambient
+  export old=ambient current=ambient wanted=ambient current_values=ambient
+  export desired=ambient plan=ambient approval_digest=ambient
+  export PERSONA_DATA=ambient PERSONA_DESIRED=ambient PERSONA_PLAN=ambient
+  export MOCK_LEAKS="$BATS_TEST_TMPDIR/leaks"
 
-  run shimmer as alice
-  [ "$status" -ne 0 ]
-  [[ "$output" == *"could not list agents"* ]]
+  # Inspect the actual child environment, not Bash dynamic local visibility.
+  # shellcheck disable=SC2329
+  jq() {
+    if command jq -en '
+      env | any(to_entries[];
+        (.key | startswith("BASH_FUNC_") | not)
+        and (.value | contains("synthetic-token"))
+      )
+    ' >/dev/null; then
+      printf 'credential inherited\n' >> "$MOCK_LEAKS"
+    fi
+    command jq "$@"
+  }
+  export -f jq
+  activate
+  [ ! -s "$MOCK_LEAKS" ]
+}
+
+@test "public Mise task emits activation without caller home tasks or legacy secrets" {
+  shimmer as alice > "$STDOUT" 2> "$STDERR"
+  source "$STDOUT"
+  [ "$GIT_AUTHOR_NAME" = Alice ]
+  [ "$AGENT_HOME" = /caller/selected/home ]
+  [ "$(grep -c '^export --provider sops --prefix alice/$' "$MOCK_CALLS")" -eq 1 ]
+  [ "$(wc -l < "$MOCK_CALLS" | tr -d ' ')" -eq 2 ]
+}
+
+@test "public approval flag accepts only the reviewed conflict state" {
+  export GH_TOKEN=operator-secret
+  ! without_terminal bash -c 'shimmer as alice' > "$STDOUT" 2> "$STDERR"
+  [ ! -s "$STDOUT" ]
+  local digest
+  digest=$(approval)
+  [ "${#digest}" -eq 64 ]
+  without_terminal bash -c 'shimmer as alice --approve "$1"' _ "$digest" \
+    > "$STDOUT" 2> "$STDERR"
+  source "$STDOUT"
+  [ "$GH_TOKEN" = synthetic-token ]
+}
+
+@test "whoami tolerates an activated persona without an optional GitHub token" {
+  bundle Alice
+  apply_activation
+  gh() {
+    printf 'Logged in as synthetic-account\n'
+  }
+  export -f gh
+  shimmer whoami > "$STDOUT" 2> "$STDERR"
+  grep -F 'Alice <alice@example.test>' "$STDOUT"
+  grep -F 'GH_TOKEN not set' "$STDOUT"
+}
+
+@test "public provider failure emits zero commands" {
+  export MOCK_SECRETS_STATUS=1
+
+  ! shimmer as alice > "$STDOUT" 2> "$STDERR"
+
+  [ ! -s "$STDOUT" ]
+}
+
+@test "macOS compatibility Bash executes the same activation" {
+  /bin/bash -c '
+    source "$1/lib/persona/activate.sh"
+    persona_activate alice
+  ' _ "$REPO_DIR" > "$STDOUT" 2> "$STDERR"
+
+  source "$STDOUT"
+
+  [ "$GIT_CONFIG_COUNT" = 6 ]
 }

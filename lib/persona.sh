@@ -11,7 +11,8 @@ persona_load() {
   set +x
   set +v
 
-  local agent="${1:-}" bundle data
+  # Do not inherit export attributes from same-named caller variables.
+  local +x agent="${1:-}" bundle data
   case "$agent" in
     ''|*/*)
       printf 'ERROR: persona loading requires one agent handle.\n' >&2
