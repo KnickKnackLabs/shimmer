@@ -9,6 +9,6 @@ set -e
 AGENT="${usage_agent:?Usage: shimmer token:store <agent> <token>}"
 TOKEN="${usage_token:?Usage: shimmer token:store <agent> <token>}"
 
-printf '%s' "$TOKEN" | secrets set "$AGENT/github-pat"
+printf '%s' "$TOKEN" | secrets set "$AGENT/github/token"
 
 echo "Stored PAT for $AGENT"
