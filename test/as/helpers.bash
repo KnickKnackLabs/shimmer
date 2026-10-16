@@ -3,6 +3,7 @@
 
 setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+  export REPO_DIR
   source "$REPO_DIR/lib/persona/activate.sh"
   local name
   for name in $(compgen -e); do
@@ -46,7 +47,7 @@ bundle() {
   jq -cn --arg name "$1" --arg token "${2:-}" '{
     "alice/git/name": $name,
     "alice/git/email": "alice@example.test",
-    "alice/git/signing_fingerprint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "alice/git/signing-fingerprint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     "alice/github/token": $token
   }' > "$MOCK_BUNDLE_FILE"
 }

@@ -16,7 +16,7 @@ reject_changes() {
   reject_changes \
     'del(."alice/git/name")' \
     '."alice/git/email" = ""' \
-    '."alice/git/signing_fingerprint" = "AAAAAAAA"' \
+    '."alice/git/signing-fingerprint" = "AAAAAAAA"' \
     '."alice/git/name" = "embedded\u0000nul"'
 }
 
@@ -24,10 +24,10 @@ reject_changes() {
   configure_accounts
   reject_changes \
     'del(."alice/email/personal/smtp/password")' \
-    'del(."alice/email/shared/signing_fingerprint")' \
-    'del(."alice/blobs/shared/application_key")' \
-    '."alice/email/default_account" = "missing"' \
-    'del(."alice/blobs/default_account")'
+    'del(."alice/email/shared/signing-fingerprint")' \
+    'del(."alice/blobs/shared/application-key")' \
+    '."alice/email/default-account" = "missing"' \
+    'del(."alice/blobs/default-account")'
 }
 
 @test "account labels must be unique and safe for uppercase environment names" {
@@ -57,7 +57,7 @@ reject_changes() {
 
 @test "every configured email signer is checked, not only Git or the default account" {
   configure_accounts
-  jq -c '."alice/email/personal/signing_fingerprint" = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"' \
+  jq -c '."alice/email/personal/signing-fingerprint" = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"' \
     "$MOCK_BUNDLE_FILE" > "$BATS_TEST_TMPDIR/changed.json"
   cp "$BATS_TEST_TMPDIR/changed.json" "$MOCK_BUNDLE_FILE"
   ! activate

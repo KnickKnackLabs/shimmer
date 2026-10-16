@@ -1,21 +1,21 @@
 # Two complete synthetic accounts. The nondefault account must be checked too.
 . + {
   "alice/email/accounts": "personal shared",
-  "alice/email/default_account": "shared",
+  "alice/email/default-account": "shared",
   "alice/blobs/accounts": "personal shared",
-  "alice/blobs/default_account": "personal"
+  "alice/blobs/default-account": "personal"
 }
 | reduce ["personal", "shared"][] as $label (.;
     ("alice/email/" + $label + "/") as $email
     | ("alice/blobs/" + $label + "/") as $blobs
     | . + {
         ($email + "address"): ($label + "@example.test"),
-        ($email + "display_name"): $label,
-        ($email + "signing_fingerprint"): "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        ($email + "display-name"): $label,
+        ($email + "signing-fingerprint"): "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         ($blobs + "provider"): "b2",
         ($blobs + "bucket"): $label,
-        ($blobs + "key_id"): "synthetic-id",
-        ($blobs + "application_key"): "synthetic-key"
+        ($blobs + "key-id"): "synthetic-id",
+        ($blobs + "application-key"): "synthetic-key"
       }
     | reduce ["imap", "smtp"][] as $transport (.;
         ($email + $transport + "/") as $path

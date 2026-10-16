@@ -30,12 +30,12 @@ def account_labels($kind):
 def account_fields($kind):
   if $kind == "email" then
     [
-      "address", "display_name", "signing_fingerprint",
+      "address", "display-name", "signing-fingerprint",
       "imap/host", "imap/port", "imap/encryption", "imap/username", "imap/password",
       "smtp/host", "smtp/port", "smtp/encryption", "smtp/username", "smtp/password"
     ]
   else
-    ["provider", "bucket", "key_id", "application_key"]
+    ["provider", "bucket", "key-id", "application-key"]
   end;
 
 def validate_email_transport($path):
@@ -61,10 +61,10 @@ def account_variables($kind; $label):
     else .
     end
   | reduce account_fields($kind)[] as $field ({};
-      ($prefix + ($field | ascii_upcase | gsub("/"; "_"))) as $name
+      ($prefix + ($field | ascii_upcase | gsub("[-/]"; "_"))) as $name
       | (
           $data
-          | if $field == "signing_fingerprint"
+          | if $field == "signing-fingerprint"
             then fingerprint($path + $field)
             else required($path + $field)
             end
@@ -77,7 +77,7 @@ def capability_variables($kind):
   | account_labels($kind) as $labels
   | if ($labels | length) == 0 then {}
     else
-      required($kind + "/default_account") as $default
+      required($kind + "/default-account") as $default
       | if ($labels | index($default)) == null then
           error("invalid default: " + $kind)
         else .
@@ -96,7 +96,7 @@ def capability_variables($kind):
 . as $data
 | required("git/name") as $git_name
 | required("git/email") as $git_email
-| fingerprint("git/signing_fingerprint") as $git_signer
+| fingerprint("git/signing-fingerprint") as $git_signer
 | {
     GIT_AUTHOR_NAME: $git_name,
     GIT_COMMITTER_NAME: $git_name,

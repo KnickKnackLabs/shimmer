@@ -25,7 +25,7 @@ Required Git fields:
 | --- | --- |
 | `git/name` | Author/committer name and `user.name` |
 | `git/email` | Author/committer email and `user.email` |
-| `git/signing_fingerprint` | Full fingerprint for `user.signingkey` |
+| `git/signing-fingerprint` | Full fingerprint for `user.signingkey` |
 
 Git's other fixed settings are `gpg.format=openpgp`, `commit.gpgsign=true`,
 and `tag.gpgsign=true`. Numbered `GIT_CONFIG_*` transport and account provisioning
@@ -34,20 +34,21 @@ are separate from data loading.
 `github/token` is optional and maps to `GH_TOKEN`. `GH_HOST` is `github.com`.
 
 Email uses `email/accounts` (space-separated labels) and
-`email/default_account` (one declared label). For each label, the fields are:
+`email/default-account` (one declared label). For each label, the fields are:
 
-- `email/<label>/address` and `display_name`;
+- `email/<label>/address` and `display-name`;
 - `email/<label>/imap/{host,port,encryption,username,password}`;
 - `email/<label>/smtp/{host,port,encryption,username,password}`;
-- `email/<label>/signing_fingerprint` (required, not optional).
+- `email/<label>/signing-fingerprint` (required, not optional).
 
 The environment uses `EMAIL_ACCOUNTS`, `EMAIL_DEFAULT_ACCOUNT`, and
 `EMAIL_<UPPERCASE_LABEL>_<FIELD>`. Transport fields use `_IMAP_` and `_SMTP_`.
+Vault field names use hyphens; their environment names use underscores.
 Encryption values are `tls` or `starttls`; ports are integers from 1 through 65535.
 Incoming and outgoing credentials remain separate.
 
-Blobs uses `blobs/accounts`, `blobs/default_account`, and for each label:
-`blobs/<label>/{provider,bucket,key_id,application_key}`. The initial provider is
+Blobs uses `blobs/accounts`, `blobs/default-account`, and for each label:
+`blobs/<label>/{provider,bucket,key-id,application-key}`. The initial provider is
 `b2`. Environment names use `BLOBS_ACCOUNTS`, `BLOBS_DEFAULT_ACCOUNT`, and
 `BLOBS_<UPPERCASE_LABEL>_<FIELD>`. Each account selects one bucket.
 
