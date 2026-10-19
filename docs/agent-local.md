@@ -5,11 +5,11 @@ This guide covers setting up an agent identity for local development work.
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev/) installed
-- Agent credentials already provisioned in the selected Secrets backend (`env`, `keychain`, `1password`, or `sops`)
-- For 1Password, its CLI must be installed and signed in; for SOPS, configure the encrypted vault and age key through Secrets 0.3 or newer
+- Agent credentials already provisioned in SOPS
+- Encrypted vault and age key configured through Secrets 0.3 or newer
 
-Identity activation reads the selected backend. It does not provision credentials,
-set up a mailbox, or fall back from SOPS to another provider.
+Persona activation and local GPG setup read SOPS. Activation does not provision
+credentials, set up a mailbox, or fall back to another provider.
 
 ## One-Time Setup
 
@@ -17,16 +17,27 @@ These steps only need to be done once per machine.
 
 ### 1. GPG Key
 
-Import the agent's GPG key and configure git signing:
+Import the agent's GPG signing key into the current user's keyring:
 
 ```bash
 mise run gpg:setup <agent>
 ```
 
-This:
-- Imports the GPG private key from 1Password
-- Configures git to sign commits with this key
-- Trusts the key locally
+The command reads `<agent>/git/signing-fingerprint` and, if needed,
+`<agent>/gpg-private-key` from SOPS. It verifies the fingerprint before
+importing the key and setting owner trust. It does not write Git configuration
+or remove old workspace configs/includes. CI may supply `GPG_FINGERPRINT` and
+`GPG_PRIVATE_KEY` instead.
+
+Activate the persona to select its Git identity and signer:
+
+```bash
+eval "$(shimmer as <agent>)"
+shimmer gpg:status
+```
+
+Status checks the effective Git fingerprint, OpenPGP format, commit/tag signing,
+and the corresponding usable secret key. It does not import or unlock keys.
 
 ### 2. Email
 
@@ -57,22 +68,15 @@ Blob storage has moved to a standalone tool: [`blobs`](https://github.com/KnickK
 
 ## Working on Repositories
 
-When working on any repository (including shimmer itself), clone it to your workspace:
+Clone repositories into the selected desk, separate from installed tool packages:
 
 ```bash
-cd ~/agents/<agent>/
-git clone https://github.com/KnickKnackLabs/shimmer.git
+gh repo clone KnickKnackLabs/shimmer
 cd shimmer
 ```
 
-This separation is important:
-
-- **`~/shimmer`** - The "installed" shimmer. Stays on main, provides the `shimmer` commands. Don't edit directly.
-- **`~/agents/<agent>/shimmer`** - Your working copy. Clone here, make branches, edit files, push PRs.
-
-The `shimmer` command works from anywhere. It runs tasks from `~/shimmer` but operates on your current directory. So running `shimmer issue:list` from your working copy shows issues for that repo.
-
-This allows multiple agents to work on the same repository simultaneously without conflicts.
+Make branches and edits in this working copy, not in the installed package.
+Git identity comes from persona activation, regardless of the desk's path.
 
 ## Per-Session Setup
 
@@ -92,6 +96,8 @@ This sets:
 - `GH_TOKEN` - GitHub personal access token
 - `GIT_AUTHOR_NAME` / `GIT_COMMITTER_NAME` - Agent name
 - `GIT_AUTHOR_EMAIL` / `GIT_COMMITTER_EMAIL` - Agent email
+- Process-scoped Git configuration - Persona name, email, exact signing
+  fingerprint, OpenPGP format, and commit/tag signing flags
 
 ### Verifying Identity
 
@@ -124,31 +130,24 @@ GitHub identity:
 
 ### GPG signing fails
 
-Check that the key is imported and trusted:
+Check the active signer first:
+
 ```bash
-gpg --list-secret-keys <agent>@ricon.family
-mise run gpg:status
+shimmer gpg:status
 ```
 
-If the key needs re-importing:
-```bash
-gpg --delete-secret-keys <agent>@ricon.family
-gpg --delete-keys <agent>@ricon.family
-mise run gpg:setup <agent>
-```
+If its key is missing, run `shimmer gpg:setup <agent>`, then activate the persona
+again. Do not delete existing keys as a troubleshooting shortcut.
 
 ### Wrong signing key used
 
-`shimmer as` first checks the selected agent's private home `.git/config`, then
-its workspace `.gitconfig` under `SHIMMER_AGENTS_ROOT` (default `~/agents`).
-On a dedicated OS account, it can instead use global Git configuration when
-`id -un`, the configured `user.name`, and `user.email` all identify the selected
-agent. This fallback reads only the global scope, without includes or inherited
-command-scope overrides. It does not borrow the operator's signer when switching
-agents on a shared OS account. If no agent-owned key is found, signing is disabled
-explicitly rather than retaining an earlier persona's key.
+`shimmer as` reads the persona's Git identity and exact signing fingerprint from
+SOPS, verifies the secret signer, and applies process-scoped Git overrides.
+Neither the desk path nor workspace `.gitconfig` files select the persona.
+A dedicated OS account may keep matching global defaults for Git use outside
+activation; those defaults do not override an activated persona.
 
-`eval "$(shimmer as <agent>)"` appends transient Git config overrides for the active agent's `user.name`, `user.email`, `user.signingkey`, `commit.gpgsign`, and `tag.gpgsign`. Verify the active shell first:
+Verify the active shell:
 
 ```bash
 shimmer whoami
@@ -158,15 +157,11 @@ git config user.signingkey
 If the signing key is still wrong, check for missing agent GPG setup:
 
 ```bash
-shimmer gpg:status <agent>
+shimmer gpg:status
 ```
 
-Older shells or repos without the transient overrides may still be affected by local git config overrides:
-
-```bash
-git config --local user.signingkey
-git config --local --unset user.signingkey
-```
+Outside activation, repository settings and old conditional includes may still
+affect Git. Inspect them before making a separate configuration change.
 
 ### Email not working
 

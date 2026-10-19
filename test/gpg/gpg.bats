@@ -96,7 +96,7 @@ mQENBF
   export GPG_PRIVATE_KEY="$VALID_GPG_KEY"
   run shimmer gpg:setup test
   [ "$status" -eq 0 ]
-  [[ "$output" == *"GPG configured for test@ricon.family"* ]]
+  [[ "$output" == *"GPG key ready for test"* ]]
 }
 
 @test "gpg:setup: imports a quoted key from env (auto-strips quotes)" {
@@ -105,7 +105,7 @@ mQENBF
   export GPG_PRIVATE_KEY=$(quote_wrap "$VALID_GPG_KEY")
   run shimmer gpg:setup test
   [ "$status" -eq 0 ]
-  [[ "$output" == *"GPG configured for test@ricon.family"* ]]
+  [[ "$output" == *"GPG key ready for test"* ]]
 }
 
 @test "gpg:setup: rejects garbage key with helpful error" {

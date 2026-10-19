@@ -1,7 +1,68 @@
 #!/usr/bin/env bash
 # Shared GPG helper functions for shimmer
 #
-# Sourced by gpg:setup and agent:sync-secrets.
+# Sourced by key setup, signing diagnostics, and agent:sync-secrets.
+
+# Read only key metadata. A signing subkey must also have a usable primary.
+gpg_secret_signing_fingerprints() {
+  local listing
+  listing=$(gpg --batch --no-tty \
+    --with-colons --with-fingerprint --with-subkey-fingerprint \
+    --list-secret-keys "$@" 2>/dev/null) || return 1
+
+  printf '%s\n' "$listing" | awk -F: -v now="$(date +%s)" '
+    function usable(validity, expiry, capabilities) {
+      return validity !~ /[redi]/ && capabilities !~ /D/ &&
+        (expiry == "" || expiry == "0" || expiry > now)
+    }
+    $1 == "sec" || $1 == "ssb" {
+      key_ok = usable($2, $7, $12)
+      if ($1 == "sec") primary_ok = key_ok
+      else key_ok = primary_ok && key_ok
+      signing = key_ok && $12 ~ /s/ && $15 != "#"
+      next
+    }
+    $1 == "fpr" {
+      if (signing) print toupper($10)
+      signing = 0
+    }
+  '
+}
+
+# Report the effective caller Git configuration, including persona overrides.
+# This is observational: no import, signing, credential retrieval, or Git writes.
+git_signing_status() {
+  local caller="${SHIMMER_CALLER_PWD:-$PWD}" fingerprint format commits tags available
+  fingerprint=$(git -C "$caller" config user.signingkey 2>/dev/null) || fingerprint=''
+  fingerprint="${fingerprint%!}"
+  if [[ ! "$fingerprint" =~ ^([A-Fa-f0-9]{40}|[A-Fa-f0-9]{64})$ ]]; then
+    echo "full signing fingerprint not configured"
+    return 1
+  fi
+
+  format=$(git -C "$caller" config gpg.format 2>/dev/null) || format=openpgp
+  if [ "$format" != openpgp ]; then
+    echo "Git signing format is not OpenPGP"
+    return 1
+  fi
+  commits=$(git -C "$caller" config --bool commit.gpgsign 2>/dev/null) || commits=false
+  tags=$(git -C "$caller" config --bool tag.gpgsign 2>/dev/null) || tags=false
+  if [ "$commits" != true ] || [ "$tags" != true ]; then
+    echo "commit or tag signing disabled"
+    return 1
+  fi
+
+  if ! available=$(gpg_secret_signing_fingerprints "$fingerprint"); then
+    echo "could not inspect secret signing key"
+    return 1
+  fi
+  fingerprint=$(printf '%s' "$fingerprint" | tr '[:lower:]' '[:upper:]')
+  if ! grep -Fx "$fingerprint" <<< "$available" >/dev/null; then
+    echo "configured signer has no usable secret signing key"
+    return 1
+  fi
+  printf 'signing enabled (%s)\n' "$fingerprint"
+}
 
 # Strip wrapping double quotes from a value if present.
 # Some secret providers (notably 1password CLI) may quote multiline values.
@@ -34,9 +95,8 @@ validate_gpg_key() {
   fi
 
   # Check for armor header
-  if ! echo "$key_data" | head -1 | grep -q "^-----BEGIN PGP"; then
-    local first_chars
-    first_chars=$(echo "$key_data" | head -c 20)
+  if [[ "$key_data" != '-----BEGIN PGP'* ]]; then
+    local first_chars="${key_data:0:20}"
     echo "GPG key doesn't start with PGP armor header (starts with: ${first_chars}...)" >&2
     return 1
   fi

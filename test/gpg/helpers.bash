@@ -24,6 +24,9 @@ EOF
 
   VALID_GPG_KEY=$(GNUPGHOME="$keygen_dir" gpg --armor --export-secret-keys test@ricon.family 2>/dev/null)
   export VALID_GPG_KEY
+  GPG_FINGERPRINT=$(GNUPGHOME="$keygen_dir" gpg --with-colons --list-secret-keys test@ricon.family 2>/dev/null |
+    awk -F: '$1 == "fpr" {print $10; exit}')
+  export GPG_FINGERPRINT
 
   # Clean up keygen dir — tests use their own GNUPGHOME.
   # Only try to kill the agent if one is running under this homedir.
