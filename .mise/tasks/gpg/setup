@@ -10,10 +10,10 @@ source "$MISE_CONFIG_ROOT/lib/gpg.sh"
 
 AGENT="${usage_agent:?Usage: mise run gpg:setup <agent>}"
 # CI may supply the exact fingerprint and private key directly. Local setup
-# uses the same SOPS persona signer as activation, never an email-derived key.
+# uses the selected Secrets provider, never an email-derived key.
 FINGERPRINT="${GPG_FINGERPRINT:-}"
 if [ -z "$FINGERPRINT" ]; then
-  FINGERPRINT=$(secrets get --provider sops "$AGENT/git/signing-fingerprint")
+  FINGERPRINT=$(secrets get "$AGENT/git/signing-fingerprint")
 fi
 if [[ ! "$FINGERPRINT" =~ ^([A-Fa-f0-9]{40}|[A-Fa-f0-9]{64})$ ]]; then
   echo 'ERROR: a full persona signing fingerprint is required.' >&2
@@ -35,7 +35,7 @@ if grep -Fx "$FINGERPRINT" <<< "$AVAILABLE" >/dev/null; then
 else
   PRIVATE_KEY="${GPG_PRIVATE_KEY:-}"
   if [ -z "$PRIVATE_KEY" ]; then
-    PRIVATE_KEY=$(secrets get --provider sops "$AGENT/gpg-private-key")
+    PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key")
   fi
   PRIVATE_KEY=$(strip_wrapping_quotes "$PRIVATE_KEY")
   validate_gpg_key "$PRIVATE_KEY"

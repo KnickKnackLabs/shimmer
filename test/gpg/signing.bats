@@ -128,13 +128,13 @@ teardown() {
   [ ! -e "$HOME/agents/another-handle" ]
 }
 
-@test "setup reads only the selected SOPS signer when its key is already present" {
+@test "setup reads only signer metadata when its key is already present" {
   export TEST_SIGNER="$GPG_FINGERPRINT" MOCK_CALLS="$BATS_TEST_TMPDIR/secrets-calls"
   unset GPG_FINGERPRINT
   # shellcheck disable=SC2329
   secrets() {
     printf '%s\n' "$*" >> "$MOCK_CALLS"
-    [ "$*" = 'get --provider sops test/git/signing-fingerprint' ] || return 1
+    [ "$*" = 'get test/git/signing-fingerprint' ] || return 1
     printf '%s\n' "$TEST_SIGNER"
   }
   export -f secrets
@@ -143,6 +143,52 @@ teardown() {
 
   [ "$status" -eq 0 ]
   [ "$(wc -l < "$MOCK_CALLS" | tr -d ' ')" = 1 ]
+}
+
+@test "setup delegates both credential reads to the caller's selected provider" {
+  export TEST_SIGNER="$GPG_FINGERPRINT" MOCK_CALLS="$BATS_TEST_TMPDIR/secrets-calls"
+  # Select the fixture's provider without inheriting the host's Mise env setting.
+  printf '\n[env]\nSECRETS_PROVIDER = "{{env.TEST_PROVIDER}}"\n' >> "$OVERLAY/mise.toml"
+  unset GPG_FINGERPRINT GPG_PRIVATE_KEY
+  # shellcheck disable=SC2329
+  secrets() {
+    printf '%s %s\n' "${SECRETS_PROVIDER:-}" "$*" >> "$MOCK_CALLS"
+    case "$*" in
+      'get test/git/signing-fingerprint') printf '%s' "$TEST_SIGNER" ;;
+      'get test/gpg-private-key') printf '%s' "$VALID_GPG_KEY" ;;
+      *) return 1 ;;
+    esac
+  }
+  export -f secrets
+  local provider
+  for provider in sops 1password; do
+    export TEST_PROVIDER="$provider"
+    gpg --batch --yes --delete-secret-and-public-key "$TEST_SIGNER"
+    : > "$MOCK_CALLS"
+
+    run shimmer gpg:setup test
+
+    [ "$status" -eq 0 ]
+    [ "$(wc -l < "$MOCK_CALLS" | tr -d ' ')" = 2 ]
+    grep -Fx "$provider get test/git/signing-fingerprint" "$MOCK_CALLS"
+    grep -Fx "$provider get test/gpg-private-key" "$MOCK_CALLS"
+  done
+}
+
+@test "setup stops after a provider failure without trying another provider" {
+  export MOCK_CALLS="$BATS_TEST_TMPDIR/secrets-calls" SECRETS_PROVIDER=sops
+  unset GPG_FINGERPRINT GPG_PRIVATE_KEY
+  # shellcheck disable=SC2329
+  secrets() {
+    printf '%s %s\n' "$SECRETS_PROVIDER" "$*" >> "$MOCK_CALLS"
+    return 1
+  }
+  export -f secrets
+
+  run shimmer gpg:setup test
+
+  [ "$status" -ne 0 ]
+  [ "$(< "$MOCK_CALLS")" = 'sops get test/git/signing-fingerprint' ]
 }
 
 @test "setup imports an exact signing subkey and trusts its primary" {

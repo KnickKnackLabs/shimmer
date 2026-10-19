@@ -5,11 +5,14 @@ This guide covers setting up an agent identity for local development work.
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev/) installed
-- Agent credentials already provisioned in SOPS
-- Encrypted vault and age key configured through Secrets 0.3 or newer
+- Agent credentials provisioned in the store selected by `$SECRETS_PROVIDER`
+- Access to that store: for SOPS, configure the encrypted vault and age key through
+  Secrets 0.3 or newer; for 1Password, sign in through its CLI
 
-Persona activation and local GPG setup read SOPS. Activation does not provision
-credentials, set up a mailbox, or fall back to another provider.
+The caller selects the provider. An agent account can use its own SOPS vault;
+an operator working with other agents can select 1Password. Neither activation
+nor GPG setup switches providers automatically. Secrets fails if no provider is
+selected. Activation does not provision credentials or set up a mailbox.
 
 ## One-Time Setup
 
@@ -24,8 +27,8 @@ mise run gpg:setup <agent>
 ```
 
 The command reads `<agent>/git/signing-fingerprint` and, if needed,
-`<agent>/gpg-private-key` from SOPS. It verifies the fingerprint before
-importing the key and setting owner trust. It does not write Git configuration
+`<agent>/gpg-private-key` through the selected Secrets provider. It verifies the
+fingerprint before importing the key and setting owner trust. It does not write Git configuration
 or remove old workspace configs/includes. CI may supply `GPG_FINGERPRINT` and
 `GPG_PRIVATE_KEY` instead.
 
@@ -142,7 +145,8 @@ again. Do not delete existing keys as a troubleshooting shortcut.
 ### Wrong signing key used
 
 `shimmer as` reads the persona's Git identity and exact signing fingerprint from
-SOPS, verifies the secret signer, and applies process-scoped Git overrides.
+the selected Secrets provider, verifies the secret signer, and applies
+process-scoped Git overrides.
 Neither the desk path nor workspace `.gitconfig` files select the persona.
 A dedicated OS account may keep matching global defaults for Git use outside
 activation; those defaults do not override an activated persona.
