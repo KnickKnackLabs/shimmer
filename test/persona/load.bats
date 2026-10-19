@@ -7,16 +7,18 @@ setup() {
   export MOCK_BUNDLE='{"alice/git/name":"Alice","alice/github/token":"synthetic-token"}'
   export MOCK_SECRETS_STATUS=0
   export MOCK_CALLS="$BATS_TEST_TMPDIR/secrets-calls"
+  export MOCK_PROVIDER="$BATS_TEST_TMPDIR/provider"
 
   secrets() {
-    printf '%s\n' "$@" > "$MOCK_CALLS"
+    printf '%s\n' "$*" >> "$MOCK_CALLS"
+    printf '%s' "${SECRETS_PROVIDER:-}" > "$MOCK_PROVIDER"
     printf '%s' "$MOCK_BUNDLE"
     printf 'synthetic-provider-diagnostic\n' >&2
     return "$MOCK_SECRETS_STATUS"
   }
 }
 
-@test "loader captures SOPS JSON without emitting exports or changing the persona" {
+@test "loader captures provider JSON without emitting exports or changing the persona" {
   export AGENT_HOME=/existing/home GH_TOKEN=existing-token
   persona_load alice > "$BATS_TEST_TMPDIR/stdout"
   [ ! -s "$BATS_TEST_TMPDIR/stdout" ]
@@ -24,9 +26,22 @@ setup() {
   [ "$GH_TOKEN" = existing-token ]
   [ "$(printf '%s' "$PERSONA_DATA" | jq -r '."git/name"')" = Alice ]
   [ "$(printf '%s' "$PERSONA_DATA" | jq -r '."github/token"')" = synthetic-token ]
-  [ "$(paste -sd ' ' "$MOCK_CALLS")" = 'export --provider sops --prefix alice/' ]
+  [ "$(paste -sd ' ' "$MOCK_CALLS")" = 'export --prefix alice/' ]
   run bash -c 'test "${PERSONA_DATA+x}" != x'
   [ "$status" -eq 0 ]
+}
+
+@test "loader preserves the caller's provider selection" {
+  local provider
+  for provider in sops 1password; do
+    export SECRETS_PROVIDER="$provider"
+
+    persona_load alice
+
+    [ "$(< "$MOCK_PROVIDER")" = "$provider" ]
+    [ "$SECRETS_PROVIDER" = "$provider" ]
+  done
+  [ "$(grep -c '^export --prefix alice/$' "$MOCK_CALLS")" -eq 2 ]
 }
 
 @test "loader retains email and blobs but drops unrelated secrets" {
@@ -55,7 +70,8 @@ setup() {
   fi
   [ "$PERSONA_DATA" = previous ]
   [ ! -s "$BATS_TEST_TMPDIR/stdout" ]
-  [ "$(< "$BATS_TEST_TMPDIR/stderr")" = 'ERROR: could not load persona from SOPS.' ]
+  [ "$(< "$BATS_TEST_TMPDIR/stderr")" = 'ERROR: could not load persona from the selected Secrets provider.' ]
+  [ "$(wc -l < "$MOCK_CALLS" | tr -d ' ')" = 1 ]
 }
 
 @test "loader rejects malformed bundles without leaking their contents" {

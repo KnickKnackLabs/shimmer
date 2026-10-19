@@ -2,6 +2,7 @@
 # Persona activation orchestration. Secret-bearing working JSON stays unexported.
 PERSONA_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$PERSONA_LIB_DIR/../persona.sh"
+source "$PERSONA_LIB_DIR/../gpg.sh"
 
 persona_error() {
   printf 'ERROR: %s\n' "$1" >&2
@@ -47,37 +48,11 @@ persona_hash_values() {
 }
 
 persona_check_signers() {
-  local +x desired="$1" listing available fingerprint fingerprints
-  # GnuPG only lists metadata here: no signing, importing, unlock, or network.
-  listing=$(
-    gpg --batch --no-tty \
-      --with-colons --with-fingerprint --with-subkey-fingerprint \
-      --list-secret-keys 2>/dev/null
-  ) || {
+  local +x desired="$1" available fingerprint fingerprints
+  available=$(gpg_secret_signing_fingerprints) || {
     persona_error 'could not inspect secret signing keys.'
     return 1
   }
-  available=$(printf '%s\n' "$listing" | awk -F: -v now="$(date +%s)" '
-    function usable(validity, expiry, capabilities) {
-      return validity !~ /[redi]/ && capabilities !~ /D/ &&
-        (expiry == "" || expiry == "0" || expiry > now)
-    }
-
-    $1 == "sec" || $1 == "ssb" {
-      key_ok = usable($2, $7, $12)
-      if ($1 == "sec") primary_ok = key_ok
-      else key_ok = primary_ok && key_ok
-
-      # Lowercase s belongs to this key; uppercase S may describe a subkey.
-      # Field 15 is # when the secret key is unavailable.
-      signing = key_ok && $12 ~ /s/ && $15 != "#"
-      next
-    }
-    $1 == "fpr" {
-      if (signing) print toupper($10)
-      signing = 0
-    }
-  ') || return 1
 
   fingerprints=$(printf '%s' "$desired" | jq -r '.signers[]') || return 1
   while IFS= read -r fingerprint; do

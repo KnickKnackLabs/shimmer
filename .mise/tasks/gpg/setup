@@ -1,101 +1,76 @@
 #!/usr/bin/env bash
-#MISE description="Setup GPG signing for an agent (one-time local setup)"
-#USAGE arg "<agent>" help="Agent name (e.g., quick, x1f9)"
-#USAGE example "mise run gpg:setup zeke" header="Set up an agent signing key"
+#MISE description="Import an agent's GPG key into the current user's keyring"
+#USAGE arg "<agent>" help="Agent handle (e.g., quick, x1f9)"
+#USAGE example "mise run gpg:setup zeke" header="Prepare an agent signing key"
+set -euo pipefail
+set +x
+set +v
 
-set -e
+source "$MISE_CONFIG_ROOT/lib/gpg.sh"
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/lib/gpg.sh"
+AGENT="${usage_agent:?Usage: mise run gpg:setup <agent>}"
+# CI may supply the exact fingerprint and private key directly. Local setup
+# uses the selected Secrets provider, never an email-derived key.
+FINGERPRINT="${GPG_FINGERPRINT:-}"
+if [ -z "$FINGERPRINT" ]; then
+  FINGERPRINT=$(secrets get "$AGENT/git/signing-fingerprint")
+fi
+if [[ ! "$FINGERPRINT" =~ ^([A-Fa-f0-9]{40}|[A-Fa-f0-9]{64})$ ]]; then
+  echo 'ERROR: a full persona signing fingerprint is required.' >&2
+  exit 1
+fi
+FINGERPRINT=$(printf '%s' "$FINGERPRINT" | tr '[:lower:]' '[:upper:]')
 
-# Bridge env var during migration
-export SECRETS_PROVIDER="${SECRETS_PROVIDER:-${SHIMMER_SECRETS_PROVIDER:-}}"
-
-AGENT="${usage_agent:-${1:?Usage: mise run gpg:setup <agent>}}"
-EMAIL="${AGENT}@ricon.family"
-
-# Check if gpg is available
-if ! command -v gpg &>/dev/null; then
-  echo "ERROR: gpg command not found. Please install GnuPG."
+if ! command -v gpg >/dev/null 2>&1; then
+  echo 'ERROR: gpg command not found. Please install GnuPG.' >&2
   exit 1
 fi
 
-# Import key if not already present
-if gpg --list-secret-keys "$EMAIL" &>/dev/null; then
-  echo "GPG key for $EMAIL already imported"
+AVAILABLE=$(gpg_secret_signing_fingerprints) || {
+  echo 'ERROR: could not inspect secret signing keys.' >&2
+  exit 1
+}
+if grep -Fx "$FINGERPRINT" <<< "$AVAILABLE" >/dev/null; then
+  echo "GPG signing key $FINGERPRINT already imported"
 else
-  # Get private key: env var (CI) > secret provider (local)
-  if [ -z "$GPG_PRIVATE_KEY" ]; then
-    GPG_PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key") || {
-      echo "" >&2
-      echo "Tip: set SECRETS_PROVIDER=keychain or SECRETS_PROVIDER=1password" >&2
-      exit 1
-    }
+  PRIVATE_KEY="${GPG_PRIVATE_KEY:-}"
+  if [ -z "$PRIVATE_KEY" ]; then
+    PRIVATE_KEY=$(secrets get "$AGENT/gpg-private-key")
   fi
+  PRIVATE_KEY=$(strip_wrapping_quotes "$PRIVATE_KEY")
+  validate_gpg_key "$PRIVATE_KEY"
 
-  # Strip wrapping quotes (some providers/uploads introduce them)
-  GPG_PRIVATE_KEY=$(strip_wrapping_quotes "$GPG_PRIVATE_KEY")
-
-  # Validate before importing
-  if ! validate_gpg_key "$GPG_PRIVATE_KEY"; then
-    echo "" >&2
-    echo "Hint: the key may have been corrupted during upload." >&2
-    echo "Try re-syncing: shimmer agent:sync-secrets $AGENT" >&2
+  TMPKEY=$(mktemp)
+  trap 'rm -f "$TMPKEY"' EXIT
+  printf '%s' "$PRIVATE_KEY" > "$TMPKEY"
+  KEY_METADATA=$(gpg --batch --with-colons --import-options show-only --import "$TMPKEY" 2>/dev/null)
+  TRUST_FINGERPRINT=$(awk -F: -v signer="$FINGERPRINT" '
+    $1 == "pub" || $1 == "sec" {primary = ""}
+    $1 == "fpr" {
+      if (primary == "") primary = toupper($10)
+      if (toupper($10) == signer) print primary
+    }
+  ' <<< "$KEY_METADATA")
+  if [ -z "$TRUST_FINGERPRINT" ]; then
+    echo 'ERROR: private key does not match the persona signing fingerprint.' >&2
     exit 1
   fi
 
-  # Import via temp file (more reliable than piping)
-  echo "Importing GPG key for $EMAIL..."
-  TMPKEY=$(mktemp)
-  trap 'rm -f "$TMPKEY"' EXIT
-  printf '%s' "$GPG_PRIVATE_KEY" > "$TMPKEY"
+  echo "Importing GPG key for $AGENT..."
   gpg --batch --import "$TMPKEY"
-
-  # Set ultimate trust. The key is already imported; failing to set trust
-  # just means git will warn on signed commits until the user fixes it.
-  if ! echo -e "5\ny\n" | gpg --batch --command-fd 0 --expert --edit-key "$EMAIL" trust quit 2>/dev/null; then
-    echo "[warn] could not set ultimate trust on $EMAIL key — signed commits may show as untrusted" >&2
-    echo "[warn] fix with: gpg --edit-key $EMAIL trust  (choose 5 = ultimate)" >&2
+  AVAILABLE=$(gpg_secret_signing_fingerprints)
+  if ! grep -Fx "$FINGERPRINT" <<< "$AVAILABLE" >/dev/null; then
+    echo 'ERROR: imported key has no usable secret key for the persona signer.' >&2
+    exit 1
+  fi
+  if ! printf '%s:6:\n' "$TRUST_FINGERPRINT" | gpg --batch --import-ownertrust; then
+    echo "[warn] could not set ultimate trust for $FINGERPRINT" >&2
+    exit 1
   fi
 fi
 
-# Get the key ID
-KEY_ID=$(gpg --list-secret-keys --keyid-format LONG "$EMAIL" 2>/dev/null | grep sec | head -1 | awk '{print $2}' | cut -d'/' -f2)
-
-if [ -z "$KEY_ID" ]; then
-  echo "ERROR: Could not find key ID for $EMAIL"
-  exit 1
-fi
-
-# Write per-agent gitconfig
-AGENT_DIR="$HOME/agents/$AGENT"
-AGENT_GITCONFIG="$AGENT_DIR/.gitconfig"
-mkdir -p "$AGENT_DIR"
-
-cat > "$AGENT_GITCONFIG" <<GITCONFIG
-[user]
-	name = $AGENT
-	email = $EMAIL
-	signingkey = $KEY_ID
-[commit]
-	gpgsign = true
-[tag]
-	gpgsign = true
-GITCONFIG
-
-echo "Wrote $AGENT_GITCONFIG"
-
-# Add includeIf to global gitconfig if not already present
-if ! git config --global --get-regexp 'includeIf' 2>/dev/null | grep -q "agents/$AGENT/"; then
-  git config --global --add "includeIf.gitdir:~/agents/$AGENT/.path" "$AGENT_GITCONFIG"
-  echo "Added conditional include to global gitconfig"
-else
-  echo "Conditional include already present in global gitconfig"
-fi
-
-echo ""
-echo "GPG configured for $EMAIL"
-echo "  Key ID: $KEY_ID"
-echo "  Config: $AGENT_GITCONFIG"
-echo "  Scope:  repos under ~/agents/$AGENT/"
-echo ""
-echo "Test with: cd ~/agents/$AGENT/<repo> && git commit --allow-empty -m 'Test signed commit'"
+echo "GPG key ready for $AGENT"
+echo "  Fingerprint: $FINGERPRINT"
+echo 'Git configuration unchanged. Activate the persona to select its signer:'
+echo "  eval \"\$(shimmer as $AGENT)\""
+echo 'Then check: shimmer gpg:status'

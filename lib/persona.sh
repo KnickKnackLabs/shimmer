@@ -20,8 +20,8 @@ persona_load() {
       ;;
   esac
 
-  if ! bundle=$(secrets export --provider sops --prefix "$agent/" 2>/dev/null); then
-    printf 'ERROR: could not load persona from SOPS.\n' >&2
+  if ! bundle=$(secrets export --prefix "$agent/" 2>/dev/null); then
+    printf 'ERROR: could not load persona from the selected Secrets provider.\n' >&2
     return 1
   fi
 

@@ -1,6 +1,6 @@
 # Portable persona configuration
 
-`shimmer as <handle>` loads a portable persona from the selected SOPS vault,
+`shimmer as <handle>` loads a portable persona through `$SECRETS_PROVIDER`,
 checks its configuration and secret signing keys, and emits Bash exports:
 
 ```bash
@@ -9,9 +9,16 @@ eval "$(shimmer as alice)"
 
 Secrets/vault access and GnuPG keys are prerequisites, independent of any home
 checkout. The handle selects vault fields; the configured Git name supplies the
-commit identity. Activation makes no network requests or persistent config writes.
-All loading, validation and conflict approval finish before any shell commands
-are emitted. Failure leaves the caller's previous environment unchanged.
+commit identity. The caller chooses the provider: an agent account can select its
+own SOPS vault, while an operator can select 1Password to access another agent's
+credentials. The selected store must contain the fields below. There is no
+automatic provider switch or fallback; Secrets rejects an unset selector.
+
+Credential reads may prompt or contact the selected provider's service.
+Activation does not contact GitHub, email, or blob services, or write persistent
+configuration. All loading, validation and conflict approval finish before any
+shell commands are emitted. Failure leaves the caller's previous environment
+unchanged.
 
 `lib/persona.sh` owns private bundle loading. `lib/persona/config.jq` maps and
 validates fields; `switch.jq` plans ownership changes; `activate.sh` checks keys,

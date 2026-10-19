@@ -290,7 +290,7 @@ load helpers
   source "$STDOUT"
   [ "$GIT_AUTHOR_NAME" = Alice ]
   [ "$AGENT_HOME" = /caller/selected/home ]
-  [ "$(grep -c '^export --provider sops --prefix alice/$' "$MOCK_CALLS")" -eq 1 ]
+  [ "$(grep -c '^export --prefix alice/$' "$MOCK_CALLS")" -eq 1 ]
   [ "$(wc -l < "$MOCK_CALLS" | tr -d ' ')" -eq 2 ]
 }
 
