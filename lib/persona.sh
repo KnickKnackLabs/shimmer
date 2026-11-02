@@ -25,23 +25,14 @@ persona_load() {
     return 1
   fi
 
-  # Secrets owns vault access; jq only checks the bundle shape and extracts the
-  # agreed capability namespaces. Unrelated agent secrets are not retained.
-  if ! data=$(printf '%s' "$bundle" | jq -cse --arg prefix "$agent/" '
-    if length != 1 or (.[0] | type) != "object" then
-      error("expected one object")
-    else
-      .[0]
-      | if all(to_entries[]; (.key | startswith($prefix)) and (.value | type == "string")) then
-          with_entries(
-            .key |= ltrimstr($prefix)
-            | select(.key | test("^(git|github|email|blobs)/"))
-          )
-        else error("invalid bundle entries") end
-    end
-  ' 2>/dev/null); then
-    printf 'ERROR: Secrets returned an invalid persona bundle.\n' >&2
-    return 1
+  # Remove the agent prefix from the Secrts export
+  if ! data=$(
+    printf '%s' "${bundle}" |
+      jq -ce --arg prefix "${agent}/" \
+        'with_entries(.key |= ltrimstr($prefix))' 2>/dev/null
+  ); then
+      printf 'ERROR: Could not parse persona JSON.\n' >&2
+      return 1
   fi
 
   PERSONA_DATA="$data"
