@@ -105,8 +105,8 @@ def capability_variables($kind):
     GH_HOST: "github.com"
   }
   + (
-      if ($data["github/token"] // "") == "" then {}
-      else {GH_TOKEN: ($data | required("github/token"))}
+      if ($data["github-pat"] // "") == "" then {}
+      else {GH_TOKEN: ($data | required("github-pat"))}
       end
     )
   + ($data | capability_variables("email"))

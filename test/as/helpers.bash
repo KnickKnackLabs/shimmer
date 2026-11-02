@@ -48,7 +48,7 @@ bundle() {
     "alice/git/name": $name,
     "alice/git/email": "alice@example.test",
     "alice/git/signing-fingerprint": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "alice/github/token": $token
+    "alice/github-pat": $token
   }' > "$MOCK_BUNDLE_FILE"
 }
 

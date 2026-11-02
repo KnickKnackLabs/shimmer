@@ -28,17 +28,17 @@ handles consent and emits the complete switch. Working JSON is unexported.
 
 Required Git fields:
 
-| Vault field | Use |
-| --- | --- |
-| `git/name` | Author/committer name and `user.name` |
-| `git/email` | Author/committer email and `user.email` |
-| `git/signing-fingerprint` | Full fingerprint for `user.signingkey` |
+| Vault field               | Use                                     |
+| ------------------------- | --------------------------------------- |
+| `git/name`                | Author/committer name and `user.name`   |
+| `git/email`               | Author/committer email and `user.email` |
+| `git/signing-fingerprint` | Full fingerprint for `user.signingkey`  |
 
 Git's other fixed settings are `gpg.format=openpgp`, `commit.gpgsign=true`,
 and `tag.gpgsign=true`. Numbered `GIT_CONFIG_*` transport and account provisioning
 are separate from data loading.
 
-`github/token` is optional and maps to `GH_TOKEN`. `GH_HOST` is `github.com`.
+`github-pat` is optional and maps to `GH_TOKEN`. `GH_HOST` is `github.com`.
 
 Email uses `email/accounts` (space-separated labels) and
 `email/default-account` (one declared label). For each label, the fields are:

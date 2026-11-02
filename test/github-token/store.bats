@@ -11,7 +11,7 @@ setup() {
   cat > "$MOCK_BIN/secrets" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-[ "$#" -eq 2 ] && [ "$1" = set ] && [ "$2" = demo/github/token ] || exit 2
+[ "$#" -eq 2 ] && [ "$1" = set ] && [ "$2" = demo/github-pat ] || exit 2
 [ "${TOKEN_STORE_FAIL:-false}" != true ] || exit 1
 cat > "$TOKEN_STORE_RECORD"
 SH

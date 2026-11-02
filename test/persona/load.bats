@@ -4,7 +4,7 @@
 setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
   source "$REPO_DIR/lib/persona.sh"
-  export MOCK_BUNDLE='{"alice/git/name":"Alice","alice/github/token":"synthetic-token"}'
+  export MOCK_BUNDLE='{"alice/git/name":"Alice","alice/github-pat":"synthetic-token"}'
   export MOCK_SECRETS_STATUS=0
   export MOCK_CALLS="$BATS_TEST_TMPDIR/secrets-calls"
   export MOCK_PROVIDER="$BATS_TEST_TMPDIR/provider"
@@ -25,7 +25,7 @@ setup() {
   [ "$AGENT_HOME" = /existing/home ]
   [ "$GH_TOKEN" = existing-token ]
   [ "$(printf '%s' "$PERSONA_DATA" | jq -r '."git/name"')" = Alice ]
-  [ "$(printf '%s' "$PERSONA_DATA" | jq -r '."github/token"')" = synthetic-token ]
+  [ "$(printf '%s' "$PERSONA_DATA" | jq -r '."github-pat"')" = synthetic-token ]
   [ "$(paste -sd ' ' "$MOCK_CALLS")" = 'export --prefix alice/' ]
   run bash -c 'test "${PERSONA_DATA+x}" != x'
   [ "$status" -eq 0 ]
